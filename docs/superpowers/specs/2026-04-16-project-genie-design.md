@@ -125,6 +125,58 @@
 - **WAL 모드**: SQLite Write-Ahead Logging으로 읽기/쓰기 동시 성능.
 - **DB 위치**: `~/Library/Application Support/project-genie/data.db`
 
+## DB 백업 & 복원
+
+- **백업**: 메뉴 또는 단축키로 DB 파일을 사용자 지정 위치에 복사. 파일명: `project-genie-backup-YYYY-MM-DD-HHmmss.db`
+- **복원**: 백업 파일 선택 → 현재 DB 교체 전 확인 다이얼로그 → 앱 재시작
+- **자동 백업**: 앱 종료 시 `~/Library/Application Support/project-genie/backups/`에 자동 저장. 최근 5개만 유지.
+- Rust에서 SQLite `.backup` API 또는 파일 복사로 구현 (WAL 체크포인트 후 복사)
+
+## AI 어시스턴트 패널
+
+### 개요
+우측 슬라이드 패널. 토글 버튼으로 열기/닫기. 로컬 LLM을 통해 자연어로 프로젝트 관리.
+
+### LLM 서버
+- **모델**: SuperGemma4-26B (MLX 4bit)
+- **서버**: `mlx_lm.server` on `127.0.0.1:8080`
+- **API**: OpenAI 호환 `/v1/chat/completions`
+- **라이프사이클**: AI 패널 열기 → MLX 서버 시작 (venv activate + mlx_lm.server), 패널 닫기 → 서버 종료 (PID kill)
+- **서버 스크립트 경로**: 앱 설정에서 지정 (기본: `/Users/genie/dev/side/supergemma-bench/start-mlx.sh`)
+- **Health check**: `/v1/models` 엔드포인트 polling으로 서버 준비 확인
+
+### AI가 할 수 있는 작업
+- 프로젝트 추가/삭제/수정
+- 우선순위 변경 및 정렬
+- 프로젝트 검색 (자연어 → DB 쿼리)
+- 일정 등록/수정/삭제
+- 메모 작성/수정
+- 현재 상태 요약 ("이번 주 할 일 뭐야?", "P0 프로젝트 뭐 있어?")
+
+### 구현 방식
+- 채팅 UI: 간단한 메시지 버블 (user/assistant)
+- LLM에 시스템 프롬프트로 현재 DB 상태 요약 + 사용 가능한 함수(tool) 목록 전달
+- LLM 응답에서 function call 파싱 → Tauri command 실행 → 결과를 LLM에 피드백
+- Tool-use 패턴: LLM이 JSON 형태로 액션 지정 → 프론트엔드가 기존 Tauri IPC 명령 재활용
+
+### UI
+```
+┌─────────────────────────┬──────────────┐
+│                         │ 🤖 AI 패널   │
+│    메인 콘텐츠            │              │
+│    (프로젝트/캘린더/메모)  │  💬 채팅 영역  │
+│                         │              │
+│                         │  [메시지...]   │
+│                         │              │
+│                         │ ┌──────────┐ │
+│                         │ │ 입력창    │ │
+│                         │ └──────────┘ │
+└─────────────────────────┴──────────────┘
+```
+- 패널 너비: ~320px, 리사이즈 가능
+- 서버 로딩 중: 스피너 + "AI 로딩 중..." 표시
+- 서버 실패 시: 에러 메시지 + 재시도 버튼
+
 ## 성능 최적화
 
 - Rust 백엔드에서 SQLite 직접 처리 → IPC 오버헤드 최소화
@@ -179,6 +231,18 @@ import_excel(file_path) → ImportResult
 
 // Clients
 get_clients() → Client[]
+
+// DB Backup & Restore
+backup_db(dest_path?) → String (saved path)
+restore_db(src_path) → Result
+list_backups() → Backup[]
+
+// AI
+start_ai_server() → Result
+stop_ai_server() → Result
+ai_server_status() → { running: bool, port: number }
+ai_chat(messages[]) → ChatResponse
+search_projects(query) → Project[]
 ```
 
 ## Scope Out (v1에서 제외)
@@ -188,4 +252,4 @@ get_clients() → Client[]
 - 알림/리마인더
 - 프로젝트 상세 페이지 (별도 뷰)
 - Git 상태 연동
-- 검색 기능 (v1은 필터로 충분)
+- AI 대화 히스토리 영구 저장 (세션 단위, 패널 닫으면 초기화)
