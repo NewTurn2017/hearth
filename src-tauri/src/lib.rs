@@ -1,4 +1,12 @@
+mod cmd_actions;
+mod cmd_ai;
+mod cmd_backup;
+mod cmd_clients;
+mod cmd_memos;
+mod cmd_projects;
+mod cmd_schedules;
 mod db;
+mod excel_import;
 mod models;
 
 use std::sync::Mutex;
@@ -26,9 +34,49 @@ pub fn run() {
             app.manage(AppState {
                 db: Mutex::new(conn),
             });
+
+            app.manage(cmd_ai::AiState {
+                pid: Mutex::new(None),
+                script_path: Mutex::new(
+                    "/Users/genie/dev/side/supergemma-bench/start-mlx.sh".to_string(),
+                ),
+            });
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                cmd_backup::auto_backup_on_close(window.app_handle());
+            }
+        })
+        .invoke_handler(tauri::generate_handler![
+            cmd_projects::get_projects,
+            cmd_projects::update_project,
+            cmd_projects::create_project,
+            cmd_projects::delete_project,
+            cmd_projects::reorder_projects,
+            cmd_projects::search_projects,
+            cmd_schedules::get_schedules,
+            cmd_schedules::create_schedule,
+            cmd_schedules::update_schedule,
+            cmd_schedules::delete_schedule,
+            cmd_memos::get_memos,
+            cmd_memos::create_memo,
+            cmd_memos::update_memo,
+            cmd_memos::delete_memo,
+            cmd_memos::reorder_memos,
+            cmd_clients::get_clients,
+            cmd_actions::open_in_ghostty,
+            cmd_actions::open_in_finder,
+            cmd_actions::import_excel,
+            cmd_backup::backup_db,
+            cmd_backup::restore_db,
+            cmd_backup::list_backups,
+            cmd_ai::start_ai_server,
+            cmd_ai::stop_ai_server,
+            cmd_ai::ai_server_status,
+            cmd_ai::ai_chat,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
