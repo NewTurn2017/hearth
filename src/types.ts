@@ -111,3 +111,38 @@ export const MEMO_COLORS = [
   { name: "green", bg: "#d1fae5", text: "#065f46" },
   { name: "purple", bg: "#ede9fe", text: "#5b21b6" },
 ];
+
+// --- AI / Command Palette ---
+
+export type ActionCommand =
+  | "create_project"
+  | "update_project"
+  | "delete_project"
+  | "create_schedule"
+  | "update_schedule"
+  | "delete_schedule"
+  | "create_memo"
+  | "update_memo"
+  | "delete_memo"
+  | "set_filter"
+  | "focus_project";
+
+export type ActionType = "mutation" | "navigation" | "info";
+
+export interface AiAction {
+  type: ActionType;
+  label: string;
+  command?: ActionCommand;
+  args?: Record<string, unknown>;
+}
+
+export interface AiResponse {
+  reply: string;
+  actions: AiAction[];
+}
+
+export type AiServerState =
+  | { kind: "idle" }
+  | { kind: "starting" }
+  | { kind: "running"; port: number }
+  | { kind: "failed"; error: string };
