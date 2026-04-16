@@ -18,17 +18,27 @@ export function Dialog({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const prevFocused = useRef<Element | null>(null);
+  // Keep onClose in a ref so the focus-trap effect does not re-run when the
+  // parent passes a fresh callback identity on every render (which would
+  // re-focus the panel and yank focus from inputs mid-typing).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
     prevFocused.current = document.activeElement;
     const panel = panelRef.current;
-    panel?.focus();
+    // Let `autoFocus` on inner inputs win if they already claimed focus.
+    if (panel && !panel.contains(document.activeElement)) {
+      panel.focus();
+    }
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
       if (e.key === "Tab" && panel) {
         const focusables = panel.querySelectorAll<HTMLElement>(
@@ -51,7 +61,7 @@ export function Dialog({
       window.removeEventListener("keydown", onKey, true);
       (prevFocused.current as HTMLElement | null)?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

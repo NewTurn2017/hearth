@@ -1,7 +1,5 @@
 // src/command/CommandResults.tsx
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, Zap } from "lucide-react";
-import type { AiAction } from "../types";
 import type { LocalCommand } from "./types";
 import { Icon } from "../ui/Icon";
 import { Kbd } from "../ui/Kbd";
@@ -61,13 +59,4 @@ export interface ResultItem {
 
 export function itemFromLocal(c: LocalCommand): ResultItem {
   return { id: `local:${c.id}`, label: c.label, hint: c.hint, icon: c.icon };
-}
-
-export function itemFromAi(a: AiAction, idx: number): ResultItem {
-  return {
-    id: `ai:${idx}`,
-    label: a.label,
-    hint: a.type === "mutation" ? "확인 필요" : a.type === "navigation" ? "이동" : "정보",
-    icon: a.type === "mutation" ? Zap : ArrowRight,
-  };
 }

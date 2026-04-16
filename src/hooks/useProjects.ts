@@ -4,7 +4,7 @@ import * as api from "../api";
 
 export function useProjects(
   priorities: Set<Priority>,
-  categories: Set<Category>
+  category: Category | null
 ) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,9 +12,12 @@ export function useProjects(
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // `category === null` means 전체 보기 — send no category filter so the
+      // backend doesn't emit a `category IN (...)` clause (which would
+      // exclude rows where category IS NULL).
       const data = await api.getProjects({
         priorities: [...priorities],
-        categories: [...categories],
+        categories: category ? [category] : [],
       });
       setProjects(data);
     } catch (e) {
@@ -22,10 +25,20 @@ export function useProjects(
     } finally {
       setLoading(false);
     }
-  }, [priorities, categories]);
+  }, [priorities, category]);
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  // External writers (NewProjectDialog, AI actions) can broadcast this event
+  // instead of wiring through props.
+  useEffect(() => {
+    const onChanged = () => {
+      load();
+    };
+    window.addEventListener("projects:changed", onChanged);
+    return () => window.removeEventListener("projects:changed", onChanged);
   }, [load]);
 
   const update = async (

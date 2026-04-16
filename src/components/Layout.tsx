@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
+import { NewProjectDialog } from "./NewProjectDialog";
+import { AiSettingsDialog } from "./AiSettingsDialog";
 import { CommandPalette } from "../command/CommandPalette";
 import { buildLocalCommands } from "../command/dispatch";
-import type { Tab, Priority, Category } from "../types";
+import type { Tab, Priority, Category, ToolCall } from "../types";
 import { PRIORITIES, CATEGORIES } from "../types";
 import { useToast } from "../ui/Toast";
 import * as api from "../api";
@@ -15,25 +17,24 @@ export function Layout({
   children: (props: {
     activeTab: Tab;
     priorities: Set<Priority>;
-    categories: Set<Category>;
+    category: Category | null;
+    openNewProject: () => void;
   }) => React.ReactNode;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("projects");
   const [priorities, setPriorities] = useState<Set<Priority>>(new Set(PRIORITIES));
-  const [categories, setCategories] = useState<Set<Category>>(new Set(CATEGORIES));
+  // null = 전체 보기 (no filter, shows NULL-category rows too). A single
+  // category selection deselects all others — category is exclusive, unlike
+  // priority which remains multi-select.
+  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
   const toast = useToast();
 
   const togglePriority = (p: Priority) => {
     setPriorities((prev) => {
       const next = new Set(prev);
       next.has(p) ? next.delete(p) : next.add(p);
-      return next;
-    });
-  };
-  const toggleCategory = (c: Category) => {
-    setCategories((prev) => {
-      const next = new Set(prev);
-      next.has(c) ? next.delete(c) : next.add(c);
       return next;
     });
   };
@@ -63,11 +64,54 @@ export function Layout({
     }
   };
 
+  const openNewProject = useCallback(() => {
+    setActiveTab("projects");
+    setNewProjectOpen(true);
+  }, []);
+
   const commands = buildLocalCommands({
-    openNewProject: () => setActiveTab("projects"),
+    openNewProject,
     openNewSchedule: () => setActiveTab("calendar"),
     openNewMemo: () => setActiveTab("memos"),
   });
+
+  // Dispatch navigation/UI tool calls returned by the agent. `switch_tab` and
+  // `set_filter` map directly to our own state setters. `set_filter` is
+  // defensively filtered against the canonical PRIORITIES/CATEGORIES lists —
+  // the agent is untrusted and a hallucinated category would silently empty
+  // the list without the guard. Deps array is empty: every setter is a
+  // React-stable reference.
+  const handleClientIntent = useCallback((call: ToolCall) => {
+    const args = call.arguments ?? {};
+    switch (call.name) {
+      case "switch_tab": {
+        const tab = args.tab;
+        if (tab === "projects" || tab === "calendar" || tab === "memos") {
+          setActiveTab(tab);
+        }
+        break;
+      }
+      case "set_filter": {
+        const pris = args.priorities;
+        const cats = args.categories;
+        if (Array.isArray(pris)) {
+          const valid = pris.filter((p): p is Priority =>
+            (PRIORITIES as readonly string[]).includes(p as string)
+          );
+          if (valid.length > 0) setPriorities(new Set(valid));
+        }
+        if (Array.isArray(cats)) {
+          const firstValid = (cats as unknown[]).find(
+            (c): c is Category =>
+              typeof c === "string" &&
+              (CATEGORIES as readonly string[]).includes(c)
+          );
+          setActiveCategory(firstValid ?? null);
+        }
+        break;
+      }
+    }
+  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-[var(--color-surface-0)]">
@@ -76,16 +120,22 @@ export function Layout({
         onChange={setActiveTab}
         onImport={handleImport}
         onBackup={handleBackup}
+        onOpenAiSettings={() => setAiSettingsOpen(true)}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           activePriorities={priorities}
-          activeCategories={categories}
+          activeCategory={activeCategory}
           onTogglePriority={togglePriority}
-          onToggleCategory={toggleCategory}
+          onSelectCategory={setActiveCategory}
         />
         <main className="flex-1 overflow-y-auto px-10 py-8 flex flex-col">
-          {children({ activeTab, priorities, categories })}
+          {children({
+            activeTab,
+            priorities,
+            category: activeCategory,
+            openNewProject,
+          })}
         </main>
       </div>
       <CommandPalette
@@ -95,6 +145,15 @@ export function Layout({
           schedules: await api.getSchedules(),
           memos: await api.getMemos(),
         })}
+        onClientIntent={handleClientIntent}
+      />
+      <NewProjectDialog
+        open={newProjectOpen}
+        onClose={() => setNewProjectOpen(false)}
+      />
+      <AiSettingsDialog
+        open={aiSettingsOpen}
+        onClose={() => setAiSettingsOpen(false)}
       />
     </div>
   );

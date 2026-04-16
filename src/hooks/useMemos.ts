@@ -22,6 +22,17 @@ export function useMemos() {
     load();
   }, [load]);
 
+  // External writers (AI agent approvals) broadcast this instead of
+  // prop-drilling. Without the listener, a mutation-confirm would update
+  // the DB but the board stays visually stale until the next remount.
+  useEffect(() => {
+    const onChanged = () => {
+      load();
+    };
+    window.addEventListener("memos:changed", onChanged);
+    return () => window.removeEventListener("memos:changed", onChanged);
+  }, [load]);
+
   const create = async (data: Parameters<typeof api.createMemo>[0]) => {
     const created = await api.createMemo(data);
     setMemos((prev) => [...prev, created]);

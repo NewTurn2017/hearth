@@ -67,49 +67,62 @@ export function ProjectList({
   }
 
   return (
-    <div className="flex flex-col gap-7 flex-1 min-h-0">
-      {[...groups.entries()].map(([priority, items]) => (
-        <div key={priority}>
-          <div className="flex items-center gap-2 mb-2">
-            <span
-              className="w-3 h-3 rounded-full"
-              style={{
-                backgroundColor:
-                  PRIORITY_COLORS[priority as Priority] ?? "#6b7280",
-              }}
-            />
-            <h2 className="text-sm font-semibold text-[var(--color-text)]">
-              {priority} — {PRIORITY_LABELS[priority as Priority] ?? priority}
-            </h2>
-            <span className="text-xs text-[var(--color-text-muted)]">
-              ({items.length}개)
-            </span>
-          </div>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd(priority)}
-          >
-            <SortableContext
-              items={items.map((p) => p.id)}
-              strategy={verticalListSortingStrategy}
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-heading text-[var(--color-text-hi)] flex items-center gap-2">
+          <FolderOpen size={18} />
+          프로젝트
+        </h2>
+        {onAdd && (
+          <Button variant="primary" size="sm" leftIcon={Plus} onClick={onAdd}>
+            프로젝트 추가
+          </Button>
+        )}
+      </div>
+      <div className="flex flex-col gap-7 flex-1 min-h-0">
+        {[...groups.entries()].map(([priority, items]) => (
+          <div key={priority}>
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className="w-3 h-3 rounded-full"
+                style={{
+                  backgroundColor:
+                    PRIORITY_COLORS[priority as Priority] ?? "#6b7280",
+                }}
+              />
+              <h2 className="text-sm font-semibold text-[var(--color-text)]">
+                {priority} — {PRIORITY_LABELS[priority as Priority] ?? priority}
+              </h2>
+              <span className="text-xs text-[var(--color-text-muted)]">
+                ({items.length}개)
+              </span>
+            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd(priority)}
             >
-              <div className="flex flex-col gap-1">
-                {items.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    onUpdate={onUpdate}
-                    onDelete={onDelete}
-                    onOpenGhostty={(path) => api.openInGhostty(path)}
-                    onOpenFinder={(path) => api.openInFinder(path)}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </div>
-      ))}
+              <SortableContext
+                items={items.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="flex flex-col gap-1">
+                  {items.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onUpdate={onUpdate}
+                      onDelete={onDelete}
+                      onOpenGhostty={(path) => api.openInGhostty(path)}
+                      onOpenFinder={(path) => api.openInFinder(path)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

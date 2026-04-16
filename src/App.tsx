@@ -9,14 +9,16 @@ import type { Priority, Category } from "./types";
 
 function ProjectsTab({
   priorities,
-  categories,
+  category,
+  onAdd,
 }: {
   priorities: Set<Priority>;
-  categories: Set<Category>;
+  category: Category | null;
+  onAdd: () => void;
 }) {
   const { projects, loading, update, remove, reorder } = useProjects(
     priorities,
-    categories
+    category
   );
 
   if (loading) {
@@ -33,6 +35,7 @@ function ProjectsTab({
       onUpdate={update}
       onDelete={remove}
       onReorder={reorder}
+      onAdd={onAdd}
     />
   );
 }
@@ -41,10 +44,14 @@ function App() {
   return (
     <ToastProvider>
       <Layout>
-        {({ activeTab, priorities, categories }) => (
+        {({ activeTab, priorities, category, openNewProject }) => (
           <>
             {activeTab === "projects" && (
-              <ProjectsTab priorities={priorities} categories={categories} />
+              <ProjectsTab
+                priorities={priorities}
+                category={category}
+                onAdd={openNewProject}
+              />
             )}
             {activeTab === "calendar" && <CalendarView />}
             {activeTab === "memos" && <MemoBoard />}

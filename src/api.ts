@@ -117,10 +117,30 @@ export const restoreDb = (srcPath: string) =>
 export const listBackups = () => invoke<BackupInfo[]>("list_backups");
 
 // AI
-import type { AiResponse, AiServerState, ChatMessage as _CM } from "./types";
+import type {
+  AgentResult,
+  AiServerState,
+  AiSettings,
+  ChatMessage as _CM,
+  ToolCall,
+} from "./types";
 
 export const startAiServer = () => invoke<AiServerState>("start_ai_server");
 export const stopAiServer = () => invoke<void>("stop_ai_server");
 export const aiServerStatus = () => invoke<AiServerState>("ai_server_status");
 export const aiChat = (messages: _CM[]) =>
-  invoke<AiResponse>("ai_chat", { messages });
+  invoke<AgentResult>("ai_chat", { messages });
+export const aiConfirm = (history: _CM[], call: ToolCall) =>
+  invoke<AgentResult>("ai_confirm", { history, call });
+
+// AI settings (provider + OpenAI key). Model selection is intentionally
+// absent — the backend hard-codes OPENAI_MODEL and auto-detects local MLX.
+export const getAiSettings = () => invoke<AiSettings>("get_ai_settings");
+/** `openai_api_key` semantics — mirror the Rust side:
+ *   • `undefined`  : leave stored key untouched
+ *   • `""`         : clear
+ *   • `"sk-..."`   : overwrite */
+export const saveAiSettings = (input: {
+  provider: "local" | "openai";
+  openai_api_key?: string;
+}) => invoke<AiSettings>("save_ai_settings", { input });

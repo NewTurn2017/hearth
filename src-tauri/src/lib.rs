@@ -1,3 +1,4 @@
+pub mod ai_tools;
 mod cmd_actions;
 mod cmd_ai;
 mod cmd_backup;
@@ -5,6 +6,7 @@ mod cmd_clients;
 mod cmd_memos;
 mod cmd_projects;
 mod cmd_schedules;
+mod cmd_settings;
 mod db;
 mod excel_import;
 mod models;
@@ -76,6 +78,9 @@ pub fn run() {
             cmd_ai::stop_ai_server,
             cmd_ai::ai_server_status,
             cmd_ai::ai_chat,
+            cmd_ai::ai_confirm,
+            cmd_settings::get_ai_settings,
+            cmd_settings::save_ai_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

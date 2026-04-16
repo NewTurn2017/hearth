@@ -5,11 +5,13 @@ import {
   StickyNote,
   Download,
   Save,
+  Settings2,
 } from "lucide-react";
 import type { Tab } from "../types";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { cn } from "../lib/cn";
+import { AiStatusPill } from "./AiStatusPill";
 
 const tabs: { key: Tab; label: string; icon: typeof LayoutGrid }[] = [
   { key: "projects", label: "프로젝트", icon: LayoutGrid },
@@ -22,11 +24,13 @@ export function TopBar({
   onChange,
   onImport,
   onBackup,
+  onOpenAiSettings,
 }: {
   active: Tab;
   onChange: (tab: Tab) => void;
   onImport: () => void;
   onBackup: () => void;
+  onOpenAiSettings: () => void;
 }) {
   return (
     <div className="flex items-center gap-1 px-4 h-12 bg-[var(--color-surface-1)] border-b border-[var(--color-border)]">
@@ -50,6 +54,15 @@ export function TopBar({
         </button>
       ))}
       <div className="flex-1" />
+      <AiStatusPill />
+      <Button
+        variant="ghost"
+        size="sm"
+        leftIcon={Settings2}
+        onClick={onOpenAiSettings}
+      >
+        AI 설정
+      </Button>
       <Button variant="ghost" size="sm" leftIcon={Download} onClick={onImport}>
         가져오기
       </Button>

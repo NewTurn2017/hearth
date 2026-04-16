@@ -22,6 +22,17 @@ export function useSchedules() {
     load();
   }, [load]);
 
+  // External writers (AI agent approvals) broadcast this instead of
+  // prop-drilling. Without the listener, a mutation-confirm would update
+  // the DB but the calendar stays visually stale until the next remount.
+  useEffect(() => {
+    const onChanged = () => {
+      load();
+    };
+    window.addEventListener("schedules:changed", onChanged);
+    return () => window.removeEventListener("schedules:changed", onChanged);
+  }, [load]);
+
   const create = async (data: Parameters<typeof api.createSchedule>[0]) => {
     const created = await api.createSchedule(data);
     setSchedules((prev) => [...prev, created]);

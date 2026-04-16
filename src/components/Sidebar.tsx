@@ -4,14 +4,14 @@ import { cn } from "../lib/cn";
 
 export function Sidebar({
   activePriorities,
-  activeCategories,
+  activeCategory,
   onTogglePriority,
-  onToggleCategory,
+  onSelectCategory,
 }: {
   activePriorities: Set<Priority>;
-  activeCategories: Set<Category>;
+  activeCategory: Category | null;
   onTogglePriority: (p: Priority) => void;
-  onToggleCategory: (c: Category) => void;
+  onSelectCategory: (c: Category | null) => void;
 }) {
   return (
     <aside className="w-56 shrink-0 bg-[var(--color-surface-1)] border-r border-[var(--color-border)] py-5 px-3 flex flex-col gap-7 overflow-y-auto">
@@ -28,11 +28,21 @@ export function Sidebar({
       </FilterGroup>
 
       <FilterGroup label="카테고리">
+        {/* "전체 보기" — default state. Sends no category filter so rows with
+             NULL category (which SQL `IN (...)` would drop) also appear. */}
+        <FilterItem
+          active={activeCategory === null}
+          onClick={() => onSelectCategory(null)}
+          text="전체 보기"
+        />
         {CATEGORIES.map((c) => (
           <FilterItem
             key={c}
-            active={activeCategories.has(c)}
-            onClick={() => onToggleCategory(c)}
+            active={activeCategory === c}
+            // Click-again on the active category falls back to 전체 보기 so
+            // the user can always return to "all" without hunting for the
+            // 전체 보기 row.
+            onClick={() => onSelectCategory(activeCategory === c ? null : c)}
             dot={CATEGORY_COLORS[c]}
             text={c}
           />
@@ -65,7 +75,9 @@ function FilterItem({
 }: {
   active: boolean;
   onClick: () => void;
-  dot: string;
+  /** Omitted for "전체 보기" which has no color. The spacer below keeps
+   *  label text left-aligned with dotted rows. */
+  dot?: string;
   text: string;
 }) {
   return (
@@ -80,10 +92,14 @@ function FilterItem({
       )}
       aria-pressed={active}
     >
-      <span
-        className={cn("w-2 h-2 rounded-full shrink-0", !active && "opacity-40")}
-        style={{ backgroundColor: dot }}
-      />
+      {dot ? (
+        <span
+          className={cn("w-2 h-2 rounded-full shrink-0", !active && "opacity-40")}
+          style={{ backgroundColor: dot }}
+        />
+      ) : (
+        <span className="w-2 h-2 shrink-0" aria-hidden="true" />
+      )}
       {text}
     </button>
   );

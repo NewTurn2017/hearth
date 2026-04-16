@@ -7,8 +7,30 @@ import {
   Download,
 } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { homeDir, join } from "@tauri-apps/api/path";
 import * as api from "../api";
 import type { LocalCommand } from "./types";
+
+const EXCEL_FORMAT_HINT =
+  "Excel 파일을 선택하면 기존 프로젝트/메모/일정/고객사 데이터를 모두 삭제하고 새로 가져옵니다.\n\n" +
+  "예상 형식:\n" +
+  "• 시트 이름: 'Projects'\n" +
+  "• A열: 우선순위 (P0 / P1 / P2 / P3 / P4)\n" +
+  "• B열: 번호 (정수, 선택)\n" +
+  "• C열: 프로젝트명 (필수)\n" +
+  "• D열: 카테고리 (Active / Side / Lab / Tools / Lecture)\n" +
+  "• E열: 경로 (선택)\n" +
+  "• F열: 평가/메모 (선택)\n\n" +
+  "시드 예시: ~/dev/projects.xlsx";
+
+async function defaultSeedPath(): Promise<string | undefined> {
+  try {
+    const home = await homeDir();
+    return await join(home, "dev", "projects.xlsx");
+  } catch {
+    return undefined;
+  }
+}
 
 export interface DispatchDeps {
   openNewProject: () => void;
@@ -59,17 +81,21 @@ export function buildLocalCommands(deps: DispatchDeps): LocalCommand[] {
     {
       id: "import-excel",
       label: "Excel 가져오기",
-      hint: "기존 데이터 덮어쓰기 여부 확인",
+      hint: "Projects 시트, A=우선순위 / C=이름 / E=경로",
       icon: Download,
       mutation: true,
-      confirmMessage: "Excel 파일을 선택하고 가져오시겠습니까?",
+      confirmMessage: EXCEL_FORMAT_HINT,
       run: async () => {
         const file = await open({
+          defaultPath: await defaultSeedPath(),
           filters: [{ name: "Excel", extensions: ["xlsx", "xls"] }],
         });
         if (!file) return;
         const filePath = Array.isArray(file) ? file[0] : file;
         await api.importExcel(filePath, true);
+        window.dispatchEvent(new CustomEvent("projects:changed"));
+        // Full reload so schedules/memos/clients repopulate together.
+        setTimeout(() => window.location.reload(), 600);
       },
     },
   ];

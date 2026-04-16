@@ -53,9 +53,16 @@ export interface BackupInfo {
   created: string;
 }
 
+// OpenAI-shaped chat message. Assistant turns can omit `content` when they
+// emit `tool_calls`; `role: "tool"` turns carry the tool result keyed by
+// `tool_call_id`. `tool_calls` stays `unknown[]` on the TS side because the
+// server echoes its own structure verbatim and we don't need to introspect.
 export interface ChatMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
+  role: "user" | "assistant" | "system" | "tool";
+  content?: string;
+  name?: string;
+  tool_calls?: unknown[];
+  tool_call_id?: string;
 }
 
 export type Tab = "projects" | "calendar" | "memos";
@@ -99,35 +106,36 @@ export const MEMO_COLORS = [
 
 // --- AI / Command Palette ---
 
-export type ActionCommand =
-  | "create_project"
-  | "update_project"
-  | "delete_project"
-  | "create_schedule"
-  | "update_schedule"
-  | "delete_schedule"
-  | "create_memo"
-  | "update_memo"
-  | "delete_memo"
-  | "set_filter"
-  | "focus_project";
-
-export type ActionType = "mutation" | "navigation" | "info";
-
-export interface AiAction {
-  type: ActionType;
-  label: string;
-  command?: ActionCommand;
-  args?: Record<string, unknown>;
+/** Tool invocation parsed from a model response. Mirrors `ai_tools::ToolCall`
+ *  on the Rust side; `arguments` is pre-decoded from the OpenAI wire string. */
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
 }
 
-export interface AiResponse {
-  reply: string;
-  actions: AiAction[];
-}
+/** Result of one turn of the agent loop.
+ *  - `final`  : model stopped requesting tools; `client_intents` are any UI
+ *               navigation tools collected along the way (set_filter etc.).
+ *  - `pending`: model asked to perform a mutation; `history` must be passed
+ *               back to `ai_confirm` along with the approved `call` so the
+ *               loop can resume. */
+export type AgentResult =
+  | { kind: "final"; reply: string; client_intents: ToolCall[] }
+  | { kind: "pending"; call: ToolCall; label: string; history: ChatMessage[] };
 
 export type AiServerState =
   | { kind: "idle" }
   | { kind: "starting" }
   | { kind: "running"; port: number }
   | { kind: "failed"; error: string };
+
+/** Persisted AI provider configuration. The raw OpenAI API key never crosses
+ *  this boundary — `has_openai_key` tells the UI whether to show a "stored"
+ *  badge instead of a blank password field. Model selection is not exposed:
+ *  the backend uses a hard-coded OpenAI model and auto-detects the local MLX
+ *  model from the running process. */
+export interface AiSettings {
+  provider: "local" | "openai";
+  has_openai_key: boolean;
+}

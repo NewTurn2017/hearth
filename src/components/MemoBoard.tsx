@@ -11,13 +11,16 @@ import { Plus, StickyNote } from "lucide-react";
 import { MemoCard } from "./MemoCard";
 import { useMemos } from "../hooks/useMemos";
 import { useProjects } from "../hooks/useProjects";
-import { PRIORITIES, CATEGORIES } from "../types";
+import { PRIORITIES } from "../types";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
 
 export function MemoBoard() {
   const { memos, create, update, remove, reorder } = useMemos();
-  const { projects } = useProjects(new Set(PRIORITIES), new Set(CATEGORIES));
+  // MemoBoard wants every project for the memo-to-project picker; `null`
+  // means "no category filter" (전체 보기) so NULL-category rows are also
+  // included.
+  const { projects } = useProjects(new Set(PRIORITIES), null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })

@@ -62,6 +62,14 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        -- Key-value store for app-wide preferences (AI provider, model,
+        -- OpenAI API key, etc.). Keeping this in the same SQLite DB so backup
+        -- / restore flows already cover it.
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL DEFAULT ''
+        );
         ",
     )?;
     Ok(())

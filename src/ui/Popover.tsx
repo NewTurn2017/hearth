@@ -8,11 +8,14 @@ export function Popover({
   className,
 }: {
   trigger: (props: { onClick: () => void; "aria-expanded": boolean }) => ReactNode;
-  children: ReactNode;
+  /** Either static content or a render-prop that receives `close` — pickers
+   *  use the callback to dismiss the popover after a selection. */
+  children: ReactNode | ((api: { close: () => void }) => ReactNode);
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const close = () => setOpen(false);
 
   useEffect(() => {
     if (!open) return;
@@ -45,7 +48,7 @@ export function Popover({
             className
           )}
         >
-          {children}
+          {typeof children === "function" ? children({ close }) : children}
         </div>
       )}
     </div>

@@ -2,10 +2,17 @@ import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Play, FolderOpen, X } from "lucide-react";
-import type { Project, Category } from "../types";
-import { CATEGORY_COLORS } from "../types";
+import type { Project, Category, Priority } from "../types";
+import {
+  CATEGORIES,
+  CATEGORY_COLORS,
+  PRIORITIES,
+  PRIORITY_COLORS,
+  PRIORITY_LABELS,
+} from "../types";
 import { Badge } from "../ui/Badge";
 import { Icon } from "../ui/Icon";
+import { Popover } from "../ui/Popover";
 import { Tooltip } from "../ui/Tooltip";
 import { cn } from "../lib/cn";
 
@@ -101,11 +108,94 @@ export function ProjectCard({
         )}
       </div>
 
-      {project.category && (
-        <Badge tone={CATEGORY_COLORS[project.category as Category] ?? "#6b7280"}>
-          {project.category}
-        </Badge>
-      )}
+      <Popover
+        trigger={({ onClick, "aria-expanded": ae }) => (
+          <button
+            type="button"
+            onClick={onClick}
+            aria-expanded={ae}
+            aria-label={`우선순위 변경 — 현재 ${project.priority}`}
+            className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] rounded-full"
+          >
+            <Badge tone={PRIORITY_COLORS[project.priority as Priority] ?? "#6b7280"}>
+              {project.priority}
+            </Badge>
+          </button>
+        )}
+      >
+        {({ close }) => (
+          <div className="flex flex-col">
+            {PRIORITIES.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  if (p !== project.priority) onUpdate(project.id, { priority: p });
+                  close();
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-2 h-7 text-[12px] text-left rounded",
+                  "hover:bg-[var(--color-surface-3)]",
+                  p === project.priority && "bg-[var(--color-surface-3)]"
+                )}
+              >
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: PRIORITY_COLORS[p] }}
+                />
+                <span className="font-medium text-[var(--color-text)]">{p}</span>
+                <span className="text-[var(--color-text-dim)]">{PRIORITY_LABELS[p]}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </Popover>
+
+      <Popover
+        trigger={({ onClick, "aria-expanded": ae }) => (
+          <button
+            type="button"
+            onClick={onClick}
+            aria-expanded={ae}
+            aria-label={`카테고리 변경 — 현재 ${project.category ?? "없음"}`}
+            className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] rounded-full"
+          >
+            {project.category ? (
+              <Badge tone={CATEGORY_COLORS[project.category as Category] ?? "#6b7280"}>
+                {project.category}
+              </Badge>
+            ) : (
+              <Badge>카테고리</Badge>
+            )}
+          </button>
+        )}
+      >
+        {({ close }) => (
+          <div className="flex flex-col">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => {
+                  if (c !== project.category) onUpdate(project.id, { category: c });
+                  close();
+                }}
+                className={cn(
+                  "flex items-center gap-2 px-2 h-7 text-[12px] text-left rounded",
+                  "hover:bg-[var(--color-surface-3)]",
+                  c === project.category && "bg-[var(--color-surface-3)]"
+                )}
+              >
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: CATEGORY_COLORS[c] }}
+                />
+                <span className="text-[var(--color-text)]">{c}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </Popover>
 
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         {project.path && (

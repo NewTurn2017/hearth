@@ -61,6 +61,10 @@ export function CalendarView() {
     schedule?: Schedule;
     initialDate?: string;
   } | null>(null);
+  // Controlled so prev/next/today toolbar buttons actually advance the view —
+  // react-big-calendar's uncontrolled mode silently drops navigation events
+  // when you don't pair `date` with `onNavigate`.
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
   const events: CalendarEvent[] = useMemo(
     () =>
@@ -132,6 +136,8 @@ export function CalendarView() {
           style={{ height: "100%" }}
           views={["month"]}
           defaultView="month"
+          date={currentDate}
+          onNavigate={setCurrentDate}
           messages={messages}
           formats={formats}
           culture="ko"
