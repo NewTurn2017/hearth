@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { TabBar } from "./TabBar";
+import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 import { AiPanel } from "./AiPanel";
 import type { Tab, Priority, Category } from "../types";
@@ -71,7 +71,7 @@ export function Layout({
 
   return (
     <div className="h-screen flex flex-col">
-      <TabBar
+      <TopBar
         active={activeTab}
         onChange={setActiveTab}
         onImport={handleImport}
