@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, X } from "lucide-react";
 import type { Memo, Project } from "../types";
 import { MEMO_COLORS } from "../types";
+import { Icon } from "../ui/Icon";
+import { Tooltip } from "../ui/Tooltip";
 
 export function MemoCard({
   memo,
@@ -53,15 +56,17 @@ export function MemoCard({
         backgroundColor: colorDef.bg,
         color: colorDef.text,
       }}
-      className="rounded-xl p-4 shadow-lg hover:shadow-xl transition-shadow relative group min-h-[140px] flex flex-col"
+      className="memo-card rounded-xl p-4 hover:shadow-xl transition-shadow relative group min-h-[140px] flex flex-col"
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute top-1 right-1 cursor-grab opacity-0 group-hover:opacity-60 text-xs"
-      >
-        ⠿
-      </div>
+      <Tooltip label="드래그하여 이동" side="top">
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute top-1 right-1 cursor-grab opacity-0 group-hover:opacity-60"
+        >
+          <Icon icon={GripVertical} size={14} />
+        </div>
+      </Tooltip>
 
       <div className="absolute top-1 left-1">
         <button
@@ -105,12 +110,15 @@ export function MemoCard({
 
       <div className="flex justify-between items-center mt-2 text-xs opacity-60">
         <span>{linkedProject?.name ?? ""}</span>
-        <button
-          onClick={() => onDelete(memo.id)}
-          className="opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity"
-        >
-          삭제
-        </button>
+        <Tooltip label="삭제" side="top">
+          <button
+            onClick={() => onDelete(memo.id)}
+            className="opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity"
+            aria-label="삭제"
+          >
+            <Icon icon={X} size={14} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );

@@ -7,10 +7,13 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
+import { Plus, StickyNote } from "lucide-react";
 import { MemoCard } from "./MemoCard";
 import { useMemos } from "../hooks/useMemos";
 import { useProjects } from "../hooks/useProjects";
 import { PRIORITIES, CATEGORIES } from "../types";
+import { Button } from "../ui/Button";
+import { EmptyState } from "../ui/EmptyState";
 
 export function MemoBoard() {
   const { memos, create, update, remove, reorder } = useMemos();
@@ -41,42 +44,43 @@ export function MemoBoard() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">메모보드</h2>
-        <button
-          onClick={handleCreate}
-          className="px-3 py-1.5 text-sm rounded bg-[var(--accent)] text-white hover:opacity-90 transition-opacity"
-        >
-          + 새 메모
-        </button>
+        <h2 className="text-lg font-semibold text-[var(--color-text-hi)]">메모보드</h2>
+        <Button variant="primary" size="sm" leftIcon={Plus} onClick={handleCreate}>
+          메모 추가
+        </Button>
       </div>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={memos.map((m) => m.id)}
-          strategy={rectSortingStrategy}
+      {memos.length === 0 ? (
+        <EmptyState icon={StickyNote} title="메모가 없습니다" />
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {memos.map((memo) => (
-              <MemoCard
-                key={memo.id}
-                memo={memo}
-                projects={projects}
-                onUpdate={update}
-                onDelete={remove}
-              />
-            ))}
-            <button
-              onClick={handleCreate}
-              className="rounded-xl border-2 border-dashed border-[var(--border-color)] min-h-[140px] flex items-center justify-center text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
-            >
-              + 새 메모
-            </button>
-          </div>
-        </SortableContext>
-      </DndContext>
+          <SortableContext
+            items={memos.map((m) => m.id)}
+            strategy={rectSortingStrategy}
+          >
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {memos.map((memo) => (
+                <MemoCard
+                  key={memo.id}
+                  memo={memo}
+                  projects={projects}
+                  onUpdate={update}
+                  onDelete={remove}
+                />
+              ))}
+              <button
+                onClick={handleCreate}
+                className="rounded-xl border-2 border-dashed border-[var(--color-border)] min-h-[140px] flex items-center justify-center text-[var(--color-text-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand-hi)] transition-colors"
+              >
+                + 새 메모
+              </button>
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
     </div>
   );
 }
