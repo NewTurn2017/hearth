@@ -35,18 +35,18 @@ pub fn run() {
                 db: Mutex::new(conn),
             });
 
-            app.manage(cmd_ai::AiState {
-                pid: Mutex::new(None),
-                script_path: Mutex::new(
-                    "/Users/genie/dev/side/supergemma-bench/start-mlx.sh".to_string(),
-                ),
-            });
+            app.manage(cmd_ai::AiManager::new(
+                "/Users/genie/dev/side/supergemma-bench/start-mlx.sh".to_string(),
+            ));
 
             Ok(())
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
                 cmd_backup::auto_backup_on_close(window.app_handle());
+                if let Some(mgr) = window.app_handle().try_state::<cmd_ai::AiManager>() {
+                    cmd_ai::kill_child(&mgr);
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
