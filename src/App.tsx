@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import { ProjectList } from "./components/ProjectList";
 import { CalendarView } from "./components/CalendarView";
 import { MemoBoard } from "./components/MemoBoard";
+import { ToastProvider } from "./ui/Toast";
 import { useProjects } from "./hooks/useProjects";
 import type { Priority, Category } from "./types";
 
@@ -42,17 +43,19 @@ function ProjectsTab({
 
 function App() {
   return (
-    <Layout>
-      {({ activeTab, priorities, categories }) => (
-        <>
-          {activeTab === "projects" && (
-            <ProjectsTab priorities={priorities} categories={categories} />
-          )}
-          {activeTab === "calendar" && <CalendarView />}
-          {activeTab === "memos" && <MemoBoard />}
-        </>
-      )}
-    </Layout>
+    <ToastProvider>
+      <Layout>
+        {({ activeTab, priorities, categories }) => (
+          <>
+            {activeTab === "projects" && (
+              <ProjectsTab priorities={priorities} categories={categories} />
+            )}
+            {activeTab === "calendar" && <CalendarView />}
+            {activeTab === "memos" && <MemoBoard />}
+          </>
+        )}
+      </Layout>
+    </ToastProvider>
   );
 }
 
