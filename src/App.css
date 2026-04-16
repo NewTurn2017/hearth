@@ -27,3 +27,12 @@ body {
 #root {
   height: 100vh;
 }
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* 포스트잇 그림자 */
+.memo-card { box-shadow: 3px 3px 10px rgba(0,0,0,0.3); }
