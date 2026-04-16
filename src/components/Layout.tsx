@@ -2,9 +2,11 @@ import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
-import { AiPanel } from "./AiPanel";
+import { CommandPalette } from "../command/CommandPalette";
+import { buildLocalCommands } from "../command/dispatch";
 import type { Tab, Priority, Category } from "../types";
 import { PRIORITIES, CATEGORIES } from "../types";
+import { useToast } from "../ui/Toast";
 import * as api from "../api";
 
 export function Layout({
@@ -17,28 +19,21 @@ export function Layout({
   }) => React.ReactNode;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("projects");
-  const [priorities, setPriorities] = useState<Set<Priority>>(
-    new Set(PRIORITIES)
-  );
-  const [categories, setCategories] = useState<Set<Category>>(
-    new Set(CATEGORIES)
-  );
-  const [aiOpen, setAiOpen] = useState(false);
+  const [priorities, setPriorities] = useState<Set<Priority>>(new Set(PRIORITIES));
+  const [categories, setCategories] = useState<Set<Category>>(new Set(CATEGORIES));
+  const toast = useToast();
 
   const togglePriority = (p: Priority) => {
     setPriorities((prev) => {
       const next = new Set(prev);
-      if (next.has(p)) next.delete(p);
-      else next.add(p);
+      next.has(p) ? next.delete(p) : next.add(p);
       return next;
     });
   };
-
   const toggleCategory = (c: Category) => {
     setCategories((prev) => {
       const next = new Set(prev);
-      if (next.has(c)) next.delete(c);
-      else next.add(c);
+      next.has(c) ? next.delete(c) : next.add(c);
       return next;
     });
   };
@@ -48,29 +43,34 @@ export function Layout({
       filters: [{ name: "Excel", extensions: ["xlsx", "xls"] }],
     });
     if (!file) return;
-    const clearExisting = confirm(
-      "기존 데이터를 삭제하고 새로 가져오시겠습니까?"
-    );
+    const clearExisting = confirm("기존 데이터를 삭제하고 새로 가져오시겠습니까?");
     try {
-      const result = await api.importExcel(file, clearExisting);
-      alert(`${result.projects_imported}개 프로젝트 가져오기 완료!`);
-      window.location.reload();
+      const filePath = Array.isArray(file) ? file[0] : file;
+      const result = await api.importExcel(filePath, clearExisting);
+      toast.success(`${result.projects_imported}개 프로젝트 가져왔습니다`);
+      setTimeout(() => window.location.reload(), 800);
     } catch (e) {
-      alert(`가져오기 실패: ${e}`);
+      toast.error(`가져오기 실패: ${e}`);
     }
   };
 
   const handleBackup = async () => {
     try {
       const path = await api.backupDb();
-      alert(`백업 완료: ${path}`);
+      toast.success(`백업 완료: ${path}`);
     } catch (e) {
-      alert(`백업 실패: ${e}`);
+      toast.error(`백업 실패: ${e}`);
     }
   };
 
+  const commands = buildLocalCommands({
+    openNewProject: () => setActiveTab("projects"),
+    openNewSchedule: () => setActiveTab("calendar"),
+    openNewMemo: () => setActiveTab("memos"),
+  });
+
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-[var(--color-surface-0)]">
       <TopBar
         active={activeTab}
         onChange={setActiveTab}
@@ -87,19 +87,8 @@ export function Layout({
         <main className="flex-1 overflow-y-auto p-4">
           {children({ activeTab, priorities, categories })}
         </main>
-        {aiOpen && (
-          <div className="w-80 shrink-0 bg-[var(--bg-secondary)] border-l border-[var(--border-color)] flex flex-col">
-            <AiPanel onClose={() => setAiOpen(false)} />
-          </div>
-        )}
       </div>
-      <button
-        onClick={() => setAiOpen(!aiOpen)}
-        className="fixed bottom-4 right-4 w-10 h-10 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-lg shadow-lg hover:opacity-90 transition-opacity z-50"
-        title={aiOpen ? "AI 닫기" : "AI 열기"}
-      >
-        {aiOpen ? "✕" : "🤖"}
-      </button>
+      <CommandPalette commands={commands} />
     </div>
   );
 }
