@@ -3,9 +3,11 @@ import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
 import "moment/locale/ko";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import { CalendarDays, Plus } from "lucide-react";
 import { ScheduleModal } from "./ScheduleModal";
 import { useSchedules } from "../hooks/useSchedules";
 import type { Schedule } from "../types";
+import { Button } from "../ui/Button";
 
 moment.locale("ko");
 const localizer = momentLocalizer(moment);
@@ -83,27 +85,19 @@ export function CalendarView() {
 
   return (
     <div className="h-full">
-      <style>{`
-        .rbc-calendar { background: var(--bg-primary); color: var(--text-primary); }
-        .rbc-toolbar button { color: var(--text-primary); border-color: var(--border-color); background: transparent; }
-        .rbc-toolbar button:hover, .rbc-toolbar button.rbc-active { background: var(--accent); color: white; border-color: var(--accent); }
-        .rbc-header { border-color: var(--border-color); color: var(--text-secondary); padding: 6px; background: var(--bg-secondary); }
-        .rbc-month-view, .rbc-month-row, .rbc-day-bg, .rbc-date-cell { border-color: var(--border-color) !important; }
-        .rbc-off-range-bg { background: var(--bg-secondary); }
-        .rbc-today { background: var(--bg-tertiary) !important; }
-        .rbc-event { background: var(--accent) !important; border: none !important; font-size: 12px; }
-        .rbc-month-view { min-height: 500px; }
-        .rbc-date-cell { color: var(--text-secondary); }
-        .rbc-date-cell.rbc-now { color: var(--text-primary); font-weight: bold; }
-      `}</style>
       <div className="flex justify-between items-center mb-3">
-        <h2 className="text-lg font-semibold">캘린더</h2>
-        <button
+        <h2 className="text-lg font-semibold text-[var(--color-text-hi)] flex items-center gap-2">
+          <CalendarDays size={18} />
+          캘린더
+        </h2>
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={Plus}
           onClick={() => setModal({ initialDate: moment().format("YYYY-MM-DD") })}
-          className="px-3 py-1.5 text-sm rounded bg-[var(--accent)] text-white hover:opacity-90 transition-opacity"
         >
-          + 새 일정
-        </button>
+          새 일정
+        </Button>
       </div>
       <Calendar
         localizer={localizer}

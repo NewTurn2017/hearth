@@ -102,3 +102,19 @@ body {
 
 /* Memo card (post-it shadow retained) */
 .memo-card { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45); }
+
+/* react-big-calendar — warm paper dark theme */
+.rbc-calendar { background: var(--color-surface-1); color: var(--color-text); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--color-border); }
+.rbc-toolbar { padding: 10px 12px; background: var(--color-surface-1); border-bottom: 1px solid var(--color-border); }
+.rbc-toolbar button { background: transparent; color: var(--color-text-muted); border: 1px solid var(--color-border); padding: 4px 10px; border-radius: var(--radius-sm); }
+.rbc-toolbar button:hover { background: var(--color-surface-2); color: var(--color-text); }
+.rbc-toolbar button.rbc-active { background: var(--color-brand-soft); color: var(--color-brand-hi); border-color: var(--color-brand); }
+.rbc-toolbar-label { color: var(--color-text-hi); font-weight: 600; font-size: 14px; }
+.rbc-header { background: var(--color-surface-1); color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); padding: 6px 4px; font-weight: 600; font-size: 11px; }
+.rbc-month-view, .rbc-time-view { background: var(--color-surface-0); border-color: var(--color-border); }
+.rbc-day-bg, .rbc-time-slot, .rbc-timeslot-group { background: var(--color-surface-0); border-color: var(--color-border); }
+.rbc-off-range-bg { background: var(--color-surface-1); }
+.rbc-today { background: var(--color-brand-soft) !important; }
+.rbc-event { background: var(--color-brand); border: none; color: #fff; border-radius: var(--radius-sm); padding: 2px 6px; font-size: 11px; }
+.rbc-event.rbc-selected { background: var(--color-brand-hi); color: #000; }
+.rbc-show-more { color: var(--color-brand-hi); }
