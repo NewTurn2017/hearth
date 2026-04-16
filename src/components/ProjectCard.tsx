@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { Project } from "../types";
+import { GripVertical, Play, FolderOpen, X } from "lucide-react";
+import type { Project, Category } from "../types";
 import { CATEGORY_COLORS } from "../types";
-import type { Category } from "../types";
+import { Badge } from "../ui/Badge";
+import { Icon } from "../ui/Icon";
+import { Tooltip } from "../ui/Tooltip";
+import { cn } from "../lib/cn";
 
 export function ProjectCard({
   project,
@@ -20,15 +24,8 @@ export function ProjectCard({
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: project.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: project.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -40,7 +37,6 @@ export function ProjectCard({
     setEditing(field);
     setEditValue(value);
   };
-
   const commitEdit = () => {
     if (editing && editValue.trim()) {
       onUpdate(project.id, { [editing]: editValue.trim() });
@@ -52,15 +48,20 @@ export function ProjectCard({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 px-3 py-2 bg-[var(--bg-tertiary)] rounded-lg group hover:bg-[#353740] transition-colors"
+      className={cn(
+        "flex items-center gap-3 px-3 h-11 rounded-[var(--radius-md)] group",
+        "bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)]",
+        "border border-transparent hover:border-[var(--color-border)]",
+        "transition-colors duration-[120ms]"
+      )}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0"
-        title="드래그하여 순서 변경"
+        className="cursor-grab text-[var(--color-text-dim)] hover:text-[var(--color-text-muted)] shrink-0"
+        aria-label="드래그하여 순서 변경"
       >
-        ≡
+        <Icon icon={GripVertical} size={16} />
       </button>
 
       <div className="flex-1 min-w-0">
@@ -71,12 +72,12 @@ export function ProjectCard({
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={(e) => e.key === "Enter" && commitEdit()}
-            className="bg-transparent border-b border-[var(--accent)] outline-none text-sm w-full text-[var(--text-primary)]"
+            className="bg-transparent border-b border-[var(--color-brand-hi)] outline-none text-[13px] w-full text-[var(--color-text)]"
           />
         ) : (
           <span
             onClick={() => startEdit("name", project.name)}
-            className="text-sm font-medium cursor-pointer truncate block"
+            className="text-[13px] font-medium text-[var(--color-text)] cursor-text truncate block"
           >
             {project.name}
           </span>
@@ -88,12 +89,12 @@ export function ProjectCard({
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={(e) => e.key === "Enter" && commitEdit()}
-            className="bg-transparent border-b border-[var(--accent)] outline-none text-xs w-full text-[var(--text-secondary)] mt-0.5"
+            className="bg-transparent border-b border-[var(--color-brand-hi)] outline-none text-[11px] w-full text-[var(--color-text-muted)] mt-0.5"
           />
         ) : (
           <span
             onClick={() => startEdit("evaluation", project.evaluation ?? "")}
-            className="text-xs text-[var(--text-secondary)] cursor-pointer truncate block mt-0.5"
+            className="text-[11px] text-[var(--color-text-dim)] cursor-text truncate block mt-0.5"
           >
             {project.evaluation || "메모 없음"}
           </span>
@@ -101,45 +102,43 @@ export function ProjectCard({
       </div>
 
       {project.category && (
-        <span
-          className="text-xs px-2 py-0.5 rounded-full shrink-0"
-          style={{
-            backgroundColor:
-              (CATEGORY_COLORS[project.category as Category] ?? "#6b7280") +
-              "20",
-            color: CATEGORY_COLORS[project.category as Category] ?? "#6b7280",
-          }}
-        >
+        <Badge tone={CATEGORY_COLORS[project.category as Category] ?? "#6b7280"}>
           {project.category}
-        </span>
+        </Badge>
       )}
 
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
         {project.path && (
           <>
-            <button
-              onClick={() => onOpenGhostty(project.path!)}
-              className="px-1.5 py-0.5 text-xs rounded bg-[var(--bg-secondary)] hover:bg-[var(--accent)] transition-colors"
-              title="Ghostty에서 열기"
-            >
-              ▶
-            </button>
-            <button
-              onClick={() => onOpenFinder(project.path!)}
-              className="px-1.5 py-0.5 text-xs rounded bg-[var(--bg-secondary)] hover:bg-[var(--accent)] transition-colors"
-              title="Finder에서 열기"
-            >
-              📁
-            </button>
+            <Tooltip label="Ghostty에서 열기">
+              <button
+                onClick={() => onOpenGhostty(project.path!)}
+                className="w-7 h-7 inline-flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-brand-hi)] hover:bg-[var(--color-surface-2)]"
+                aria-label="Ghostty에서 열기"
+              >
+                <Icon icon={Play} size={14} />
+              </button>
+            </Tooltip>
+            <Tooltip label="Finder에서 열기">
+              <button
+                onClick={() => onOpenFinder(project.path!)}
+                className="w-7 h-7 inline-flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-brand-hi)] hover:bg-[var(--color-surface-2)]"
+                aria-label="Finder에서 열기"
+              >
+                <Icon icon={FolderOpen} size={14} />
+              </button>
+            </Tooltip>
           </>
         )}
-        <button
-          onClick={() => onDelete(project.id)}
-          className="px-1.5 py-0.5 text-xs rounded bg-[var(--bg-secondary)] hover:bg-red-600 transition-colors"
-          title="삭제"
-        >
-          ✕
-        </button>
+        <Tooltip label="삭제">
+          <button
+            onClick={() => onDelete(project.id)}
+            className="w-7 h-7 inline-flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-white hover:bg-[var(--color-danger)]"
+            aria-label="삭제"
+          >
+            <Icon icon={X} size={14} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
