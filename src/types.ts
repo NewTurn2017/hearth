@@ -53,24 +53,9 @@ export interface BackupInfo {
   created: string;
 }
 
-export interface AiServerStatus {
-  running: boolean;
-  port: number;
-}
-
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
-}
-
-export interface ChatResponse {
-  content: string;
-  tool_calls: ToolCall[] | null;
-}
-
-export interface ToolCall {
-  name: string;
-  arguments: Record<string, unknown>;
 }
 
 export type Tab = "projects" | "calendar" | "memos";

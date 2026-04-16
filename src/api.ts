@@ -5,9 +5,6 @@ import type {
   Memo,
   Client,
   BackupInfo,
-  AiServerStatus,
-  ChatMessage,
-  ChatResponse,
 } from "./types";
 
 // 프로젝트
@@ -120,13 +117,10 @@ export const restoreDb = (srcPath: string) =>
 export const listBackups = () => invoke<BackupInfo[]>("list_backups");
 
 // AI
-export const startAiServer = () =>
-  invoke<AiServerStatus>("start_ai_server");
+import type { AiResponse, AiServerState, ChatMessage as _CM } from "./types";
 
+export const startAiServer = () => invoke<AiServerState>("start_ai_server");
 export const stopAiServer = () => invoke<void>("stop_ai_server");
-
-export const aiServerStatus = () =>
-  invoke<AiServerStatus>("ai_server_status");
-
-export const aiChat = (messages: ChatMessage[]) =>
-  invoke<ChatResponse>("ai_chat", { messages });
+export const aiServerStatus = () => invoke<AiServerState>("ai_server_status");
+export const aiChat = (messages: _CM[]) =>
+  invoke<AiResponse>("ai_chat", { messages });
