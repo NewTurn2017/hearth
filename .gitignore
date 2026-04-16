@@ -25,3 +25,6 @@ dist-ssr
 
 # Superpowers brainstorming sessions (visual companion mockups)
 .superpowers/
+
+# Git worktrees
+.worktrees/
