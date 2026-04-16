@@ -88,7 +88,14 @@ export function Layout({
           {children({ activeTab, priorities, categories })}
         </main>
       </div>
-      <CommandPalette commands={commands} />
+      <CommandPalette
+        commands={commands}
+        snapshot={async () => ({
+          projects: await api.getProjects(),
+          schedules: await api.getSchedules(),
+          memos: await api.getMemos(),
+        })}
+      />
     </div>
   );
 }

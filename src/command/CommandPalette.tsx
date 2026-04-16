@@ -14,27 +14,64 @@ import { Dialog } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { cn } from "../lib/cn";
 import { CommandInput } from "./CommandInput";
-import { CommandResults, itemFromLocal, type ResultItem } from "./CommandResults";
+import { CommandResults, itemFromLocal, itemFromAi, type ResultItem } from "./CommandResults";
 import { CommandEmpty } from "./CommandEmpty";
 import { useCommandState } from "./useCommandState";
 import type { LocalCommand } from "./types";
+import { useAi } from "../hooks/useAi";
+import { buildSystemPrompt } from "./buildSystemPrompt";
+import { executeAiAction } from "./executeAiAction";
+import type { AiAction } from "../types";
+import type { Project, Schedule, Memo } from "../types";
 
-export function CommandPalette({ commands }: { commands: LocalCommand[] }) {
+export function CommandPalette({
+  commands,
+  snapshot,
+}: {
+  commands: LocalCommand[];
+  snapshot: () => Promise<{ projects: Project[]; schedules: Schedule[]; memos: Memo[] }>;
+}) {
   const state = useCommandState(commands);
   const toast = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [pendingConfirm, setPendingConfirm] = useState<LocalCommand | null>(null);
 
+  const ai = useAi();
+  const [aiReply, setAiReply] = useState<string | undefined>(undefined);
+  const [aiActions, setAiActions] = useState<AiAction[]>([]);
+  const [pendingAiConfirm, setPendingAiConfirm] = useState<AiAction | null>(null);
+
   useCmdK(() => {
     state.setOpen(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   });
 
-  const items: ResultItem[] = useMemo(
-    () => state.localMatches.map(itemFromLocal),
-    [state.localMatches]
-  );
+  // Debounced AI fire when mode === 'ai'
+  useEffect(() => {
+    setAiReply(undefined);
+    setAiActions([]);
+    if (state.mode !== "ai" || state.aiQuery.length === 0) return;
+    const q = state.aiQuery;
+    const handle = setTimeout(async () => {
+      try {
+        const snap = await snapshot();
+        const resp = await ai.sendQuery(q, {
+          systemPrompt: buildSystemPrompt(snap),
+        });
+        setAiReply(resp.reply);
+        setAiActions(resp.actions);
+      } catch (e) {
+        toast.error(`AI 오류: ${e}`);
+      }
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [state.mode, state.aiQuery, ai, toast, snapshot]);
+
+  const items: ResultItem[] = useMemo(() => {
+    if (state.mode === "ai") return aiActions.map((a, i) => itemFromAi(a, i));
+    return state.localMatches.map(itemFromLocal);
+  }, [state.mode, state.localMatches, aiActions]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -44,6 +81,9 @@ export function CommandPalette({ commands }: { commands: LocalCommand[] }) {
     state.setOpen(false);
     state.reset();
     setPendingConfirm(null);
+    setPendingAiConfirm(null);
+    setAiReply(undefined);
+    setAiActions([]);
   }, [state]);
 
   const executeCommand = useCallback(
@@ -61,8 +101,31 @@ export function CommandPalette({ commands }: { commands: LocalCommand[] }) {
     [toast, close]
   );
 
+  const runAi = useCallback(
+    async (action: AiAction) => {
+      try {
+        const undo = await executeAiAction(action);
+        toast.success(`${action.label} 완료`, { undo });
+        close();
+      } catch (e) {
+        toast.error(`${action.label} 실패: ${e}`);
+      }
+    },
+    [toast, close]
+  );
+
   const onSelect = useCallback(
     (i: number) => {
+      if (state.mode === "ai") {
+        const action = aiActions[i];
+        if (!action) return;
+        if (action.type === "mutation") {
+          setPendingAiConfirm(action);
+        } else {
+          runAi(action);
+        }
+        return;
+      }
       const cmd = state.localMatches[i];
       if (!cmd) return;
       if (cmd.mutation) {
@@ -71,7 +134,7 @@ export function CommandPalette({ commands }: { commands: LocalCommand[] }) {
         executeCommand(cmd);
       }
     },
-    [state.localMatches, executeCommand]
+    [state.mode, state.localMatches, aiActions, executeCommand, runAi]
   );
 
   const onKeyDown = useCallback(
@@ -116,6 +179,7 @@ export function CommandPalette({ commands }: { commands: LocalCommand[] }) {
               value={state.query}
               onChange={state.setQuery}
               onKeyDown={onKeyDown}
+              loading={ai.loading}
             />
             {items.length === 0 ? (
               <CommandEmpty text="매칭되는 명령이 없습니다. '?'로 AI에 물어보세요." />
@@ -125,6 +189,7 @@ export function CommandPalette({ commands }: { commands: LocalCommand[] }) {
                 activeIndex={activeIndex}
                 onHover={setActiveIndex}
                 onSelect={onSelect}
+                aiReply={state.mode === "ai" ? aiReply : undefined}
               />
             )}
           </div>
@@ -156,6 +221,39 @@ export function CommandPalette({ commands }: { commands: LocalCommand[] }) {
                   const cmd = pendingConfirm;
                   setPendingConfirm(null);
                   executeCommand(cmd);
+                }}
+              >
+                실행
+              </Button>
+            </div>
+          </>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={!!pendingAiConfirm}
+        onClose={() => setPendingAiConfirm(null)}
+        labelledBy="ai-confirm-title"
+      >
+        {pendingAiConfirm && (
+          <>
+            <h2 id="ai-confirm-title" className="text-heading text-[var(--color-text-hi)] mb-2">
+              확인
+            </h2>
+            <p className="text-[13px] text-[var(--color-text)] mb-5">
+              {pendingAiConfirm.label}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setPendingAiConfirm(null)}>
+                취소
+              </Button>
+              <Button
+                variant="primary"
+                autoFocus
+                onClick={() => {
+                  const a = pendingAiConfirm;
+                  setPendingAiConfirm(null);
+                  runAi(a);
                 }}
               >
                 실행
