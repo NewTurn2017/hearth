@@ -7,9 +7,12 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Plus, FolderOpen } from "lucide-react";
 import { ProjectCard } from "./ProjectCard";
 import type { Project, Priority } from "../types";
 import { PRIORITY_COLORS, PRIORITY_LABELS } from "../types";
+import { Button } from "../ui/Button";
+import { EmptyState } from "../ui/EmptyState";
 import * as api from "../api";
 
 export function ProjectList({
@@ -17,11 +20,13 @@ export function ProjectList({
   onUpdate,
   onDelete,
   onReorder,
+  onAdd,
 }: {
   projects: Project[];
   onUpdate: (id: number, fields: Record<string, string>) => void;
   onDelete: (id: number) => void;
   onReorder: (priority: string, ids: number[]) => void;
+  onAdd?: () => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -49,6 +54,17 @@ export function ProjectList({
     onReorder(priority, reordered.map((p) => p.id));
   };
 
+  if (projects.length === 0) {
+    return (
+      <EmptyState
+        icon={FolderOpen}
+        title="프로젝트가 없습니다"
+        description="Excel로 가져오거나 ⌘K 로 추가하세요"
+        action={onAdd && <Button variant="primary" size="sm" leftIcon={Plus} onClick={onAdd}>프로젝트 추가</Button>}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {[...groups.entries()].map(([priority, items]) => (
@@ -61,10 +77,10 @@ export function ProjectList({
                   PRIORITY_COLORS[priority as Priority] ?? "#6b7280",
               }}
             />
-            <h2 className="text-sm font-semibold">
+            <h2 className="text-sm font-semibold text-[var(--color-text)]">
               {priority} — {PRIORITY_LABELS[priority as Priority] ?? priority}
             </h2>
-            <span className="text-xs text-[var(--text-secondary)]">
+            <span className="text-xs text-[var(--color-text-muted)]">
               ({items.length}개)
             </span>
           </div>
