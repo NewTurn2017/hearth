@@ -1,86 +1,68 @@
-import { useState, useCallback } from "react";
-import type { ChatMessage, AiServerStatus } from "../types";
+import { useCallback, useRef, useState } from "react";
+import type { AiResponse, AiServerState, ChatMessage } from "../types";
 import * as api from "../api";
 
+interface SystemContext {
+  systemPrompt: string;
+}
+
 export function useAi() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [serverStatus, setServerStatus] = useState<AiServerStatus>({
-    running: false,
-    port: 8080,
-  });
+  const [serverState, setServerState] = useState<AiServerState>({ kind: "idle" });
   const [loading, setLoading] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const historyRef = useRef<ChatMessage[]>([]);
 
-  const startServer = useCallback(async () => {
-    setStarting(true);
+  const ensureRunning = useCallback(async (): Promise<AiServerState> => {
+    const current = await api.aiServerStatus();
+    setServerState(current);
+    if (current.kind === "running") return current;
+
+    setServerState({ kind: "starting" });
     try {
-      const status = await api.startAiServer();
-      setServerStatus(status);
+      const next = await api.startAiServer();
+      setServerState(next);
+      return next;
     } catch (e) {
-      console.error("Failed to start AI server:", e);
-    } finally {
-      setStarting(false);
+      const failed: AiServerState = { kind: "failed", error: String(e) };
+      setServerState(failed);
+      return failed;
     }
   }, []);
 
-  const stopServer = useCallback(async () => {
-    await api.stopAiServer();
-    setServerStatus({ running: false, port: 8080 });
-    setMessages([]);
-  }, []);
+  const sendQuery = useCallback(
+    async (text: string, ctx: SystemContext): Promise<AiResponse> => {
+      const state = await ensureRunning();
+      if (state.kind !== "running") {
+        throw new Error(
+          state.kind === "failed" ? `AI 서버 시작 실패: ${state.error}` : "AI 서버가 실행 중이 아닙니다"
+        );
+      }
 
-  const checkStatus = useCallback(async () => {
-    try {
-      const status = await api.aiServerStatus();
-      setServerStatus(status);
-      return status;
-    } catch {
-      return { running: false, port: 8080 };
-    }
-  }, []);
-
-  const sendMessage = useCallback(
-    async (content: string, systemPrompt: string) => {
-      const userMsg: ChatMessage = { role: "user", content };
-      const allMessages: ChatMessage[] = [
-        { role: "system", content: systemPrompt },
-        ...messages,
+      const userMsg: ChatMessage = { role: "user", content: text };
+      const messages: ChatMessage[] = [
+        { role: "system", content: ctx.systemPrompt },
+        ...historyRef.current,
         userMsg,
       ];
 
-      setMessages((prev) => [...prev, userMsg]);
       setLoading(true);
-
       try {
-        const response = await api.aiChat(allMessages);
-        const assistantMsg: ChatMessage = {
-          role: "assistant",
-          content: response.content,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
+        const response = await api.aiChat(messages);
+        historyRef.current = [
+          ...historyRef.current,
+          userMsg,
+          { role: "assistant", content: JSON.stringify(response) },
+        ];
         return response;
-      } catch (e) {
-        const errorMsg: ChatMessage = {
-          role: "assistant",
-          content: `오류: ${e}`,
-        };
-        setMessages((prev) => [...prev, errorMsg]);
-        return null;
       } finally {
         setLoading(false);
       }
     },
-    [messages]
+    [ensureRunning]
   );
 
-  return {
-    messages,
-    serverStatus,
-    loading,
-    starting,
-    startServer,
-    stopServer,
-    checkStatus,
-    sendMessage,
-  };
+  const resetHistory = useCallback(() => {
+    historyRef.current = [];
+  }, []);
+
+  return { serverState, loading, sendQuery, resetHistory, ensureRunning };
 }
