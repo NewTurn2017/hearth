@@ -1,4 +1,4 @@
-# Project Genie - Design Spec
+# Hearth - Design Spec
 
 ## Overview
 
@@ -123,13 +123,13 @@
 
 - **즉시 저장**: 모든 변경 즉시 SQLite 반영. 별도 저장 버튼 없음.
 - **WAL 모드**: SQLite Write-Ahead Logging으로 읽기/쓰기 동시 성능.
-- **DB 위치**: `~/Library/Application Support/project-genie/data.db`
+- **DB 위치**: `~/Library/Application Support/hearth/data.db`
 
 ## DB 백업 & 복원
 
-- **백업**: 메뉴 또는 단축키로 DB 파일을 사용자 지정 위치에 복사. 파일명: `project-genie-backup-YYYY-MM-DD-HHmmss.db`
+- **백업**: 메뉴 또는 단축키로 DB 파일을 사용자 지정 위치에 복사. 파일명: `hearth-backup-YYYY-MM-DD-HHmmss.db`
 - **복원**: 백업 파일 선택 → 현재 DB 교체 전 확인 다이얼로그 → 앱 재시작
-- **자동 백업**: 앱 종료 시 `~/Library/Application Support/project-genie/backups/`에 자동 저장. 최근 5개만 유지.
+- **자동 백업**: 앱 종료 시 `~/Library/Application Support/hearth/backups/`에 자동 저장. 최근 5개만 유지.
 - Rust에서 SQLite `.backup` API 또는 파일 복사로 구현 (WAL 체크포인트 후 복사)
 
 ## AI 어시스턴트 패널

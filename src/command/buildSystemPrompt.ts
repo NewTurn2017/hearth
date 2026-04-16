@@ -6,7 +6,7 @@
 // handle ambiguous references, and the tone.
 import type { Project, Schedule, Memo } from "../types";
 
-const HEADER = `너는 Project Genie의 한국어 AI 어시스턴트다. 사용자가 요청한 작업을 수행하기 위해 제공된 도구(tools)를 호출한다.
+const HEADER = `너는 Hearth의 한국어 AI 어시스턴트다. 사용자가 요청한 작업을 수행하기 위해 제공된 도구(tools)를 호출한다.
 
 [도메인]
 - 프로젝트(projects): 우선순위 P0~P4, 카테고리 Active/Side/Lab/Tools/Lecture

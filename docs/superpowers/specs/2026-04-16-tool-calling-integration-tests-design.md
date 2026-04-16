@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Verify that the OpenAI backend (`gpt-5.4-mini`) selects the correct tools and extracts reasonable arguments when driven by realistic Korean + English prompts against the project-genie tool registry (`ai_tools::specs()`).
+Verify that the OpenAI backend (`gpt-5.4-mini`) selects the correct tools and extracts reasonable arguments when driven by realistic Korean + English prompts against the hearth tool registry (`ai_tools::specs()`).
 
 These tests exercise the LLM → tool-call contract, not the full `run_agent` loop. DB execution, Tauri state, and the mutation-confirm handshake are out of scope — those are already covered by unit tests in `cmd_ai.rs`.
 

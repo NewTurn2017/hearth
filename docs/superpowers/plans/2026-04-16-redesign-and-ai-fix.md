@@ -1,4 +1,4 @@
-# Project Genie Redesign & AI Fix Implementation Plan
+# Hearth Redesign & AI Fix Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -73,7 +73,7 @@
 - **Smoke verify** means: `npm run tauri dev` (or just `tsc --noEmit` if no visual surface yet), then manually confirm the listed observation. The frontend has no automated test infra (spec §5.8).
 - **Rust tests** use `cargo test --manifest-path src-tauri/Cargo.toml`.
 - **Commit** step always shows `git add <paths>` with the exact files the task touched.
-- Working directory throughout is the project root `/Users/genie/dev/tools/project-genie`.
+- Working directory throughout is the project root `/Users/genie/dev/tools/hearth`.
 
 ---
 
@@ -1043,7 +1043,7 @@ export function TopBar({
   return (
     <div className="flex items-center gap-1 px-3 h-11 bg-[var(--color-surface-1)] border-b border-[var(--color-border)]">
       <span className="text-heading text-[var(--color-text-hi)] mr-3 tracking-tight">
-        Project Genie
+        Hearth
       </span>
       {tabs.map((t) => (
         <button
@@ -2866,7 +2866,7 @@ This task is the biggest user-visible payoff. Splits into three files for focus.
 // src/command/buildSystemPrompt.ts
 import type { Project, Schedule, Memo } from "../types";
 
-const HEADER = `너는 Project Genie 의 AI 어시스턴트다. 한국어로 답한다.
+const HEADER = `너는 Hearth 의 AI 어시스턴트다. 한국어로 답한다.
 사용자 요청에 JSON 으로 응답한다. "reply" 는 자연어, "actions" 는 수행할 액션 배열 (없으면 빈 배열).
 
 사용 가능한 command:

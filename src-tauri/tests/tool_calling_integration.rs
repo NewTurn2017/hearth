@@ -1,4 +1,4 @@
-//! Integration tests for OpenAI tool-calling against the project-genie tool
+//! Integration tests for OpenAI tool-calling against the hearth tool
 //! registry. All tests are `#[ignore]` because they hit the real OpenAI API
 //! (~$0.02 per full run) and require `OPENAI_API_KEY`.
 //!
@@ -17,7 +17,7 @@ const OPENAI_MODEL: &str = "gpt-5.4-mini";
 const OPENAI_MAX_COMPLETION_TOKENS: u32 = 8192;
 
 const SYSTEM_PROMPT: &str = "\
-당신은 Project Genie의 AI 어시스턴트입니다. 사용자의 프로젝트, 메모, 일정을 \
+당신은 Hearth의 AI 어시스턴트입니다. 사용자의 프로젝트, 메모, 일정을 \
 관리합니다. 사용자의 요청을 처리할 때 적절한 tool을 호출하세요. 단순한 인사, \
 감사, 잡담이나 정보가 부족한 모호한 요청에는 tool을 호출하지 말고 한국어로 \
 답하세요. 기본 응답 언어는 한국어입니다.";

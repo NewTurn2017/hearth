@@ -41,7 +41,7 @@ pub fn backup_db(
         None => {
             let dir = backup_dir(&app)?;
             let timestamp = Local::now().format("%Y-%m-%d-%H%M%S");
-            dir.join(format!("project-genie-backup-{}.db", timestamp))
+            dir.join(format!("hearth-backup-{}.db", timestamp))
         }
     };
 
@@ -54,7 +54,7 @@ pub fn backup_db(
         .filter(|e| {
             e.file_name()
                 .to_string_lossy()
-                .starts_with("project-genie-backup-")
+                .starts_with("hearth-backup-")
         })
         .collect();
     backups.sort_by_key(|e| std::cmp::Reverse(e.file_name()));
@@ -93,7 +93,7 @@ pub fn list_backups(app: AppHandle) -> Result<Vec<BackupInfo>, String> {
         .filter(|e| {
             e.file_name()
                 .to_string_lossy()
-                .starts_with("project-genie-backup-")
+                .starts_with("hearth-backup-")
         })
         .filter_map(|e| {
             let meta = e.metadata().ok()?;
@@ -136,7 +136,7 @@ pub fn auto_backup_on_close(app: &AppHandle) {
     if let (Some(src), Some(dir)) = (source, dest_dir) {
         fs::create_dir_all(&dir).ok();
         let timestamp = Local::now().format("%Y-%m-%d-%H%M%S");
-        let dest = dir.join(format!("project-genie-backup-{}.db", timestamp));
+        let dest = dir.join(format!("hearth-backup-{}.db", timestamp));
         fs::copy(&src, &dest).ok();
 
         if let Ok(entries) = fs::read_dir(&dir) {
@@ -145,7 +145,7 @@ pub fn auto_backup_on_close(app: &AppHandle) {
                 .filter(|e| {
                     e.file_name()
                         .to_string_lossy()
-                        .starts_with("project-genie-backup-")
+                        .starts_with("hearth-backup-")
                 })
                 .collect();
             backups.sort_by_key(|e| std::cmp::Reverse(e.file_name()));

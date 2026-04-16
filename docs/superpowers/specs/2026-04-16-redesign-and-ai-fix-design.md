@@ -1,8 +1,8 @@
-# Project Genie — 디자인 리워크 & AI 수정
+# Hearth — 디자인 리워크 & AI 수정
 
 **Date**: 2026-04-16
 **Status**: Approved (brainstorming 완료, 구현 계획 수립 대기)
-**Related**: `docs/superpowers/specs/2026-04-16-project-genie-design.md` (초기 v1 스펙)
+**Related**: `docs/superpowers/specs/2026-04-16-hearth-design.md` (초기 v1 스펙)
 
 ## 배경 / 동기
 
@@ -304,7 +304,7 @@ mlx_lm.server 가 지원하는 `response_format: { type: "json_schema", json_sch
 ### 4.4 시스템 프롬프트
 
 ```
-너는 Project Genie 의 AI 어시스턴트다. 한국어로 답한다.
+너는 Hearth 의 AI 어시스턴트다. 한국어로 답한다.
 사용자 요청에 JSON 으로 응답한다. "reply" 는 자연어, "actions" 는 수행할 액션 배열 (없으면 빈 배열).
 
 현재 상태:

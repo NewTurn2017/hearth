@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add 12 integration tests against OpenAI `gpt-5.4-mini` that verify the model picks correct tools and extracts sane arguments given realistic Korean prompts against the project-genie tool registry.
+**Goal:** Add 12 integration tests against OpenAI `gpt-5.4-mini` that verify the model picks correct tools and extracts sane arguments given realistic Korean prompts against the hearth tool registry.
 
 **Architecture:** One new integration test file at `src-tauri/tests/tool_calling_integration.rs`. A self-contained `ask()` helper builds the same OpenAI request shape `run_agent` uses (tools from `ai_tools::specs()`, bearer auth, `max_completion_tokens=8192`, no `temperature` override), POSTs to `/v1/chat/completions`, parses `tool_calls[]`, returns them to assertions. All tests `#[ignore]` so default `cargo test` stays offline.
 
@@ -64,7 +64,7 @@ git commit -m "chore(ai): expose ai_tools module for integration tests"
 Write `src-tauri/tests/tool_calling_integration.rs` with the following exact contents:
 
 ```rust
-//! Integration tests for OpenAI tool-calling against the project-genie tool
+//! Integration tests for OpenAI tool-calling against the hearth tool
 //! registry. All tests are `#[ignore]` because they hit the real OpenAI API
 //! ($~0.02 per full run) and require `OPENAI_API_KEY`.
 //!
@@ -85,7 +85,7 @@ const OPENAI_MAX_COMPLETION_TOKENS: u32 = 8192;
 /// Minimal system prompt inlined so these tests don't drift with UI prompt
 /// changes. Mirrors the production palette prompt's core rules.
 const SYSTEM_PROMPT: &str = "\
-당신은 Project Genie의 AI 어시스턴트입니다. 사용자의 프로젝트, 메모, 일정을 \
+당신은 Hearth의 AI 어시스턴트입니다. 사용자의 프로젝트, 메모, 일정을 \
 관리합니다. 사용자의 요청을 처리할 때 적절한 tool을 호출하세요. 단순한 인사, \
 감사, 잡담이나 정보가 부족한 모호한 요청에는 tool을 호출하지 말고 한국어로 \
 답하세요. 기본 응답 언어는 한국어입니다.";
