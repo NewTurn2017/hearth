@@ -57,6 +57,7 @@ export function ProjectList({
   if (projects.length === 0) {
     return (
       <EmptyState
+        className="flex-1"
         icon={FolderOpen}
         title="프로젝트가 없습니다"
         description="Excel로 가져오거나 ⌘K 로 추가하세요"
@@ -66,7 +67,7 @@ export function ProjectList({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-7 flex-1 min-h-0">
       {[...groups.entries()].map(([priority, items]) => (
         <div key={priority}>
           <div className="flex items-center gap-2 mb-2">

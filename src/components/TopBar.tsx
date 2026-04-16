@@ -29,7 +29,7 @@ export function TopBar({
   onBackup: () => void;
 }) {
   return (
-    <div className="flex items-center gap-1 px-3 h-11 bg-[var(--color-surface-1)] border-b border-[var(--color-border)]">
+    <div className="flex items-center gap-1 px-4 h-12 bg-[var(--color-surface-1)] border-b border-[var(--color-border)]">
       <span className="text-heading text-[var(--color-text-hi)] mr-3 tracking-tight">
         Project Genie
       </span>

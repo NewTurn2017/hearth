@@ -32,6 +32,27 @@ const messages = {
   time: "시간",
   event: "일정",
   noEventsInRange: "이 기간에 일정이 없습니다.",
+  showMore: (total: number) => `+${total}개 더보기`,
+};
+
+const formats = {
+  monthHeaderFormat: (date: Date) => moment(date).format("YYYY년 M월"),
+  weekdayFormat: (date: Date) => moment(date).format("ddd"),
+  dateFormat: (date: Date) => moment(date).format("D"),
+  dayHeaderFormat: (date: Date) => moment(date).format("M월 D일 dddd"),
+  dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format("M월 D일")} – ${moment(end).format("M월 D일")}`,
+  agendaHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format("YYYY년 M월 D일")} – ${moment(end).format("YYYY년 M월 D일")}`,
+  agendaDateFormat: (date: Date) => moment(date).format("M월 D일 (ddd)"),
+  agendaTimeFormat: (date: Date) => moment(date).format("A h:mm"),
+  agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format("A h:mm")} – ${moment(end).format("A h:mm")}`,
+  eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format("A h:mm")} – ${moment(end).format("A h:mm")}`,
+  selectRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+    `${moment(start).format("A h:mm")} – ${moment(end).format("A h:mm")}`,
+  timeGutterFormat: (date: Date) => moment(date).format("A h:mm"),
 };
 
 export function CalendarView() {
@@ -84,9 +105,9 @@ export function CalendarView() {
   };
 
   return (
-    <div className="h-full">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-lg font-semibold text-[var(--color-text-hi)] flex items-center gap-2">
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-heading text-[var(--color-text-hi)] flex items-center gap-2">
           <CalendarDays size={18} />
           캘린더
         </h2>
@@ -99,19 +120,23 @@ export function CalendarView() {
           새 일정
         </Button>
       </div>
-      <Calendar
-        localizer={localizer}
-        events={events}
-        startAccessor="start"
-        endAccessor="end"
-        selectable
-        onSelectSlot={handleSelectSlot}
-        onSelectEvent={handleSelectEvent}
-        style={{ height: "calc(100vh - 160px)" }}
-        views={["month"]}
-        defaultView="month"
-        messages={messages}
-      />
+      <div className="flex-1 min-h-0">
+        <Calendar
+          localizer={localizer}
+          events={events}
+          startAccessor="start"
+          endAccessor="end"
+          selectable
+          onSelectSlot={handleSelectSlot}
+          onSelectEvent={handleSelectEvent}
+          style={{ height: "100%" }}
+          views={["month"]}
+          defaultView="month"
+          messages={messages}
+          formats={formats}
+          culture="ko"
+        />
+      </div>
       {modal && (
         <ScheduleModal
           schedule={modal.schedule}

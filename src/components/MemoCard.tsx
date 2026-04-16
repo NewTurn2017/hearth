@@ -56,19 +56,19 @@ export function MemoCard({
         backgroundColor: colorDef.bg,
         color: colorDef.text,
       }}
-      className="memo-card rounded-xl p-4 hover:shadow-xl transition-shadow relative group min-h-[140px] flex flex-col"
+      className="memo-card rounded-xl p-5 hover:shadow-xl transition-shadow relative group min-h-[160px] flex flex-col"
     >
       <Tooltip label="드래그하여 이동" side="top">
         <div
           {...attributes}
           {...listeners}
-          className="absolute top-1 right-1 cursor-grab opacity-0 group-hover:opacity-60"
+          className="absolute top-2 right-2 cursor-grab opacity-0 group-hover:opacity-60"
         >
           <Icon icon={GripVertical} size={14} />
         </div>
       </Tooltip>
 
-      <div className="absolute top-1 left-1">
+      <div className="absolute top-2 left-2">
         <button
           onClick={() => setShowColors(!showColors)}
           className="w-4 h-4 rounded-full opacity-0 group-hover:opacity-60 transition-opacity"

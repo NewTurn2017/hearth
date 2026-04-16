@@ -42,15 +42,15 @@ export function MemoBoard() {
   };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-[var(--color-text-hi)]">메모보드</h2>
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex justify-between items-center mb-5">
+        <h2 className="text-heading text-[var(--color-text-hi)]">메모보드</h2>
         <Button variant="primary" size="sm" leftIcon={Plus} onClick={handleCreate}>
           메모 추가
         </Button>
       </div>
       {memos.length === 0 ? (
-        <EmptyState icon={StickyNote} title="메모가 없습니다" />
+        <EmptyState className="flex-1" icon={StickyNote} title="메모가 없습니다" description="⌘K 또는 메모 추가 버튼으로 시작하세요" />
       ) : (
         <DndContext
           sensors={sensors}
@@ -61,7 +61,7 @@ export function MemoBoard() {
             items={memos.map((m) => m.id)}
             strategy={rectSortingStrategy}
           >
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-5">
               {memos.map((memo) => (
                 <MemoCard
                   key={memo.id}
@@ -73,7 +73,7 @@ export function MemoBoard() {
               ))}
               <button
                 onClick={handleCreate}
-                className="rounded-xl border-2 border-dashed border-[var(--color-border)] min-h-[140px] flex items-center justify-center text-[var(--color-text-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand-hi)] transition-colors"
+                className="rounded-xl border-2 border-dashed border-[var(--color-border)] min-h-[160px] flex items-center justify-center text-[var(--color-text-muted)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand-hi)] transition-colors text-sm"
               >
                 + 새 메모
               </button>

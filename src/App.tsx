@@ -20,13 +20,9 @@ function ProjectsTab({
   );
 
   if (loading) {
-    return <div className="text-[var(--text-secondary)]">로딩 중...</div>;
-  }
-
-  if (projects.length === 0) {
     return (
-      <div className="text-[var(--text-secondary)] text-center mt-20">
-        프로젝트가 없습니다. Excel 파일을 가져오기 해주세요.
+      <div className="flex-1 flex items-center justify-center text-[var(--color-text-muted)] text-sm">
+        로딩 중...
       </div>
     );
   }

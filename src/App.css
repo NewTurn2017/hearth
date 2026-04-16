@@ -57,15 +57,15 @@
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* NOTE: no global `* { margin:0; padding:0 }` reset — Tailwind 4 preflight
+   handles `box-sizing: border-box` in `@layer base`, and a top-level `*` rule
+   outside `@layer utilities` will override every `p-*`/`m-*` utility class.
+   (Debugged 2026-04-16: that reset was nuking all Tailwind padding.) */
 
 html,
 body,
 #root {
+  margin: 0;
   height: 100vh;
 }
 

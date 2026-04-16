@@ -14,7 +14,7 @@ export function Sidebar({
   onToggleCategory: (c: Category) => void;
 }) {
   return (
-    <aside className="w-52 shrink-0 bg-[var(--color-surface-1)] border-r border-[var(--color-border)] py-4 px-3 flex flex-col gap-6 overflow-y-auto">
+    <aside className="w-56 shrink-0 bg-[var(--color-surface-1)] border-r border-[var(--color-border)] py-5 px-3 flex flex-col gap-7 overflow-y-auto">
       <FilterGroup label="우선순위">
         {PRIORITIES.map((p) => (
           <FilterItem
