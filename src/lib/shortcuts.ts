@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 
 export function isMac() {
-  return /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  return /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
 }
 
 /** Listen for ⌘K / Ctrl+K globally. Calls `handler` with no arg. */
