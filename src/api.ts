@@ -160,3 +160,27 @@ export const updateMemoByNumber = (
 
 export const deleteMemoByNumber = (number: number) =>
   invoke<void>("delete_memo_by_number", { number });
+
+// 카테고리 (user-editable project categories)
+import type { CategoryRow } from "./types";
+
+export const getCategories = () => invoke<CategoryRow[]>("get_categories");
+
+export const createCategory = (input: { name: string; color?: string }) =>
+  invoke<CategoryRow>("create_category", { input });
+
+export const updateCategory = (
+  id: number,
+  fields: { name?: string; color?: string; sort_order?: number }
+) => invoke<CategoryRow>("update_category", { id, fields });
+
+export const deleteCategory = (id: number) =>
+  invoke<void>("delete_category", { id });
+
+export const reorderCategories = (ids: number[]) =>
+  invoke<void>("reorder_categories", { ids });
+
+// 백업 위치 (persisted under settings key `backup.dir`)
+export const getBackupDir = () => invoke<string>("get_backup_dir");
+export const setBackupDir = (path: string) =>
+  invoke<string>("set_backup_dir", { path });

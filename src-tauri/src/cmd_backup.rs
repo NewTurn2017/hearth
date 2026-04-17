@@ -1,3 +1,4 @@
+use crate::cmd_settings::{self, K_BACKUP_DIR};
 use crate::AppState;
 use chrono::Local;
 use serde::Serialize;
@@ -5,12 +6,22 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
-fn backup_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("backups");
+/// Resolve the directory that holds rolling backups. Reads `backup.dir` from
+/// the settings KV; falls back to `$APP_DATA/backups` when unset so first-run
+/// behavior matches the pre-setting world.
+fn backup_dir(app: &AppHandle, state: &State<'_, AppState>) -> Result<PathBuf, String> {
+    let configured = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        cmd_settings::read(&db, K_BACKUP_DIR)?
+    };
+    let dir = if configured.is_empty() {
+        app.path()
+            .app_data_dir()
+            .map_err(|e| e.to_string())?
+            .join("backups")
+    } else {
+        PathBuf::from(configured)
+    };
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
 }
@@ -21,6 +32,33 @@ fn db_path(app: &AppHandle) -> Result<PathBuf, String> {
         .app_data_dir()
         .map_err(|e| e.to_string())?
         .join("data.db"))
+}
+
+#[tauri::command]
+pub fn get_backup_dir(
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    Ok(backup_dir(&app, &state)?.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn set_backup_dir(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<String, String> {
+    let canonical = PathBuf::from(path.trim());
+    if canonical.as_os_str().is_empty() {
+        return Err("백업 위치가 비어 있습니다".into());
+    }
+    fs::create_dir_all(&canonical)
+        .map_err(|e| format!("백업 폴더를 만들 수 없습니다: {e}"))?;
+    let stored = canonical.to_string_lossy().to_string();
+    {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        cmd_settings::write(&db, K_BACKUP_DIR, &stored)?;
+    }
+    Ok(stored)
 }
 
 #[tauri::command]
@@ -36,10 +74,10 @@ pub fn backup_db(
     }
 
     let source = db_path(&app)?;
+    let dir = backup_dir(&app, &state)?;
     let dest = match dest_path {
         Some(p) => PathBuf::from(p),
         None => {
-            let dir = backup_dir(&app)?;
             let timestamp = Local::now().format("%Y-%m-%d-%H%M%S");
             dir.join(format!("hearth-backup-{}.db", timestamp))
         }
@@ -47,7 +85,6 @@ pub fn backup_db(
 
     fs::copy(&source, &dest).map_err(|e| format!("Backup failed: {}", e))?;
 
-    let dir = backup_dir(&app)?;
     let mut backups: Vec<_> = fs::read_dir(&dir)
         .map_err(|e| e.to_string())?
         .filter_map(|e| e.ok())
@@ -85,8 +122,11 @@ pub struct BackupInfo {
 }
 
 #[tauri::command]
-pub fn list_backups(app: AppHandle) -> Result<Vec<BackupInfo>, String> {
-    let dir = backup_dir(&app)?;
+pub fn list_backups(
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<Vec<BackupInfo>, String> {
+    let dir = backup_dir(&app, &state)?;
     let mut backups: Vec<BackupInfo> = fs::read_dir(&dir)
         .map_err(|e| e.to_string())?
         .filter_map(|e| e.ok())
@@ -127,14 +167,9 @@ pub fn auto_backup_on_close(app: &AppHandle) {
         .app_data_dir()
         .ok()
         .map(|d| d.join("data.db"));
-    let dest_dir = app
-        .path()
-        .app_data_dir()
-        .ok()
-        .map(|d| d.join("backups"));
+    let dest_dir = backup_dir(app, &state).ok();
 
     if let (Some(src), Some(dir)) = (source, dest_dir) {
-        fs::create_dir_all(&dir).ok();
         let timestamp = Local::now().format("%Y-%m-%d-%H%M%S");
         let dest = dir.join(format!("hearth-backup-{}.db", timestamp));
         fs::copy(&src, &dest).ok();

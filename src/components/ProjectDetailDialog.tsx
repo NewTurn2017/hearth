@@ -8,7 +8,7 @@ import {
   emptyProjectForm,
   type ProjectFormState,
 } from "./ProjectFormFields";
-import type { Project, Memo, Priority, Category } from "../types";
+import type { Project, Memo, Priority } from "../types";
 import * as api from "../api";
 
 export function ProjectDetailDialog({
@@ -41,7 +41,7 @@ export function ProjectDetailDialog({
     setForm({
       name: project.name,
       priority: project.priority as Priority,
-      category: (project.category ?? "") as Category | "",
+      category: project.category ?? "",
       path: project.path ?? "",
       evaluation: project.evaluation ?? "",
     });

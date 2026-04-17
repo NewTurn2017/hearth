@@ -27,6 +27,7 @@ use tauri::State;
 const K_PROVIDER: &str = "ai.provider";
 const K_OPENAI_KEY: &str = "ai.openai_api_key";
 const K_UI_SCALE: &str = "ui.scale";
+pub(crate) const K_BACKUP_DIR: &str = "backup.dir";
 
 /// Shape safe to expose over IPC — the raw API key never crosses this
 /// boundary. The UI only needs to know whether one is on file.
@@ -59,7 +60,7 @@ impl AiSettingsFull {
 }
 
 /// Read a single KV entry, returning an owned string (possibly empty).
-fn read(db: &rusqlite::Connection, key: &str) -> Result<String, String> {
+pub(crate) fn read(db: &rusqlite::Connection, key: &str) -> Result<String, String> {
     db.query_row(
         "SELECT value FROM settings WHERE key = ?1",
         [key],
@@ -72,7 +73,7 @@ fn read(db: &rusqlite::Connection, key: &str) -> Result<String, String> {
 }
 
 /// Upsert a KV entry.
-fn write(db: &rusqlite::Connection, key: &str, value: &str) -> Result<(), String> {
+pub(crate) fn write(db: &rusqlite::Connection, key: &str, value: &str) -> Result<(), String> {
     db.execute(
         "INSERT INTO settings (key, value) VALUES (?1, ?2) \
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",

@@ -1,13 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 import { NewProjectDialog } from "./NewProjectDialog";
-import { AiSettingsDialog } from "./AiSettingsDialog";
+import { NewMemoDialog } from "./NewMemoDialog";
+import { SettingsDialog } from "./SettingsDialog";
 import { CommandPalette } from "../command/CommandPalette";
 import { buildLocalCommands } from "../command/dispatch";
-import type { Tab, Priority, Category, ToolCall } from "../types";
-import { PRIORITIES, CATEGORIES } from "../types";
+import type { Tab, Priority, ToolCall } from "../types";
+import { PRIORITIES } from "../types";
 import { useToast } from "../ui/Toast";
 import * as api from "../api";
 
@@ -17,7 +18,7 @@ export function Layout({
   children: (props: {
     activeTab: Tab;
     priorities: Set<Priority>;
-    category: Category | null;
+    category: string | null;
     openNewProject: () => void;
   }) => React.ReactNode;
 }) {
@@ -26,9 +27,9 @@ export function Layout({
   // null = 전체 보기 (no filter, shows NULL-category rows too). A single
   // category selection deselects all others — category is exclusive, unlike
   // priority which remains multi-select.
-  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const toast = useToast();
 
   const togglePriority = (p: Priority) => {
@@ -62,32 +63,37 @@ export function Layout({
     }
   };
 
-  const handleBackup = async () => {
-    try {
-      const path = await api.backupDb();
-      toast.success(`백업 완료: ${path}`);
-    } catch (e) {
-      toast.error(`백업 실패: ${e}`);
-    }
-  };
-
   const openNewProject = useCallback(() => {
     setActiveTab("projects");
     setNewProjectOpen(true);
   }, []);
 
+  const [newMemoOpen, setNewMemoOpen] = useState(false);
+
+  useEffect(() => {
+    const onNew = () => setNewMemoOpen(true);
+    window.addEventListener("memo:new-dialog", onNew);
+    return () => window.removeEventListener("memo:new-dialog", onNew);
+  }, []);
+
+  const openNewMemo = useCallback(() => {
+    setActiveTab("memos");
+    setNewMemoOpen(true);
+  }, []);
+
   const commands = buildLocalCommands({
     openNewProject,
     openNewSchedule: () => setActiveTab("calendar"),
-    openNewMemo: () => setActiveTab("memos"),
+    openNewMemo,
   });
 
   // Dispatch navigation/UI tool calls returned by the agent. `switch_tab` and
-  // `set_filter` map directly to our own state setters. `set_filter` is
-  // defensively filtered against the canonical PRIORITIES/CATEGORIES lists —
-  // the agent is untrusted and a hallucinated category would silently empty
-  // the list without the guard. Deps array is empty: every setter is a
-  // React-stable reference.
+  // `set_filter` map directly to our own state setters. Priorities are
+  // validated against the canonical PRIORITIES list. Categories are now
+  // user-editable, so `set_filter` accepts any non-empty string and trusts
+  // the agent to use a live name; stale names just show an empty filter
+  // until the user picks something else. Deps array is empty: every setter
+  // is a React-stable reference.
   const handleClientIntent = useCallback((call: ToolCall) => {
     const args = call.arguments ?? {};
     switch (call.name) {
@@ -109,9 +115,7 @@ export function Layout({
         }
         if (Array.isArray(cats)) {
           const firstValid = (cats as unknown[]).find(
-            (c): c is Category =>
-              typeof c === "string" &&
-              (CATEGORIES as readonly string[]).includes(c)
+            (c): c is string => typeof c === "string" && c.length > 0
           );
           setActiveCategory(firstValid ?? null);
         }
@@ -120,14 +124,24 @@ export function Layout({
     }
   }, []);
 
+  // Global right-click blocker: suppress the native WebKit menu (which
+  // includes "Inspect Element" in dev). Cards that want their own menu
+  // open it via `useContextMenu` and call `e.stopPropagation()` inside
+  // their handler so this listener never sees the bubble. Devtools stays
+  // reachable via the standard keyboard shortcut.
+  useEffect(() => {
+    const block = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", block);
+    return () => document.removeEventListener("contextmenu", block);
+  }, []);
+
   return (
     <div className="h-screen flex flex-col bg-[var(--color-surface-0)]">
       <TopBar
         active={activeTab}
         onChange={setActiveTab}
         onImport={handleImport}
-        onBackup={handleBackup}
-        onOpenAiSettings={() => setAiSettingsOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -158,9 +172,13 @@ export function Layout({
         open={newProjectOpen}
         onClose={() => setNewProjectOpen(false)}
       />
-      <AiSettingsDialog
-        open={aiSettingsOpen}
-        onClose={() => setAiSettingsOpen(false)}
+      <NewMemoDialog
+        open={newMemoOpen}
+        onClose={() => setNewMemoOpen(false)}
+      />
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
     </div>
   );

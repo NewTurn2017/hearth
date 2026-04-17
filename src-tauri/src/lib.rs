@@ -2,6 +2,7 @@ pub mod ai_tools;
 mod cmd_actions;
 mod cmd_ai;
 mod cmd_backup;
+mod cmd_categories;
 mod cmd_clients;
 mod cmd_memos;
 mod cmd_projects;
@@ -77,6 +78,13 @@ pub fn run() {
             cmd_backup::backup_db,
             cmd_backup::restore_db,
             cmd_backup::list_backups,
+            cmd_backup::get_backup_dir,
+            cmd_backup::set_backup_dir,
+            cmd_categories::get_categories,
+            cmd_categories::create_category,
+            cmd_categories::update_category,
+            cmd_categories::delete_category,
+            cmd_categories::reorder_categories,
             cmd_ai::start_ai_server,
             cmd_ai::stop_ai_server,
             cmd_ai::ai_server_status,
