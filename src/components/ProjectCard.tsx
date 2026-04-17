@@ -2,9 +2,8 @@ import { useState, type MouseEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Play, FolderOpen, X } from "lucide-react";
-import type { Project, Category, Priority } from "../types";
+import type { Project, Priority } from "../types";
 import {
-  CATEGORIES,
   CATEGORY_COLORS,
   PRIORITIES,
   PRIORITY_COLORS,
@@ -15,6 +14,7 @@ import { Icon } from "../ui/Icon";
 import { Popover } from "../ui/Popover";
 import { Tooltip } from "../ui/Tooltip";
 import { cn } from "../lib/cn";
+import { useCategories } from "../hooks/useCategories";
 
 export function ProjectCard({
   project,
@@ -35,6 +35,14 @@ export function ProjectCard({
   const [editValue, setEditValue] = useState("");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: project.id });
+  const { categories } = useCategories();
+  const catRow = categories.find((c) => c.name === project.category);
+  const catColor =
+    catRow?.color ??
+    (project.category
+      ? (CATEGORY_COLORS as Record<string, string | undefined>)[project.category] ??
+        "#6b7280"
+      : "#6b7280");
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -213,9 +221,7 @@ export function ProjectCard({
               className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] rounded-full"
             >
               {project.category ? (
-                <Badge tone={CATEGORY_COLORS[project.category as Category] ?? "#6b7280"}>
-                  {project.category}
-                </Badge>
+                <Badge tone={catColor}>{project.category}</Badge>
               ) : (
                 <Badge>카테고리</Badge>
               )}
@@ -224,25 +230,26 @@ export function ProjectCard({
         >
           {({ close }) => (
             <div className="flex flex-col">
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <button
-                  key={c}
+                  key={c.id}
                   type="button"
                   onClick={() => {
-                    if (c !== project.category) onUpdate(project.id, { category: c });
+                    if (c.name !== project.category)
+                      onUpdate(project.id, { category: c.name });
                     close();
                   }}
                   className={cn(
                     "flex items-center gap-2 px-2 h-7 text-[12px] text-left rounded",
                     "hover:bg-[var(--color-surface-3)]",
-                    c === project.category && "bg-[var(--color-surface-3)]"
+                    c.name === project.category && "bg-[var(--color-surface-3)]"
                   )}
                 >
                   <span
                     className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: CATEGORY_COLORS[c] }}
+                    style={{ backgroundColor: c.color }}
                   />
-                  <span className="text-[var(--color-text)]">{c}</span>
+                  <span className="text-[var(--color-text)]">{c.name}</span>
                 </button>
               ))}
             </div>

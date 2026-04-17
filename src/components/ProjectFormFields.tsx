@@ -1,12 +1,13 @@
 import type { KeyboardEvent } from "react";
 import { Input } from "../ui/Input";
-import { PRIORITIES, CATEGORIES } from "../types";
-import type { Priority, Category } from "../types";
+import { PRIORITIES } from "../types";
+import type { Priority } from "../types";
+import { useCategories } from "../hooks/useCategories";
 
 export type ProjectFormState = {
   name: string;
   priority: Priority;
-  category: Category | "";
+  category: string; // free-form — empty = 없음
   path: string;
   evaluation: string;
 };
@@ -39,6 +40,8 @@ export function ProjectFormFields({
   disableName?: boolean;
   autoFocusName?: boolean;
 }) {
+  const { categories } = useCategories();
+
   const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!onSubmitShortcut) return;
     if (e.key === "Enter" && !e.shiftKey) {
@@ -72,14 +75,12 @@ export function ProjectFormFields({
         <select
           className={SELECT_CLASS}
           value={value.category}
-          onChange={(e) =>
-            onChange({ category: e.target.value as Category | "" })
-          }
+          onChange={(e) => onChange({ category: e.target.value })}
         >
           <option value="">카테고리 없음</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {categories.map((c) => (
+            <option key={c.id} value={c.name}>
+              {c.name}
             </option>
           ))}
         </select>

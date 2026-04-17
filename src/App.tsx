@@ -9,7 +9,7 @@ import { ToastProvider } from "./ui/Toast";
 import { useProjects } from "./hooks/useProjects";
 import { useMemos } from "./hooks/useMemos";
 import { useUiScale } from "./hooks/useUiScale";
-import type { Priority, Category } from "./types";
+import type { Priority } from "./types";
 
 function ProjectsTab({
   priorities,
@@ -17,7 +17,7 @@ function ProjectsTab({
   onAdd,
 }: {
   priorities: Set<Priority>;
-  category: Category | null;
+  category: string | null;
   onAdd: () => void;
 }) {
   const { projects, loading, update, remove, reorder } = useProjects(

@@ -7,8 +7,8 @@ import { NewMemoDialog } from "./NewMemoDialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { CommandPalette } from "../command/CommandPalette";
 import { buildLocalCommands } from "../command/dispatch";
-import type { Tab, Priority, Category, ToolCall } from "../types";
-import { PRIORITIES, CATEGORIES } from "../types";
+import type { Tab, Priority, ToolCall } from "../types";
+import { PRIORITIES } from "../types";
 import { useToast } from "../ui/Toast";
 import * as api from "../api";
 
@@ -18,7 +18,7 @@ export function Layout({
   children: (props: {
     activeTab: Tab;
     priorities: Set<Priority>;
-    category: Category | null;
+    category: string | null;
     openNewProject: () => void;
   }) => React.ReactNode;
 }) {
@@ -27,7 +27,7 @@ export function Layout({
   // null = 전체 보기 (no filter, shows NULL-category rows too). A single
   // category selection deselects all others — category is exclusive, unlike
   // priority which remains multi-select.
-  const [activeCategory, setActiveCategory] = useState<Category | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const toast = useToast();
@@ -114,9 +114,7 @@ export function Layout({
         }
         if (Array.isArray(cats)) {
           const firstValid = (cats as unknown[]).find(
-            (c): c is Category =>
-              typeof c === "string" &&
-              (CATEGORIES as readonly string[]).includes(c)
+            (c): c is string => typeof c === "string" && c.length > 0
           );
           setActiveCategory(firstValid ?? null);
         }

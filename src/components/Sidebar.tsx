@@ -1,5 +1,6 @@
-import { PRIORITIES, CATEGORIES, PRIORITY_COLORS, PRIORITY_LABELS, CATEGORY_COLORS } from "../types";
-import type { Priority, Category } from "../types";
+import { PRIORITIES, PRIORITY_COLORS, PRIORITY_LABELS } from "../types";
+import type { Priority } from "../types";
+import { useCategories } from "../hooks/useCategories";
 import { cn } from "../lib/cn";
 
 export function Sidebar({
@@ -9,10 +10,12 @@ export function Sidebar({
   onSelectCategory,
 }: {
   activePriorities: Set<Priority>;
-  activeCategory: Category | null;
+  activeCategory: string | null;
   onTogglePriority: (p: Priority) => void;
-  onSelectCategory: (c: Category | null) => void;
+  onSelectCategory: (c: string | null) => void;
 }) {
+  const { categories } = useCategories();
+
   return (
     <aside className="w-56 shrink-0 bg-[var(--color-surface-1)] border-r border-[var(--color-border)] py-5 px-3 flex flex-col gap-7 overflow-y-auto">
       <FilterGroup label="우선순위">
@@ -35,16 +38,18 @@ export function Sidebar({
           onClick={() => onSelectCategory(null)}
           text="전체 보기"
         />
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <FilterItem
-            key={c}
-            active={activeCategory === c}
+            key={c.id}
+            active={activeCategory === c.name}
             // Click-again on the active category falls back to 전체 보기 so
             // the user can always return to "all" without hunting for the
             // 전체 보기 row.
-            onClick={() => onSelectCategory(activeCategory === c ? null : c)}
-            dot={CATEGORY_COLORS[c]}
-            text={c}
+            onClick={() =>
+              onSelectCategory(activeCategory === c.name ? null : c.name)
+            }
+            dot={c.color}
+            text={c.name}
           />
         ))}
       </FilterGroup>

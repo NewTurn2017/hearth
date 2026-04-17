@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Project, Priority, Category } from "../types";
+import type { Project, Priority } from "../types";
 import * as api from "../api";
 
 export function useProjects(
   priorities: Set<Priority>,
-  category: Category | null
+  category: string | null
 ) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
