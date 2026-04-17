@@ -109,11 +109,9 @@ fn delete_in_use_is_blocked_by_usage_count() {
             |r| r.get(0),
         )
         .unwrap();
-    assert_eq!(usage, 2, "precondition: Active is in use");
-
     // The command-layer guard is the check we're modeling: refuse deletion
     // when usage > 0. The test asserts the SQL-side fact the guard relies on.
-    assert!(usage > 0);
+    assert_eq!(usage, 2, "precondition: Active is in use");
 }
 
 #[test]
