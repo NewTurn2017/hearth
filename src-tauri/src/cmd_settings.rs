@@ -26,6 +26,7 @@ use tauri::State;
 /// one place and we don't typo the string at a read site.
 const K_PROVIDER: &str = "ai.provider";
 const K_OPENAI_KEY: &str = "ai.openai_api_key";
+const K_UI_SCALE: &str = "ui.scale";
 
 /// Shape safe to expose over IPC — the raw API key never crosses this
 /// boundary. The UI only needs to know whether one is on file.
@@ -142,6 +143,26 @@ pub fn save_ai_settings(
     // "local" when the stored value is missing).
     drop(db);
     Ok(load_full(&state)?.redact())
+}
+
+#[tauri::command]
+pub fn get_ui_scale(state: State<'_, AppState>) -> Result<f64, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let raw = read(&db, K_UI_SCALE)?;
+    if raw.is_empty() {
+        return Ok(1.0);
+    }
+    raw.parse::<f64>()
+        .map_err(|e| format!("invalid ui.scale value: {e}"))
+}
+
+#[tauri::command]
+pub fn set_ui_scale(state: State<'_, AppState>, scale: f64) -> Result<(), String> {
+    if !scale.is_finite() || scale <= 0.0 {
+        return Err(format!("invalid scale: {scale}"));
+    }
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    write(&db, K_UI_SCALE, &scale.to_string())
 }
 
 #[cfg(test)]

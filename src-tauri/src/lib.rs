@@ -82,6 +82,8 @@ pub fn run() {
             cmd_ai::ai_confirm,
             cmd_settings::get_ai_settings,
             cmd_settings::save_ai_settings,
+            cmd_settings::get_ui_scale,
+            cmd_settings::set_ui_scale,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
