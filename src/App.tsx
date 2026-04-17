@@ -5,6 +5,7 @@ import { CalendarView } from "./components/CalendarView";
 import { MemoBoard } from "./components/MemoBoard";
 import { ToastProvider } from "./ui/Toast";
 import { useProjects } from "./hooks/useProjects";
+import { useUiScale } from "./hooks/useUiScale";
 import type { Priority, Category } from "./types";
 
 function ProjectsTab({
@@ -41,6 +42,7 @@ function ProjectsTab({
 }
 
 function App() {
+  useUiScale();
   return (
     <ToastProvider>
       <Layout>
