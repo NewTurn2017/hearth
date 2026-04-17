@@ -1,16 +1,13 @@
-import { useState, type KeyboardEvent } from "react";
+import { useState } from "react";
 import { Dialog } from "../ui/Dialog";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
 import { useToast } from "../ui/Toast";
-import { PRIORITIES, CATEGORIES } from "../types";
-import type { Priority, Category } from "../types";
+import {
+  ProjectFormFields,
+  emptyProjectForm,
+  type ProjectFormState,
+} from "./ProjectFormFields";
 import * as api from "../api";
-
-const SELECT_CLASS =
-  "h-9 flex-1 px-2 rounded-[var(--radius-md)] text-[13px] " +
-  "bg-[var(--color-surface-2)] border border-[var(--color-border)] " +
-  "text-[var(--color-text)] focus:outline-none focus:border-[var(--color-brand-hi)]";
 
 export function NewProjectDialog({
   open,
@@ -20,29 +17,21 @@ export function NewProjectDialog({
   onClose: () => void;
 }) {
   const toast = useToast();
-  const [name, setName] = useState("");
-  const [priority, setPriority] = useState<Priority>("P2");
-  const [category, setCategory] = useState<Category | "">("");
-  const [path, setPath] = useState("");
+  const [form, setForm] = useState<ProjectFormState>(emptyProjectForm);
   const [saving, setSaving] = useState(false);
 
-  const reset = () => {
-    setName("");
-    setPriority("P2");
-    setCategory("");
-    setPath("");
-  };
+  const reset = () => setForm(emptyProjectForm());
 
   const submit = async () => {
-    const trimmed = name.trim();
+    const trimmed = form.name.trim();
     if (!trimmed || saving) return;
     setSaving(true);
     try {
       const created = await api.createProject(
         trimmed,
-        priority,
-        category || undefined,
-        path.trim() || undefined
+        form.priority,
+        form.category || undefined,
+        form.path.trim() || undefined
       );
       window.dispatchEvent(new CustomEvent("projects:changed"));
       toast.success(`${created.name} 추가됨`, {
@@ -65,13 +54,6 @@ export function NewProjectDialog({
     onClose();
   };
 
-  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    }
-  };
-
   return (
     <Dialog open={open} onClose={cancel} labelledBy="new-project-title">
       <h2
@@ -80,46 +62,13 @@ export function NewProjectDialog({
       >
         새 프로젝트
       </h2>
-      <div className="flex flex-col gap-3">
-        <Input
-          autoFocus
-          placeholder="프로젝트 이름"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={onKey}
-        />
-        <div className="flex gap-2">
-          <select
-            className={SELECT_CLASS}
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as Priority)}
-          >
-            {PRIORITIES.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-          <select
-            className={SELECT_CLASS}
-            value={category}
-            onChange={(e) => setCategory(e.target.value as Category | "")}
-          >
-            <option value="">카테고리 없음</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Input
-          placeholder="경로 (선택)"
-          value={path}
-          onChange={(e) => setPath(e.target.value)}
-          onKeyDown={onKey}
-        />
-      </div>
+      <ProjectFormFields
+        value={form}
+        onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+        onSubmitShortcut={submit}
+        includeEvaluation={false}
+        autoFocusName
+      />
       <div className="flex justify-end gap-2 mt-5">
         <Button variant="secondary" onClick={cancel} disabled={saving}>
           취소
@@ -127,7 +76,7 @@ export function NewProjectDialog({
         <Button
           variant="primary"
           onClick={submit}
-          disabled={saving || !name.trim()}
+          disabled={saving || !form.name.trim()}
         >
           생성
         </Button>

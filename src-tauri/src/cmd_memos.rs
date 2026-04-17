@@ -123,6 +123,44 @@ pub fn delete_memo(state: State<'_, AppState>, id: i64) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn update_memo_by_number(
+    state: State<'_, AppState>,
+    number: i64,
+    fields: UpdateMemoInput,
+) -> Result<Memo, String> {
+    if number < 1 {
+        return Err(format!("#{} 메모를 찾을 수 없음", number));
+    }
+    let id: i64 = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        db.query_row(
+            "SELECT id FROM memos ORDER BY sort_order LIMIT 1 OFFSET ?",
+            [number - 1],
+            |r| r.get(0),
+        )
+        .map_err(|_| format!("#{} 메모를 찾을 수 없음", number))?
+    };
+    update_memo(state, id, fields)
+}
+
+#[tauri::command]
+pub fn delete_memo_by_number(state: State<'_, AppState>, number: i64) -> Result<(), String> {
+    if number < 1 {
+        return Err(format!("#{} 메모를 찾을 수 없음", number));
+    }
+    let id: i64 = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        db.query_row(
+            "SELECT id FROM memos ORDER BY sort_order LIMIT 1 OFFSET ?",
+            [number - 1],
+            |r| r.get(0),
+        )
+        .map_err(|_| format!("#{} 메모를 찾을 수 없음", number))?
+    };
+    delete_memo(state, id)
+}
+
+#[tauri::command]
 pub fn reorder_memos(state: State<'_, AppState>, ids: Vec<i64>) -> Result<(), String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let tx = db.unchecked_transaction().map_err(|e| e.to_string())?;

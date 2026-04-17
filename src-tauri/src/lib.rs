@@ -68,6 +68,8 @@ pub fn run() {
             cmd_memos::update_memo,
             cmd_memos::delete_memo,
             cmd_memos::reorder_memos,
+            cmd_memos::update_memo_by_number,
+            cmd_memos::delete_memo_by_number,
             cmd_clients::get_clients,
             cmd_actions::open_in_ghostty,
             cmd_actions::open_in_finder,
@@ -82,6 +84,8 @@ pub fn run() {
             cmd_ai::ai_confirm,
             cmd_settings::get_ai_settings,
             cmd_settings::save_ai_settings,
+            cmd_settings::get_ui_scale,
+            cmd_settings::set_ui_scale,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

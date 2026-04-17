@@ -12,11 +12,13 @@ export function MemoCard({
   projects,
   onUpdate,
   onDelete,
+  sequenceNumber,
 }: {
   memo: Memo;
   projects: Project[];
   onUpdate: (id: number, fields: Record<string, unknown>) => void;
   onDelete: (id: number) => void;
+  sequenceNumber: number;
 }) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(memo.content);
@@ -58,11 +60,18 @@ export function MemoCard({
       }}
       className="memo-card rounded-xl p-5 hover:shadow-xl transition-shadow relative group min-h-[160px] flex flex-col"
     >
+      <span
+        className="absolute top-1.5 right-2 rounded-full bg-black/25 text-white px-1.5 py-[1px] text-[10px] font-semibold leading-none"
+        aria-label={`메모 번호 ${sequenceNumber}`}
+      >
+        #{sequenceNumber}
+      </span>
+
       <Tooltip label="드래그하여 이동" side="top">
         <div
           {...attributes}
           {...listeners}
-          className="absolute top-2 right-2 cursor-grab opacity-0 group-hover:opacity-60"
+          className="absolute top-6 right-2 cursor-grab opacity-0 group-hover:opacity-60"
         >
           <Icon icon={GripVertical} size={14} />
         </div>
