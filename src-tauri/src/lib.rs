@@ -68,6 +68,8 @@ pub fn run() {
             cmd_memos::update_memo,
             cmd_memos::delete_memo,
             cmd_memos::reorder_memos,
+            cmd_memos::update_memo_by_number,
+            cmd_memos::delete_memo_by_number,
             cmd_clients::get_clients,
             cmd_actions::open_in_ghostty,
             cmd_actions::open_in_finder,
