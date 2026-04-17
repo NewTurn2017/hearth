@@ -53,6 +53,19 @@ export interface BackupInfo {
   created: string;
 }
 
+// DB-shaped category row. Note: this is a different type from the legacy
+// `Category` string-union below — the union stays in the file as the seed
+// source-of-truth and as a fallback when `useCategories` is still loading.
+export interface CategoryRow {
+  id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // OpenAI-shaped chat message. Assistant turns can omit `content` when they
 // emit `tool_calls`; `role: "tool"` turns carry the tool result keyed by
 // `tool_call_id`. `tool_calls` stays `unknown[]` on the TS side because the
