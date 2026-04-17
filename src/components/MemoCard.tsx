@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, X, Pencil, Palette, FolderInput, Trash2 } from "lucide-react";
 import type { Memo, Project } from "../types";
 import { MEMO_COLORS } from "../types";
 import { Icon } from "../ui/Icon";
 import { Tooltip } from "../ui/Tooltip";
+import { cn } from "../lib/cn";
+import { useContextMenu } from "../hooks/useContextMenu";
+import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
+import { MemoProjectPickerDialog } from "./MemoProjectPickerDialog";
 
 export function MemoCard({
   memo,
@@ -22,7 +26,8 @@ export function MemoCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(memo.content);
-  const [showColors, setShowColors] = useState(false);
+  const { menu, open: openMenu, close: closeMenu } = useContextMenu();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const colorDef = MEMO_COLORS.find((c) => c.name === memo.color) ?? MEMO_COLORS[0];
 
@@ -50,6 +55,57 @@ export function MemoCard({
     setEditing(false);
   };
 
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "edit",
+      label: "편집",
+      icon: Pencil,
+      onSelect: () => setEditing(true),
+    },
+    {
+      id: "color",
+      label: "색상 변경",
+      icon: Palette,
+      onSelect: () => {},
+      inline: (
+        <div className="flex gap-1">
+          {MEMO_COLORS.map((c) => (
+            <button
+              key={c.name}
+              type="button"
+              aria-label={`색상: ${c.name}`}
+              onClick={() => {
+                onUpdate(memo.id, { color: c.name });
+                closeMenu();
+              }}
+              className={cn(
+                "w-6 h-6 rounded-full border",
+                c.name === memo.color
+                  ? "border-[var(--color-brand-hi)]"
+                  : "border-[var(--color-border)]"
+              )}
+              style={{ backgroundColor: c.bg }}
+            />
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: "move",
+      label: "프로젝트 이동",
+      icon: FolderInput,
+      onSelect: () => setPickerOpen(true),
+    },
+    { id: "sep", label: "", separator: true, onSelect: () => {} },
+    {
+      id: "delete",
+      label: "삭제",
+      icon: Trash2,
+      danger: true,
+      onSelect: () => onDelete(memo.id),
+    },
+  ];
+
   return (
     <div
       ref={setNodeRef}
@@ -59,6 +115,7 @@ export function MemoCard({
         color: colorDef.text,
       }}
       className="memo-card rounded-xl p-5 hover:shadow-xl transition-shadow relative group min-h-[160px] flex flex-col"
+      onContextMenu={openMenu}
     >
       <span
         className="absolute top-1.5 right-2 rounded-full bg-black/25 text-white px-1.5 py-[1px] text-[10px] font-semibold leading-none"
@@ -76,29 +133,6 @@ export function MemoCard({
           <Icon icon={GripVertical} size={14} />
         </div>
       </Tooltip>
-
-      <div className="absolute top-2 left-2">
-        <button
-          onClick={() => setShowColors(!showColors)}
-          className="w-4 h-4 rounded-full opacity-0 group-hover:opacity-60 transition-opacity"
-          style={{ backgroundColor: colorDef.text + "40" }}
-        />
-        {showColors && (
-          <div className="absolute top-5 left-0 flex gap-1 bg-white rounded-lg p-1 shadow-lg z-10">
-            {MEMO_COLORS.map((c) => (
-              <button
-                key={c.name}
-                onClick={() => {
-                  onUpdate(memo.id, { color: c.name });
-                  setShowColors(false);
-                }}
-                className="w-5 h-5 rounded-full border border-gray-200"
-                style={{ backgroundColor: c.bg }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
 
       <div className="flex-1 mt-3" onClick={() => setEditing(true)}>
         {editing ? (
@@ -129,6 +163,26 @@ export function MemoCard({
           </button>
         </Tooltip>
       </div>
+      <ContextMenu
+        open={menu.open}
+        x={menu.x}
+        y={menu.y}
+        items={menuItems}
+        onClose={closeMenu}
+      />
+      <MemoProjectPickerDialog
+        open={pickerOpen}
+        projects={projects}
+        currentProjectId={memo.project_id}
+        onClose={() => setPickerOpen(false)}
+        onPick={(projectId) => {
+          // null detaches — backend's Option<Option<i64>> shape serializes null
+          // explicitly as Some(None). Passing undefined would leave the field
+          // out of the payload entirely, so we always pass the key.
+          onUpdate(memo.id, { project_id: projectId });
+          setPickerOpen(false);
+        }}
+      />
     </div>
   );
 }
