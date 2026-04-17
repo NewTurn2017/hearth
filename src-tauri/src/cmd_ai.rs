@@ -137,24 +137,60 @@ async fn probe_alive(client: &reqwest::Client) -> Option<String> {
 // and `find_port_listener_pid` would return None, silently breaking kill.
 const LSOF_BIN: &str = "/usr/sbin/lsof";
 const PS_BIN: &str = "/bin/ps";
+const PGREP_BIN: &str = "/usr/bin/pgrep";
 const KILL_BIN: &str = "/bin/kill";
 
 /// Returns the PID of the process listening on `port`, if any.
 ///
-/// Tries two strategies in order, because `lsof` from a Tauri GUI process can
-/// silently return empty on macOS (TCC / entitlements restrict listing other
-/// processes' network sockets):
-///   1. Read `.mlx.pid` next to the launch script and verify the PID is alive.
-///      This covers the normal case: we (or a sibling like Lumo using the
-///      same script) spawned MLX and left a PID file behind.
-///   2. Fall back to `lsof` on the port.
+/// Tries three strategies in order, because a Tauri GUI process on macOS often
+/// can't list other processes' network sockets (TCC / entitlements), making
+/// `lsof` silently empty. The process table itself is always visible.
+///   1. Read `.mlx.pid` next to the launch script AND verify it still points
+///      at an `mlx_lm.server` process. PIDs are recycled — a stale file can
+///      hold an unrelated app's PID; if we kill that blindly we clobber the
+///      wrong program.
+///   2. `pgrep -f "mlx_lm.server ... --port <PORT>"` — scans `ps`-visible
+///      process commands, unaffected by socket-layer TCC. This is the branch
+///      that rescues stop when a sibling (Lumo, another run) owns the server.
+///   3. `lsof` as a last resort (helps on setups where pgrep isn't present).
 fn find_port_listener_pid(port: u16) -> Option<String> {
     if let Some(pid) = read_launcher_pid_file() {
-        if is_pid_alive(&pid) {
+        if is_pid_alive(&pid) && pid_is_mlx_server(&pid) {
             return Some(pid);
         }
     }
-    lsof_port_listener(port)
+    pgrep_mlx_server(port).or_else(|| lsof_port_listener(port))
+}
+
+/// True when `ps -o command=` for `pid` contains `mlx_lm.server`. Guards the
+/// pid-file path against PID recycling after the launcher's process is gone.
+fn pid_is_mlx_server(pid: &str) -> bool {
+    let out = match Command::new(PS_BIN)
+        .args(["-o", "command=", "-p", pid])
+        .output()
+    {
+        Ok(o) if o.status.success() => o,
+        _ => return false,
+    };
+    String::from_utf8_lossy(&out.stdout).contains("mlx_lm.server")
+}
+
+/// Locate the running MLX listener for `port` via the process table. Matches
+/// any command line containing both `mlx_lm.server` and `--port <port>`, so we
+/// don't depend on any particular launcher's naming.
+fn pgrep_mlx_server(port: u16) -> Option<String> {
+    let pattern = format!("mlx_lm\\.server.*--port {}", port);
+    let out = Command::new(PGREP_BIN)
+        .args(["-f", &pattern])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .find(|l| !l.trim().is_empty())
+        .map(|l| l.trim().to_string())
 }
 
 /// Read `.mlx.pid` from the directory containing the launch script. The
