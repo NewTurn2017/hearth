@@ -128,14 +128,21 @@ pub fn specs() -> Vec<ToolSpec> {
         },
         ToolSpec {
             name: "create_memo",
-            description: "Create a new memo. Only `content` is required. color defaults to yellow when omitted. project_id links the memo to an existing project (optional).",
+            description: "Create a new memo. Only `content` is required. color defaults to yellow. project_id links the memo to an existing project; if omitted, project_name is resolved by LIKE match on project name (priority-then-sort_order tie-break). Unresolved project_name → saved as 기타; tell the user in that case.",
             parameters: json!({
                 "type": "object",
                 "required": ["content"],
                 "properties": {
                     "content": { "type": "string" },
                     "color": { "type": "string", "enum": ["yellow","pink","blue","green","purple"] },
-                    "project_id": { "type": "integer" }
+                    "project_id": {
+                        "type": "integer",
+                        "description": "연결할 프로젝트 ID (선택). project_name 보다 우선."
+                    },
+                    "project_name": {
+                        "type": "string",
+                        "description": "연결할 프로젝트 이름 부분 일치 (LIKE, 선택). project_id 가 없을 때만 사용됨. 매칭 실패 시 기타로 저장."
+                    }
                 }
             }),
             kind: ToolKind::Mutation,
@@ -162,6 +169,31 @@ pub fn specs() -> Vec<ToolSpec> {
                 "type": "object",
                 "required": ["id"],
                 "properties": { "id": { "type": "integer" } }
+            }),
+            kind: ToolKind::Mutation,
+        },
+        ToolSpec {
+            name: "update_memo_by_number",
+            description: "#N 뱃지 번호로 메모 내용 수정. 번호는 사용자 화면의 현재 #N(전역 sort_order 기준). 작업 전 list_memos로 최신 순서를 조회해 번호를 확정하세요. 범위 밖이면 '#N 메모를 찾을 수 없음' 오류.",
+            parameters: json!({
+                "type": "object",
+                "required": ["number", "content"],
+                "properties": {
+                    "number": { "type": "integer", "description": "메모 뱃지 번호 (1부터)" },
+                    "content": { "type": "string", "description": "새 내용" }
+                }
+            }),
+            kind: ToolKind::Mutation,
+        },
+        ToolSpec {
+            name: "delete_memo_by_number",
+            description: "#N 뱃지 번호로 메모 삭제. 작업 전 list_memos로 최신 순서를 조회해 번호를 확정하세요.",
+            parameters: json!({
+                "type": "object",
+                "required": ["number"],
+                "properties": {
+                    "number": { "type": "integer", "description": "메모 뱃지 번호 (1부터)" }
+                }
             }),
             kind: ToolKind::Mutation,
         },
@@ -258,6 +290,8 @@ pub fn execute(app: &AppHandle, call: &ToolCall) -> Result<Value, String> {
         "create_memo" => create_memo(app, &call.arguments),
         "update_memo" => update_memo(app, &call.arguments),
         "delete_memo" => delete_memo(app, &call.arguments),
+        "update_memo_by_number" => update_memo_by_number(app, &call.arguments),
+        "delete_memo_by_number" => delete_memo_by_number(app, &call.arguments),
         "list_schedules" => list_schedules(app, &call.arguments),
         "create_schedule" => create_schedule(app, &call.arguments),
         "update_schedule" => update_schedule(app, &call.arguments),
@@ -470,10 +504,39 @@ fn create_memo(app: &AppHandle, args: &Value) -> Result<Value, String> {
     if !MEMO_COLORS.contains(&color) {
         return Err(format!("invalid color: {}", color));
     }
-    let project_id = args.get("project_id").and_then(|v| v.as_i64());
+
+    // project_id wins when present. Otherwise resolve project_name by
+    // case-insensitive LIKE on the project name, tie-breaking by priority
+    // (P0 → P4) then by the user's sort_order, so "WithGenie" matches the
+    // top-of-stack project when multiple share the fragment. An unresolved
+    // project_name is NOT an error — the memo lands in 기타 and the returned
+    // project_id being null signals the miss to the agent.
+    let explicit_id = args.get("project_id").and_then(|v| v.as_i64());
+    let requested_name = args
+        .get("project_name")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
 
     let state = app.state::<crate::AppState>();
     let db = state.db.lock().map_err(|e| e.to_string())?;
+    let project_id: Option<i64> = if let Some(pid) = explicit_id {
+        Some(pid)
+    } else if let Some(name) = requested_name {
+        let pattern = format!("%{}%", name);
+        db.query_row(
+            "SELECT id FROM projects WHERE name LIKE ?1 ORDER BY \
+             CASE priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 \
+                           WHEN 'P3' THEN 3 WHEN 'P4' THEN 4 ELSE 5 END, \
+             sort_order LIMIT 1",
+            [&pattern],
+            |r| r.get::<_, i64>(0),
+        )
+        .ok()
+    } else {
+        None
+    };
+
     let max_order: i64 = db
         .query_row(
             "SELECT COALESCE(MAX(sort_order), 0) FROM memos",
@@ -487,7 +550,14 @@ fn create_memo(app: &AppHandle, args: &Value) -> Result<Value, String> {
     )
     .map_err(|e| e.to_string())?;
     let id = db.last_insert_rowid();
-    Ok(json!({ "ok": true, "id": id, "color": color, "project_id": project_id }))
+    let resolved_as_etc = requested_name.is_some() && explicit_id.is_none() && project_id.is_none();
+    Ok(json!({
+        "ok": true,
+        "id": id,
+        "color": color,
+        "project_id": project_id,
+        "resolved_as_etc": resolved_as_etc,
+    }))
 }
 
 fn update_memo(app: &AppHandle, args: &Value) -> Result<Value, String> {
@@ -543,6 +613,58 @@ fn delete_memo(app: &AppHandle, args: &Value) -> Result<Value, String> {
         return Err(format!("no memo with id {}", id));
     }
     Ok(json!({ "ok": true, "id": id }))
+}
+
+/// Resolve `#N` → memo id via sort_order OFFSET, matching the UI badge.
+/// Centralized so update/delete share one error path.
+fn resolve_memo_by_number(
+    db: &rusqlite::Connection,
+    number: i64,
+) -> Result<i64, String> {
+    if number < 1 {
+        return Err(format!("#{} 메모를 찾을 수 없음", number));
+    }
+    db.query_row(
+        "SELECT id FROM memos ORDER BY sort_order LIMIT 1 OFFSET ?1",
+        [number - 1],
+        |r| r.get::<_, i64>(0),
+    )
+    .map_err(|_| format!("#{} 메모를 찾을 수 없음", number))
+}
+
+fn update_memo_by_number(app: &AppHandle, args: &Value) -> Result<Value, String> {
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_i64())
+        .ok_or("missing number")?;
+    let content = args
+        .get("content")
+        .and_then(|v| v.as_str())
+        .ok_or("missing content")?
+        .to_string();
+
+    let state = app.state::<crate::AppState>();
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let id = resolve_memo_by_number(&db, number)?;
+    db.execute(
+        "UPDATE memos SET content = ?1, updated_at = datetime('now') WHERE id = ?2",
+        rusqlite::params![content, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(json!({ "ok": true, "id": id, "number": number }))
+}
+
+fn delete_memo_by_number(app: &AppHandle, args: &Value) -> Result<Value, String> {
+    let number = args
+        .get("number")
+        .and_then(|v| v.as_i64())
+        .ok_or("missing number")?;
+    let state = app.state::<crate::AppState>();
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let id = resolve_memo_by_number(&db, number)?;
+    db.execute("DELETE FROM memos WHERE id = ?1", [id])
+        .map_err(|e| e.to_string())?;
+    Ok(json!({ "ok": true, "id": id, "number": number }))
 }
 
 // ----- schedule implementations -----
