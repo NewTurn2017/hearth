@@ -4,7 +4,6 @@ import {
   CalendarDays,
   StickyNote,
   Download,
-  Save,
   Settings2,
 } from "lucide-react";
 import type { Tab } from "../types";
@@ -23,14 +22,12 @@ export function TopBar({
   active,
   onChange,
   onImport,
-  onBackup,
-  onOpenAiSettings,
+  onOpenSettings,
 }: {
   active: Tab;
   onChange: (tab: Tab) => void;
   onImport: () => void;
-  onBackup: () => void;
-  onOpenAiSettings: () => void;
+  onOpenSettings: () => void;
 }) {
   return (
     <div className="flex items-center gap-1 px-4 h-12 bg-[var(--color-surface-1)] border-b border-[var(--color-border)]">
@@ -59,15 +56,12 @@ export function TopBar({
         variant="ghost"
         size="sm"
         leftIcon={Settings2}
-        onClick={onOpenAiSettings}
+        onClick={onOpenSettings}
       >
-        AI 설정
+        설정
       </Button>
       <Button variant="ghost" size="sm" leftIcon={Download} onClick={onImport}>
         가져오기
-      </Button>
-      <Button variant="ghost" size="sm" leftIcon={Save} onClick={onBackup}>
-        백업
       </Button>
     </div>
   );

@@ -4,7 +4,7 @@ import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 import { NewProjectDialog } from "./NewProjectDialog";
 import { NewMemoDialog } from "./NewMemoDialog";
-import { AiSettingsDialog } from "./AiSettingsDialog";
+import { SettingsDialog } from "./SettingsDialog";
 import { CommandPalette } from "../command/CommandPalette";
 import { buildLocalCommands } from "../command/dispatch";
 import type { Tab, Priority, Category, ToolCall } from "../types";
@@ -29,7 +29,7 @@ export function Layout({
   // priority which remains multi-select.
   const [activeCategory, setActiveCategory] = useState<Category | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const toast = useToast();
 
   const togglePriority = (p: Priority) => {
@@ -60,15 +60,6 @@ export function Layout({
       setTimeout(() => window.location.reload(), 800);
     } catch (e) {
       toast.error(`가져오기 실패: ${e}`);
-    }
-  };
-
-  const handleBackup = async () => {
-    try {
-      const path = await api.backupDb();
-      toast.success(`백업 완료: ${path}`);
-    } catch (e) {
-      toast.error(`백업 실패: ${e}`);
     }
   };
 
@@ -151,8 +142,7 @@ export function Layout({
         active={activeTab}
         onChange={setActiveTab}
         onImport={handleImport}
-        onBackup={handleBackup}
-        onOpenAiSettings={() => setAiSettingsOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -187,9 +177,9 @@ export function Layout({
         open={newMemoOpen}
         onClose={() => setNewMemoOpen(false)}
       />
-      <AiSettingsDialog
-        open={aiSettingsOpen}
-        onClose={() => setAiSettingsOpen(false)}
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
     </div>
   );
