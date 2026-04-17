@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
@@ -118,6 +118,17 @@ export function Layout({
         break;
       }
     }
+  }, []);
+
+  // Global right-click blocker: suppress the native WebKit menu (which
+  // includes "Inspect Element" in dev). Cards that want their own menu
+  // open it via `useContextMenu` and call `e.stopPropagation()` inside
+  // their handler so this listener never sees the bubble. Devtools stays
+  // reachable via the standard keyboard shortcut.
+  useEffect(() => {
+    const block = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", block);
+    return () => document.removeEventListener("contextmenu", block);
   }, []);
 
   return (
