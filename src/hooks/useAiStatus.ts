@@ -25,14 +25,17 @@ export function useAiStatus(): AiServerState {
 
     tick();
     const id = setInterval(tick, POLL_INTERVAL_MS);
-    // When the user switches provider/model in the settings dialog, re-probe
-    // immediately rather than waiting for the next poll tick.
-    const onSettingsChanged = () => tick();
-    window.addEventListener("ai-settings:changed", onSettingsChanged);
+    // Trigger an immediate re-probe when either the settings change or a
+    // start/stop action completes, so the pill does not lag behind by up to
+    // POLL_INTERVAL_MS waiting for the next tick.
+    const onChange = () => tick();
+    window.addEventListener("ai-settings:changed", onChange);
+    window.addEventListener("ai-server:changed", onChange);
     return () => {
       cancelled = true;
       clearInterval(id);
-      window.removeEventListener("ai-settings:changed", onSettingsChanged);
+      window.removeEventListener("ai-settings:changed", onChange);
+      window.removeEventListener("ai-server:changed", onChange);
     };
   }, []);
 

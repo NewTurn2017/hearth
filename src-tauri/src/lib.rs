@@ -48,6 +48,7 @@ pub fn run() {
                 cmd_backup::auto_backup_on_close(window.app_handle());
                 if let Some(mgr) = window.app_handle().try_state::<cmd_ai::AiManager>() {
                     cmd_ai::kill_child(&mgr);
+                    cmd_ai::kill_mlx_if_ours(&mgr);
                 }
             }
         })

@@ -22,6 +22,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::process::{Child, Command};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 use tauri::{AppHandle, Manager, State};
@@ -71,6 +72,11 @@ pub struct AiManager {
     /// `/v1/models` lists every cached model, so "default" or the wrong ID
     /// causes MLX to try pulling from HF and fail with 401.
     pub model_id: Mutex<Option<String>>,
+    /// `true` iff this app spawned the MLX process (vs. adopting one that was
+    /// already listening — e.g. started by Lumo). Drives app-close cleanup:
+    /// we only kill MLX on window-destroyed when we started it ourselves, so
+    /// sibling apps sharing the port aren't affected.
+    pub started_by_us: AtomicBool,
 }
 
 impl AiManager {
@@ -81,6 +87,7 @@ impl AiManager {
             script_path: Mutex::new(script_path),
             last_try: Mutex::new(None),
             model_id: Mutex::new(None),
+            started_by_us: AtomicBool::new(false),
         }
     }
 }
@@ -125,10 +132,60 @@ async fn probe_alive(client: &reqwest::Client) -> Option<String> {
     body["data"][0]["id"].as_str().map(String::from)
 }
 
-/// Find the process listening on `port` and extract its `--model` argument
-/// from the command line. Used to infer the active MLX model.
-fn detect_loaded_model(port: u16) -> Option<String> {
-    let lsof = Command::new("lsof")
+// macOS absolute paths — GUI apps often launch with a restricted PATH that
+// excludes `/usr/sbin`, so `Command::new("lsof")` would silently fail-to-spawn
+// and `find_port_listener_pid` would return None, silently breaking kill.
+const LSOF_BIN: &str = "/usr/sbin/lsof";
+const PS_BIN: &str = "/bin/ps";
+const KILL_BIN: &str = "/bin/kill";
+
+/// Returns the PID of the process listening on `port`, if any.
+///
+/// Tries two strategies in order, because `lsof` from a Tauri GUI process can
+/// silently return empty on macOS (TCC / entitlements restrict listing other
+/// processes' network sockets):
+///   1. Read `.mlx.pid` next to the launch script and verify the PID is alive.
+///      This covers the normal case: we (or a sibling like Lumo using the
+///      same script) spawned MLX and left a PID file behind.
+///   2. Fall back to `lsof` on the port.
+fn find_port_listener_pid(port: u16) -> Option<String> {
+    if let Some(pid) = read_launcher_pid_file() {
+        if is_pid_alive(&pid) {
+            return Some(pid);
+        }
+    }
+    lsof_port_listener(port)
+}
+
+/// Read `.mlx.pid` from the directory containing the launch script. The
+/// script writes `echo $! > "$PID_FILE"` after spawning the server.
+fn read_launcher_pid_file() -> Option<String> {
+    // The launch script path is stable per AiManager::new; resolving it via
+    // filesystem keeps this helper independent of manager state so refresh
+    // and kill paths can both use it.
+    let script = "/Users/genie/dev/side/supergemma-bench/start-mlx.sh";
+    let pid_file = std::path::Path::new(script).parent()?.join(".mlx.pid");
+    let raw = std::fs::read_to_string(&pid_file).ok()?;
+    let pid = raw.trim();
+    if pid.is_empty() {
+        return None;
+    }
+    Some(pid.to_string())
+}
+
+fn is_pid_alive(pid: &str) -> bool {
+    // `kill -0 pid` sends no signal but returns 0 iff the PID exists and we
+    // have permission to signal it. Cheap liveness check.
+    Command::new(KILL_BIN)
+        .arg("-0")
+        .arg(pid)
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+fn lsof_port_listener(port: u16) -> Option<String> {
+    let lsof = Command::new(LSOF_BIN)
         .args([
             "-iTCP",
             &format!(":{}", port),
@@ -144,13 +201,19 @@ fn detect_loaded_model(port: u16) -> Option<String> {
         return None;
     }
     let stdout = String::from_utf8_lossy(&lsof.stdout);
-    let pid = stdout
+    stdout
         .lines()
         .find(|l| l.starts_with('p'))
-        .map(|l| l.trim_start_matches('p'))?;
+        .map(|l| l.trim_start_matches('p').to_string())
+}
 
-    let ps = Command::new("ps")
-        .args(["-o", "command=", "-p", pid])
+/// Find the process listening on `port` and extract its `--model` argument
+/// from the command line. Used to infer the active MLX model.
+fn detect_loaded_model(port: u16) -> Option<String> {
+    let pid = find_port_listener_pid(port)?;
+
+    let ps = Command::new(PS_BIN)
+        .args(["-o", "command=", "-p", &pid])
         .output()
         .ok()?;
     if !ps.status.success() {
@@ -196,7 +259,9 @@ pub async fn start_ai_server(
 
     let client = reqwest::Client::new();
 
-    // Already running (possibly external instance like Lumo)? Adopt.
+    // Already running (possibly external instance like Lumo)? Adopt — and
+    // leave `started_by_us = false` so app-close doesn't kill a sibling's
+    // MLX process.
     if refresh_state(&mgr, &client).await.is_some() {
         return Ok(AiServerState::Running { port: PORT });
     }
@@ -219,6 +284,8 @@ pub async fn start_ai_server(
         })?;
 
     *mgr.child.lock().map_err(|e| e.to_string())? = Some(child);
+    // We own this MLX process now — app-close cleanup should kill it.
+    mgr.started_by_us.store(true, Ordering::SeqCst);
 
     // Poll up to 120s.
     for _ in 0..120 {
@@ -270,9 +337,50 @@ fn current_provider(app: &AppHandle) -> String {
 
 #[tauri::command]
 pub async fn stop_ai_server(mgr: State<'_, AiManager>) -> Result<(), String> {
+    // Explicit user intent — kill regardless of who started the listener.
     kill_child(&mgr);
+    kill_mlx_listener(PORT).await;
+    mgr.started_by_us.store(false, Ordering::SeqCst);
     *mgr.state.lock().map_err(|e| e.to_string())? = AiServerState::Idle;
     Ok(())
+}
+
+/// SIGTERM → 700ms grace → SIGKILL on the process listening at `port`.
+/// Used by explicit stop and by app-close cleanup (when we own the process).
+/// The bash launcher detaches the MLX server via `nohup ... &`, so just
+/// reaping the bash child leaves the actual Python server alive; we have to
+/// target the listener by port.
+async fn kill_mlx_listener(port: u16) {
+    let Some(pid) = find_port_listener_pid(port) else {
+        return;
+    };
+    let _ = Command::new(KILL_BIN).arg("-15").arg(&pid).status();
+    tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+    if is_pid_alive(&pid) {
+        let _ = Command::new(KILL_BIN).arg("-9").arg(&pid).status();
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    }
+}
+
+/// App-close cleanup: kill the MLX listener only if this app started it.
+/// Adopted siblings (Lumo etc.) are left running. Blocking call — runs on
+/// the `on_window_event` thread, so we cannot await; we do a best-effort
+/// SIGTERM then SIGKILL in a tight loop.
+pub fn kill_mlx_if_ours(mgr: &AiManager) {
+    if !mgr.started_by_us.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    let Some(pid) = find_port_listener_pid(PORT) else {
+        return;
+    };
+    let _ = Command::new(KILL_BIN).arg("-15").arg(&pid).status();
+    for _ in 0..7 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if find_port_listener_pid(PORT).is_none() {
+            return;
+        }
+    }
+    let _ = Command::new(KILL_BIN).arg("-9").arg(&pid).status();
 }
 
 /// Targeted kill of the exact child we spawned. Called from window-destroyed hook
