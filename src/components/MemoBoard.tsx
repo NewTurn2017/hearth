@@ -27,7 +27,7 @@ import * as api from "../api";
 const ALL_PRIORITIES = new Set(PRIORITIES);
 
 export function MemoBoard() {
-  const { memos, create, update, remove, reload } = useMemos();
+  const { memos, update, remove, reload } = useMemos();
   // MemoBoard wants every project for the grouping + picker; `null` means
   // "no category filter" (전체 보기) so NULL-category rows are also included.
   const { projects } = useProjects(ALL_PRIORITIES, null);
@@ -116,7 +116,7 @@ export function MemoBoard() {
   };
 
   const handleCreate = () => {
-    create({ content: "" });
+    window.dispatchEvent(new CustomEvent("memo:new-dialog"));
   };
 
   const activeMemo =

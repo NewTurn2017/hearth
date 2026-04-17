@@ -3,6 +3,7 @@ import { ask, open } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 import { NewProjectDialog } from "./NewProjectDialog";
+import { NewMemoDialog } from "./NewMemoDialog";
 import { AiSettingsDialog } from "./AiSettingsDialog";
 import { CommandPalette } from "../command/CommandPalette";
 import { buildLocalCommands } from "../command/dispatch";
@@ -76,10 +77,23 @@ export function Layout({
     setNewProjectOpen(true);
   }, []);
 
+  const [newMemoOpen, setNewMemoOpen] = useState(false);
+
+  useEffect(() => {
+    const onNew = () => setNewMemoOpen(true);
+    window.addEventListener("memo:new-dialog", onNew);
+    return () => window.removeEventListener("memo:new-dialog", onNew);
+  }, []);
+
+  const openNewMemo = useCallback(() => {
+    setActiveTab("memos");
+    setNewMemoOpen(true);
+  }, []);
+
   const commands = buildLocalCommands({
     openNewProject,
     openNewSchedule: () => setActiveTab("calendar"),
-    openNewMemo: () => setActiveTab("memos"),
+    openNewMemo,
   });
 
   // Dispatch navigation/UI tool calls returned by the agent. `switch_tab` and
@@ -168,6 +182,10 @@ export function Layout({
       <NewProjectDialog
         open={newProjectOpen}
         onClose={() => setNewProjectOpen(false)}
+      />
+      <NewMemoDialog
+        open={newMemoOpen}
+        onClose={() => setNewMemoOpen(false)}
       />
       <AiSettingsDialog
         open={aiSettingsOpen}
