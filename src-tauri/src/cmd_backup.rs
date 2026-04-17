@@ -74,10 +74,10 @@ pub fn backup_db(
     }
 
     let source = db_path(&app)?;
+    let dir = backup_dir(&app, &state)?;
     let dest = match dest_path {
         Some(p) => PathBuf::from(p),
         None => {
-            let dir = backup_dir(&app, &state)?;
             let timestamp = Local::now().format("%Y-%m-%d-%H%M%S");
             dir.join(format!("hearth-backup-{}.db", timestamp))
         }
@@ -85,7 +85,6 @@ pub fn backup_db(
 
     fs::copy(&source, &dest).map_err(|e| format!("Backup failed: {}", e))?;
 
-    let dir = backup_dir(&app, &state)?;
     let mut backups: Vec<_> = fs::read_dir(&dir)
         .map_err(|e| e.to_string())?
         .filter_map(|e| e.ok())

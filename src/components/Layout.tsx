@@ -88,11 +88,12 @@ export function Layout({
   });
 
   // Dispatch navigation/UI tool calls returned by the agent. `switch_tab` and
-  // `set_filter` map directly to our own state setters. `set_filter` is
-  // defensively filtered against the canonical PRIORITIES/CATEGORIES lists —
-  // the agent is untrusted and a hallucinated category would silently empty
-  // the list without the guard. Deps array is empty: every setter is a
-  // React-stable reference.
+  // `set_filter` map directly to our own state setters. Priorities are
+  // validated against the canonical PRIORITIES list. Categories are now
+  // user-editable, so `set_filter` accepts any non-empty string and trusts
+  // the agent to use a live name; stale names just show an empty filter
+  // until the user picks something else. Deps array is empty: every setter
+  // is a React-stable reference.
   const handleClientIntent = useCallback((call: ToolCall) => {
     const args = call.arguments ?? {};
     switch (call.name) {

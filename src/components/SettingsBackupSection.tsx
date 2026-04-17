@@ -43,6 +43,18 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
+  // Refetch whenever any code path dispatches `backup:changed` (including our
+  // own mutation paths below). Consolidates what used to be three inline
+  // `refresh()` calls.
+  useEffect(() => {
+    const onChanged = () => {
+      void refresh();
+    };
+    window.addEventListener("backup:changed", onChanged);
+    return () => window.removeEventListener("backup:changed", onChanged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handlePickDir = async () => {
     const picked = await openDialog({ directory: true, multiple: false });
     if (!picked) return;
@@ -51,7 +63,6 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
     try {
       const canonical = await api.setBackupDir(next);
       setDir(canonical);
-      await refresh();
       window.dispatchEvent(new CustomEvent("backup:changed"));
       toast.success("백업 위치 변경됨");
     } catch (e) {
@@ -65,7 +76,6 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
     setBusy(true);
     try {
       const path = await api.backupDb();
-      await refresh();
       window.dispatchEvent(new CustomEvent("backup:changed"));
       toast.success(`백업 완료: ${path}`);
     } catch (e) {
