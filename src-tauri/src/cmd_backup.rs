@@ -171,7 +171,6 @@ pub fn auto_backup_on_close(app: &AppHandle) {
     let dest_dir = backup_dir(app, &state).ok();
 
     if let (Some(src), Some(dir)) = (source, dest_dir) {
-        fs::create_dir_all(&dir).ok();
         let timestamp = Local::now().format("%Y-%m-%d-%H%M%S");
         let dest = dir.join(format!("hearth-backup-{}.db", timestamp));
         fs::copy(&src, &dest).ok();
