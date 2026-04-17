@@ -144,3 +144,19 @@ export const saveAiSettings = (input: {
   provider: "local" | "openai";
   openai_api_key?: string;
 }) => invoke<AiSettings>("save_ai_settings", { input });
+
+// UI scale (Cmd+=/-/0). Persisted in the settings KV table.
+export const getUiScale = () => invoke<number>("get_ui_scale");
+export const setUiScale = (scale: number) =>
+  invoke<void>("set_ui_scale", { scale });
+
+// Memo operations keyed by the user-facing #N badge instead of a raw id.
+// The backend resolves N via sort_order OFFSET, so callers pass the number
+// the user sees on the card.
+export const updateMemoByNumber = (
+  number: number,
+  fields: { content?: string; color?: string; project_id?: number | null }
+) => invoke<Memo>("update_memo_by_number", { number, fields });
+
+export const deleteMemoByNumber = (number: number) =>
+  invoke<void>("delete_memo_by_number", { number });
