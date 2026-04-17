@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { open } from "@tauri-apps/plugin-dialog";
+import { ask, open } from "@tauri-apps/plugin-dialog";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 import { NewProjectDialog } from "./NewProjectDialog";
@@ -44,7 +44,14 @@ export function Layout({
       filters: [{ name: "Excel", extensions: ["xlsx", "xls"] }],
     });
     if (!file) return;
-    const clearExisting = confirm("기존 데이터를 삭제하고 새로 가져오시겠습니까?");
+    // Tauri 2's `window.confirm` returns a Promise, not a boolean — an
+    // un-awaited Promise would be serialized to Rust as an object and the
+    // `clear_existing: bool` arg would reject with "invalid type: map".
+    // Use the dialog plugin's async `ask` for a proper Yes/No prompt.
+    const clearExisting = await ask(
+      "기존 데이터를 삭제하고 새로 가져오시겠습니까?",
+      { title: "Excel 가져오기", kind: "warning" }
+    );
     try {
       const filePath = Array.isArray(file) ? file[0] : file;
       const result = await api.importExcel(filePath, clearExisting);
