@@ -21,12 +21,14 @@ export function ProjectList({
   onDelete,
   onReorder,
   onAdd,
+  onOpenDetail,
 }: {
   projects: Project[];
   onUpdate: (id: number, fields: Record<string, string>) => void;
   onDelete: (id: number) => void;
   onReorder: (priority: string, ids: number[]) => void;
   onAdd?: () => void;
+  onOpenDetail: (project: Project) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -115,6 +117,7 @@ export function ProjectList({
                       onDelete={onDelete}
                       onOpenGhostty={(path) => api.openInGhostty(path)}
                       onOpenFinder={(path) => api.openInFinder(path)}
+                      onOpenDetail={onOpenDetail}
                     />
                   ))}
                 </div>

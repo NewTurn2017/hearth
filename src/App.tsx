@@ -37,6 +37,7 @@ function ProjectsTab({
       onDelete={remove}
       onReorder={reorder}
       onAdd={onAdd}
+      onOpenDetail={(p) => console.debug("open detail", p)}
     />
   );
 }
