@@ -20,11 +20,17 @@ import { useToast } from "../ui/Toast";
 import { globalSequence, groupMemosByProject } from "../lib/memoSequence";
 import * as api from "../api";
 
+// Stable Set reference so `useProjects`'s effect deps don't churn every
+// render (useProjects useCallback-s `load` on [priorities, category], and
+// a fresh `new Set(...)` on every render re-creates `load` → refetches in
+// a tight loop).
+const ALL_PRIORITIES = new Set(PRIORITIES);
+
 export function MemoBoard() {
   const { memos, create, update, remove, reload } = useMemos();
   // MemoBoard wants every project for the grouping + picker; `null` means
   // "no category filter" (전체 보기) so NULL-category rows are also included.
-  const { projects } = useProjects(new Set(PRIORITIES), null);
+  const { projects } = useProjects(ALL_PRIORITIES, null);
   const toast = useToast();
 
   const groups = useMemo(

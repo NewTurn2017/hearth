@@ -34,12 +34,19 @@ export function groupMemosByProject(
   memos: Memo[],
   projects: Project[]
 ): MemoGroup[] {
+  const projectIds = new Set(projects.map((p) => p.id));
   const byProject = new Map<number, Memo[]>();
   const etc: Memo[] = [];
 
   const sortedMemos = [...memos].sort((a, b) => a.sort_order - b.sort_order);
   for (const m of sortedMemos) {
-    if (m.project_id === null || m.project_id === undefined) {
+    // Orphaned (project deleted or projects not loaded yet) memos fall to
+    // 기타 rather than vanishing — otherwise the board silently hides them.
+    if (
+      m.project_id === null ||
+      m.project_id === undefined ||
+      !projectIds.has(m.project_id)
+    ) {
       etc.push(m);
     } else {
       const list = byProject.get(m.project_id) ?? [];
