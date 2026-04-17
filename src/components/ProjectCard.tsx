@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Play, FolderOpen, X } from "lucide-react";
+import { GripVertical, Play, FolderOpen, X, Settings2, Trash2 } from "lucide-react";
 import type { Project, Priority } from "../types";
 import {
   CATEGORY_COLORS,
@@ -15,6 +15,9 @@ import { Popover } from "../ui/Popover";
 import { Tooltip } from "../ui/Tooltip";
 import { cn } from "../lib/cn";
 import { useCategories } from "../hooks/useCategories";
+import { useContextMenu } from "../hooks/useContextMenu";
+import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
+import * as api from "../api";
 
 export function ProjectCard({
   project,
@@ -36,6 +39,41 @@ export function ProjectCard({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: project.id });
   const { categories } = useCategories();
+  const { menu, open: openMenu, close: closeMenu } = useContextMenu();
+
+  const menuItems: ContextMenuItem[] = [
+    {
+      id: "settings",
+      label: "프로젝트 설정",
+      icon: Settings2,
+      onSelect: () => onOpenDetail(project),
+    },
+    ...(project.path
+      ? ([
+          {
+            id: "ghostty",
+            label: "Ghostty에서 열기",
+            icon: Play,
+            onSelect: () => api.openInGhostty(project.path!),
+          },
+          {
+            id: "finder",
+            label: "Finder에서 열기",
+            icon: FolderOpen,
+            onSelect: () => api.openInFinder(project.path!),
+          },
+        ] as ContextMenuItem[])
+      : []),
+    { id: "sep", label: "", separator: true, onSelect: () => {} },
+    {
+      id: "delete",
+      label: "삭제",
+      icon: Trash2,
+      danger: true,
+      onSelect: () => onDelete(project.id),
+    },
+  ];
+
   const catRow = categories.find((c) => c.name === project.category);
   const catColor =
     catRow?.color ??
@@ -71,6 +109,7 @@ export function ProjectCard({
       ref={setNodeRef}
       style={style}
       onDoubleClick={() => onOpenDetail(project)}
+      onContextMenu={openMenu}
       className={cn(
         "group relative flex flex-col gap-2 p-3 rounded-[var(--radius-md)]",
         "bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)]",
@@ -288,6 +327,14 @@ export function ProjectCard({
           {project.path}
         </div>
       )}
+
+      <ContextMenu
+        open={menu.open}
+        x={menu.x}
+        y={menu.y}
+        items={menuItems}
+        onClose={closeMenu}
+      />
     </div>
   );
 }
