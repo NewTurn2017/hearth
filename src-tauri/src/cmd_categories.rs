@@ -229,8 +229,8 @@ pub fn reorder_categories(
     state: State<'_, AppState>,
     ids: Vec<i64>,
 ) -> Result<(), String> {
-    let mut db = state.db.lock().map_err(|e| e.to_string())?;
-    let tx = db.transaction().map_err(|e| e.to_string())?;
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = db.unchecked_transaction().map_err(|e| e.to_string())?;
     for (i, id) in ids.iter().enumerate() {
         tx.execute(
             "UPDATE categories SET sort_order = ?1, updated_at = datetime('now') WHERE id = ?2",
