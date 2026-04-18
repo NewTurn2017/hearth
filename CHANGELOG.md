@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-04-18
+
+### Added
+- **데이터 초기화** (Settings → 백업 → 위험 구역) — one-click wipe for projects · memos · schedules · clients, preserving categories · AI settings · backup path · UI scale. A `pre-reset-<timestamp>.db` snapshot is captured automatically **before** the wipe and kept indefinitely (exempt from rolling retention), so an accidental reset is recoverable from the Restore list.
+
+### Changed
+- `list_backups` now returns both rolling `hearth-backup-*.db` entries **and** `pre-reset-*.db` snapshots, so the Restore list shows the pre-reset safety copy.
+
 ## [0.2.1] - 2026-04-18
 
 ### Changed
@@ -35,6 +43,7 @@ First public release.
 - Windows and Linux builds are not yet distributed.
 - The OpenAI API key is still stored in the local SQLite database in plain text; migration to the macOS Keychain is tracked in a separate spec.
 
-[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.2
 [0.2.1]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.1
 [0.2.0]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.0
