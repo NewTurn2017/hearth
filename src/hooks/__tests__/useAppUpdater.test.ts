@@ -42,9 +42,9 @@ afterEach(() => {
 describe("useAppUpdater", () => {
   it("shows toast when an update is available", async () => {
     checkMock.mockResolvedValue({
-      available: true,
       version: "0.3.0",
       downloadAndInstall: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
     });
     renderHook(() => useAppUpdater());
     await act(async () => {
@@ -58,8 +58,8 @@ describe("useAppUpdater", () => {
     expect(opts.actions.map((a) => a.label)).toEqual(["지금 재시작", "나중에"]);
   });
 
-  it("does not toast when update.available is false", async () => {
-    checkMock.mockResolvedValue({ available: false });
+  it("does not toast when check() returns null (no update)", async () => {
+    checkMock.mockResolvedValue(null);
     renderHook(() => useAppUpdater());
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30_001);
@@ -67,22 +67,24 @@ describe("useAppUpdater", () => {
     expect(infoMock).not.toHaveBeenCalled();
   });
 
-  it("does not toast when dismissedVersion matches", async () => {
+  it("does not toast when dismissedVersion matches, and releases the update handle", async () => {
     localStorage.setItem("updater.dismissedVersion", "0.3.0");
-    checkMock.mockResolvedValue({ available: true, version: "0.3.0" });
+    const close = vi.fn().mockResolvedValue(undefined);
+    checkMock.mockResolvedValue({ version: "0.3.0", close });
     renderHook(() => useAppUpdater());
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30_001);
     });
     expect(infoMock).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("toasts again for a newer version than dismissed", async () => {
     localStorage.setItem("updater.dismissedVersion", "0.3.0");
     checkMock.mockResolvedValue({
-      available: true,
       version: "0.3.1",
       downloadAndInstall: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
     });
     renderHook(() => useAppUpdater());
     await act(async () => {
@@ -103,9 +105,9 @@ describe("useAppUpdater", () => {
   it("confirm action downloads + relaunches", async () => {
     const downloadAndInstall = vi.fn().mockResolvedValue(undefined);
     checkMock.mockResolvedValue({
-      available: true,
       version: "0.3.0",
       downloadAndInstall,
+      close: vi.fn().mockResolvedValue(undefined),
     });
     renderHook(() => useAppUpdater());
     await act(async () => {
@@ -120,26 +122,28 @@ describe("useAppUpdater", () => {
     expect(relaunchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("dismiss action persists the version to localStorage", async () => {
+  it("dismiss action persists the version + releases the update handle", async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
     checkMock.mockResolvedValue({
-      available: true,
       version: "0.3.0",
       downloadAndInstall: vi.fn(),
+      close,
     });
     renderHook(() => useAppUpdater());
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30_001);
     });
-    const [, opts] = capturedInfoArgs as [string, { actions: { label: string; run: () => void }[] }];
+    const [, opts] = capturedInfoArgs as [string, { actions: { label: string; run: () => Promise<void> }[] }];
     const dismiss = opts.actions.find((a) => a.label === "나중에")!;
-    act(() => {
-      dismiss.run();
+    await act(async () => {
+      await dismiss.run();
     });
     expect(localStorage.getItem("updater.dismissedVersion")).toBe("0.3.0");
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("re-checks after 24h interval", async () => {
-    checkMock.mockResolvedValue({ available: false });
+    checkMock.mockResolvedValue(null);
     renderHook(() => useAppUpdater());
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30_001);

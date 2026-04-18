@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -69,18 +70,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [remove]
   );
 
-  const api: ToastApi = {
-    success: (message, opts) =>
-      push({ kind: "success", message, undo: opts?.undo }),
-    error: (message) => push({ kind: "error", message }),
-    info: (message, opts) =>
-      push({
-        kind: "info",
-        message,
-        sticky: opts?.sticky,
-        actions: opts?.actions,
-      }),
-  };
+  // Memoize so the context value's identity is stable across re-renders.
+  // Otherwise every toast re-renders ToastProvider → new `api` identity →
+  // every consumer's `useEffect(..., [toast])` restarts (notably the
+  // updater's 30s startup timer and 24h interval).
+  const api = useMemo<ToastApi>(
+    () => ({
+      success: (message, opts) =>
+        push({ kind: "success", message, undo: opts?.undo }),
+      error: (message) => push({ kind: "error", message }),
+      info: (message, opts) =>
+        push({
+          kind: "info",
+          message,
+          sticky: opts?.sticky,
+          actions: opts?.actions,
+        }),
+    }),
+    [push]
+  );
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 

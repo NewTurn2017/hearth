@@ -21,23 +21,31 @@ export function useAppUpdater(): void {
       } catch {
         return;
       }
-      if (cancelled || !update?.available) return;
-      if (localStorage.getItem(DISMISS_KEY) === update.version) return;
+      // `update.available` is @deprecated in @tauri-apps/plugin-updater v2 —
+      // check() returns null when there's nothing new.
+      if (cancelled || update === null) return;
+      if (localStorage.getItem(DISMISS_KEY) === update.version) {
+        // Release the Rust-side Resource so we don't leak handles on each tick.
+        await update.close();
+        return;
+      }
 
-      toast.info(`새 버전 ${update.version} 준비됨`, {
+      const pending = update;
+      toast.info(`새 버전 ${pending.version} 준비됨`, {
         sticky: true,
         actions: [
           {
             label: "지금 재시작",
             run: async () => {
-              await update!.downloadAndInstall();
+              await pending.downloadAndInstall();
               await relaunch();
             },
           },
           {
             label: "나중에",
-            run: () => {
-              localStorage.setItem(DISMISS_KEY, update!.version);
+            run: async () => {
+              localStorage.setItem(DISMISS_KEY, pending.version);
+              await pending.close();
             },
           },
         ],
