@@ -218,8 +218,15 @@ publish_and_verify() {
     return 0
   fi
 
-  log "Creating signed git tag $TAG…"
-  git tag -s "$TAG" -m "Hearth $VERSION"
+  # Prefer a GPG-signed tag when the user has signing configured; fall back to
+  # an annotated tag otherwise. v0.2.0 was tagged annotated; staying consistent.
+  if [[ -n "$(git config --get user.signingkey 2>/dev/null)" ]]; then
+    log "Creating GPG-signed git tag $TAG…"
+    git tag -s "$TAG" -m "Hearth $VERSION"
+  else
+    log "Creating annotated git tag $TAG (no GPG signingkey configured)…"
+    git tag -a "$TAG" -m "Hearth $VERSION"
+  fi
   git push origin "$TAG"
 
   log "gh release create…"
