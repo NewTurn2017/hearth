@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-04-19
+
+### Fixed
+- **DB 손상 크래시 방지 (crash on launch fix)**: `data.db` 파일이 손상된 상태 (`database disk image is malformed`) 로 부팅될 때 앱이 즉시 abort 되던 문제 수정. 이제 손상된 DB 는 `data.db.corrupt-<timestamp>` 로 자동 격리되고, 빈 스키마로 부팅되며, 토스트 알림이 표시되어 사용자가 Settings → 백업 → 복원에서 최근 백업으로 되돌릴 수 있습니다.
+
+### Added
+- `db::init_db_with_recovery` — DB 초기화 실패 시 손상 여부 (`DatabaseCorrupt` / `NotADatabase`) 를 감지하고, 손상된 파일 + WAL/SHM 사이드카를 격리 후 빈 DB 로 재시도.
+- `db:recovered` Tauri 이벤트 + `useDbRecoveryNotice` 훅 — 자동 복구가 일어났을 때 sticky 토스트로 사용자에게 알림.
+
 ## [0.3.1] - 2026-04-18
 
 ### Changed

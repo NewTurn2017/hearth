@@ -11,6 +11,7 @@ import type { Tab, Priority, ToolCall } from "../types";
 import { PRIORITIES } from "../types";
 import { useToast } from "../ui/Toast";
 import { useAppUpdater } from "../hooks/useAppUpdater";
+import { useDbRecoveryNotice } from "../hooks/useDbRecoveryNotice";
 import * as api from "../api";
 
 export function Layout({
@@ -24,6 +25,7 @@ export function Layout({
   }) => React.ReactNode;
 }) {
   useAppUpdater();
+  useDbRecoveryNotice();
   const [activeTab, setActiveTab] = useState<Tab>("projects");
   const [priorities, setPriorities] = useState<Set<Priority>>(new Set(PRIORITIES));
   // null = 전체 보기 (no filter, shows NULL-category rows too). A single

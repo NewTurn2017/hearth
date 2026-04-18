@@ -15,7 +15,7 @@ mod excel_import;
 mod models;
 
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 pub struct AppState {
     pub db: Mutex<rusqlite::Connection>,
@@ -37,11 +37,22 @@ pub fn run() {
             let app_data_dir = app
                 .path()
                 .app_data_dir()
-                .expect("failed to resolve app data dir");
+                .map_err(|e| format!("failed to resolve app data dir: {e}"))?;
             std::fs::create_dir_all(&app_data_dir)?;
 
             let db_path = app_data_dir.join("data.db");
-            let conn = db::init_db(&db_path).expect("failed to init database");
+            // If the DB file is corrupt (`database disk image is malformed`),
+            // quarantine it and boot from an empty schema instead of
+            // panicking. The user is notified via the `db:recovered` event so
+            // they can restore from a backup in Settings → 백업.
+            let (conn, recovered_from) = match db::init_db_with_recovery(&db_path) {
+                Ok(db::DbInitOutcome::Ok(c)) => (c, None),
+                Ok(db::DbInitOutcome::Recovered {
+                    conn,
+                    quarantined_to,
+                }) => (conn, Some(quarantined_to)),
+                Err(e) => return Err(Box::new(e).into()),
+            };
 
             app.manage(AppState {
                 db: Mutex::new(conn),
@@ -54,6 +65,19 @@ pub fn run() {
                     let _ = window.show();
                     let _ = window.set_focus();
                 }
+            }
+
+            // If we recovered from corruption, tell the webview after it
+            // finishes loading so a toast / modal can be shown. The frontend
+            // listens for `db:recovered` with the quarantined path as payload.
+            if let Some(path) = recovered_from {
+                let app_handle = app.handle().clone();
+                let payload = path.to_string_lossy().into_owned();
+                tauri::async_runtime::spawn(async move {
+                    // Small delay so listener is mounted.
+                    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                    let _ = app_handle.emit("db:recovered", payload);
+                });
             }
 
             let app_handle = app.handle().clone();
