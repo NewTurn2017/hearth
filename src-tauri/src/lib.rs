@@ -1,10 +1,12 @@
 pub mod ai_tools;
 mod cmd_actions;
 mod cmd_ai;
+mod cmd_autostart;
 mod cmd_backup;
 mod cmd_categories;
 mod cmd_clients;
 mod cmd_memos;
+mod cmd_notify;
 mod cmd_projects;
 mod cmd_schedules;
 mod cmd_settings;
@@ -26,6 +28,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--hidden"]),
+        ))
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let app_data_dir = app
                 .path()
@@ -39,20 +46,46 @@ pub fn run() {
             app.manage(AppState {
                 db: Mutex::new(conn),
             });
+            app.manage(crate::cmd_notify::Scheduler::new());
 
             app.manage(cmd_ai::AiManager::new(
                 "/Users/genie/dev/side/supergemma-bench/start-mlx.sh".to_string(),
             ));
 
+            let launched_hidden = std::env::args().any(|a| a == "--hidden");
+            if !launched_hidden {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = crate::cmd_notify::reschedule_all_future(&app_handle) {
+                    eprintln!("notification boot reschedule failed: {e}");
+                }
+            });
+
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                cmd_backup::auto_backup_on_close(window.app_handle());
-                if let Some(mgr) = window.app_handle().try_state::<cmd_ai::AiManager>() {
-                    cmd_ai::kill_child(&mgr);
-                    cmd_ai::kill_mlx_if_ours(&mgr);
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    #[cfg(target_os = "macos")]
+                    {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
                 }
+                tauri::WindowEvent::Destroyed => {
+                    cmd_backup::auto_backup_on_close(window.app_handle());
+                    if let Some(mgr) = window.app_handle().try_state::<cmd_ai::AiManager>() {
+                        cmd_ai::kill_child(&mgr);
+                        cmd_ai::kill_mlx_if_ours(&mgr);
+                    }
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -97,7 +130,21 @@ pub fn run() {
             cmd_settings::save_ai_settings,
             cmd_settings::get_ui_scale,
             cmd_settings::set_ui_scale,
+            cmd_notify::notifications_permission,
+            cmd_notify::notifications_request,
+            cmd_autostart::get_autostart,
+            cmd_autostart::set_autostart,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
+                if !has_visible_windows {
+                    if let Some(win) = app_handle.get_webview_window("main") {
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                    }
+                }
+            }
+        });
 }

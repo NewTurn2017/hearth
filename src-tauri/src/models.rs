@@ -22,6 +22,8 @@ pub struct Schedule {
     pub location: Option<String>,
     pub description: Option<String>,
     pub notes: Option<String>,
+    pub remind_before_5min: bool,
+    pub remind_at_start: bool,
     pub created_at: String,
     pub updated_at: String,
 }

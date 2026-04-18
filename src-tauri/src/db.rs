@@ -12,6 +12,25 @@ pub fn init_db(db_path: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
+fn ensure_schedule_reminder_columns(conn: &Connection) -> Result<()> {
+    let mut stmt = conn.prepare("PRAGMA table_info('schedules')")?;
+    let cols: Vec<String> = stmt
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(|r| r.ok())
+        .collect();
+    if !cols.iter().any(|c| c == "remind_before_5min") {
+        conn.execute_batch(
+            "ALTER TABLE schedules ADD COLUMN remind_before_5min INTEGER NOT NULL DEFAULT 0;",
+        )?;
+    }
+    if !cols.iter().any(|c| c == "remind_at_start") {
+        conn.execute_batch(
+            "ALTER TABLE schedules ADD COLUMN remind_at_start INTEGER NOT NULL DEFAULT 0;",
+        )?;
+    }
+    Ok(())
+}
+
 fn run_migrations(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "
@@ -82,6 +101,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         ",
     )?;
 
+    ensure_schedule_reminder_columns(conn)?;
     seed_categories_if_empty(conn)?;
     Ok(())
 }
@@ -108,4 +128,54 @@ fn seed_categories_if_empty(conn: &Connection) -> Result<()> {
     }
     tx.commit()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn legacy_schema(conn: &Connection) {
+        conn.execute_batch(
+            "CREATE TABLE schedules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                time TEXT,
+                location TEXT,
+                description TEXT,
+                notes TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn migrates_legacy_schedules_adds_reminder_columns() {
+        let conn = Connection::open_in_memory().unwrap();
+        legacy_schema(&conn);
+        // Seed a legacy row (no reminder cols).
+        conn.execute(
+            "INSERT INTO schedules (date, time) VALUES ('2026-04-18', '09:00')",
+            [],
+        )
+        .unwrap();
+
+        ensure_schedule_reminder_columns(&conn).unwrap();
+
+        // New columns exist and default to 0.
+        let (b5, ba): (i64, i64) = conn
+            .query_row(
+                "SELECT remind_before_5min, remind_at_start FROM schedules WHERE id=1",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(b5, 0);
+        assert_eq!(ba, 0);
+
+        // Running again is a no-op (idempotent).
+        ensure_schedule_reminder_columns(&conn).unwrap();
+    }
 }

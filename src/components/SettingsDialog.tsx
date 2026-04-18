@@ -8,13 +8,15 @@ import { useState } from "react";
 import { Dialog } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { cn } from "../lib/cn";
+import { SettingsGeneralSection } from "./SettingsGeneralSection";
 import { SettingsAiSection } from "./SettingsAiSection";
 import { SettingsBackupSection } from "./SettingsBackupSection";
 import { SettingsCategoriesSection } from "./SettingsCategoriesSection";
 
-type TabKey = "ai" | "backup" | "categories";
+type TabKey = "general" | "ai" | "backup" | "categories";
 
 const TABS: { key: TabKey; label: string }[] = [
+  { key: "general", label: "일반" },
   { key: "ai", label: "AI" },
   { key: "backup", label: "백업" },
   { key: "categories", label: "카테고리" },
@@ -23,7 +25,7 @@ const TABS: { key: TabKey; label: string }[] = [
 export function SettingsDialog({
   open,
   onClose,
-  initialTab = "ai",
+  initialTab = "general",
 }: {
   open: boolean;
   onClose: () => void;
@@ -71,6 +73,9 @@ export function SettingsDialog({
 
       {/* Each section stays mounted; only visibility flips. `active` tells
           the section it is the one in focus so it can refetch. */}
+      <div className={tab === "general" ? "" : "hidden"}>
+        <SettingsGeneralSection active={tab === "general"} />
+      </div>
       <div className={tab === "ai" ? "" : "hidden"}>
         <SettingsAiSection active={tab === "ai"} />
       </div>

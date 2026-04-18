@@ -72,9 +72,12 @@ export function CalendarView() {
         const dateStr = s.time ? `${s.date}T${s.time}` : s.date;
         const start = new Date(dateStr);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
+        const hasReminder = s.remind_before_5min || s.remind_at_start;
         return {
           id: s.id,
-          title: [s.description, s.location].filter(Boolean).join(" @ ") || "일정",
+          title:
+            (hasReminder ? "🔔 " : "") +
+            ([s.description, s.location].filter(Boolean).join(" @ ") || "일정"),
           start,
           end,
           resource: s,

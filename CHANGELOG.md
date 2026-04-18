@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.3.0 — 2026-04-18
+
+### Added
+- **로그인 시 자동실행** (설정 → 일반). 백그라운드 숨김 시작, Dock 클릭 시 창 복원.
+- **스케줄 알림**: 일정에 "알림 받기" 토글이 생겼고, 켜면 네이티브 시간 피커가 나타납니다. "5분 전" / "정각" 두 가지 오프셋을 독립적으로 선택 가능. 앱이 실행 중일 때 발송됩니다 (tauri-plugin-notification 은 desktop 에서 스케줄링을 지원하지 않아 in-process 타이머로 구현 — 자동실행이 켜져 있으면 로그인 이후 계속 실행되어 알림이 안정적으로 옵니다).
+- 캘린더 뷰에서 알림이 켜진 일정 앞에 🔔 아이콘.
+
+> ⚠️ 개발 모드(`npm run tauri dev`) 에서는 macOS 가 알림을 "Terminal" 로 표시합니다 — 플러그인이 is_dev() 에서 고정 ID 를 씁니다. 릴리즈 번들에서는 Hearth 의 공식 bundle id 로 제대로 뜹니다.
+
+### Fixed
+- 한글로 입력한 뒤 Enter 로 저장할 때 저장되지 않던 문제 (IME composition이 첫 Enter를 소비).
+
+### Migration
+- `schedules` 테이블에 `remind_before_5min`, `remind_at_start` 컬럼 추가. 기존 행은 모두 `0 / 0` (알림 꺼짐) 상태로 유지.
+
 ## [0.2.2] - 2026-04-18
 
 ### Added
@@ -43,7 +58,8 @@ First public release.
 - Windows and Linux builds are not yet distributed.
 - The OpenAI API key is still stored in the local SQLite database in plain text; migration to the macOS Keychain is tracked in a separate spec.
 
-[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/NewTurn2017/hearth/releases/tag/v0.3.0
 [0.2.2]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.2
 [0.2.1]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.1
 [0.2.0]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.0
