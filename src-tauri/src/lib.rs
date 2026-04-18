@@ -40,6 +40,7 @@ pub fn run() {
             app.manage(AppState {
                 db: Mutex::new(conn),
             });
+            app.manage(crate::cmd_notify::Scheduler::new());
 
             app.manage(cmd_ai::AiManager::new(
                 "/Users/genie/dev/side/supergemma-bench/start-mlx.sh".to_string(),

@@ -6,6 +6,13 @@
 //! is derived deterministically from (schedule_id, kind).
 
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
+use std::collections::HashMap;
+use std::sync::Mutex;
+use tauri::{AppHandle, Manager};
+use tauri_plugin_notification::NotificationExt;
+use tauri::async_runtime::JoinHandle;
+
+use crate::models::Schedule;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReminderKind {
@@ -54,6 +61,136 @@ pub fn compute_at(
 /// Skip a reminder whose trigger is already in the past.
 pub fn should_skip_past(now: DateTime<Local>, at: DateTime<Local>) -> bool {
     at <= now
+}
+
+#[derive(Default)]
+pub struct Scheduler {
+    handles: Mutex<HashMap<i32, JoinHandle<()>>>,
+}
+
+impl Scheduler {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn abort(&self, id: i32) {
+        if let Ok(mut map) = self.handles.lock() {
+            if let Some(h) = map.remove(&id) {
+                h.abort();
+            }
+        }
+    }
+
+    fn insert(&self, id: i32, handle: JoinHandle<()>) {
+        if let Ok(mut map) = self.handles.lock() {
+            if let Some(prev) = map.insert(id, handle) {
+                prev.abort();
+            }
+        }
+    }
+}
+
+/// Cancel both possible ids for a schedule. Calling with a schedule id whose
+/// handles aren't present is a no-op.
+pub fn cancel_for_id(app: &AppHandle, schedule_id: i64) {
+    let Some(sched) = app.try_state::<Scheduler>() else {
+        return;
+    };
+    let ids = [
+        notification_id(schedule_id, ReminderKind::Before5Min),
+        notification_id(schedule_id, ReminderKind::AtStart),
+    ];
+    for id in ids {
+        sched.abort(id);
+    }
+}
+
+fn reminder_body(s: &Schedule) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(d) = s.description.as_deref().filter(|t| !t.is_empty()) {
+        parts.push(d.to_string());
+    }
+    if let Some(l) = s.location.as_deref().filter(|t| !t.is_empty()) {
+        parts.push(format!("@ {l}"));
+    }
+    if parts.is_empty() {
+        "일정".to_string()
+    } else {
+        parts.join(" ")
+    }
+}
+
+fn title_for(kind: ReminderKind) -> &'static str {
+    match kind {
+        ReminderKind::Before5Min => "일정 5분 전",
+        ReminderKind::AtStart => "일정 시작",
+    }
+}
+
+/// Spawn a tokio task that sleeps until `at_local`, then calls the plugin's
+/// `.show()` on the main thread via the app handle. On cancel the task is
+/// aborted.
+fn spawn_fire(
+    app: &AppHandle,
+    id: i32,
+    kind: ReminderKind,
+    at_local: DateTime<Local>,
+    body: String,
+) {
+    let handle = app.clone();
+    let task = tauri::async_runtime::spawn(async move {
+        let now = Local::now();
+        let delta = at_local.signed_duration_since(now);
+        // signed_duration_since can be negative if the system clock shifted —
+        // treat negative as "fire immediately" for safety.
+        let secs = delta.num_seconds().max(0) as u64;
+        tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
+        if let Err(e) = handle
+            .notification()
+            .builder()
+            .title(title_for(kind))
+            .body(body)
+            .show()
+        {
+            eprintln!("notification show failed for id {id}: {e}");
+        }
+    });
+
+    if let Some(sched) = app.try_state::<Scheduler>() {
+        sched.insert(id, task);
+    }
+}
+
+/// Re-apply notifications for a single schedule row. Idempotent: cancels any
+/// prior entries first.
+pub fn apply_for(app: &AppHandle, s: &Schedule) -> Result<(), String> {
+    cancel_for_id(app, s.id);
+
+    let Some(time) = s.time.as_deref().filter(|t| !t.is_empty()) else {
+        return Ok(()); // no time → nothing to schedule
+    };
+
+    let now = Local::now();
+    let body = reminder_body(s);
+    let mut reqs: Vec<ReminderKind> = Vec::new();
+    if s.remind_before_5min {
+        reqs.push(ReminderKind::Before5Min);
+    }
+    if s.remind_at_start {
+        reqs.push(ReminderKind::AtStart);
+    }
+
+    for kind in reqs {
+        let Some(at_local) = compute_at(&s.date, time, kind) else {
+            continue;
+        };
+        if should_skip_past(now, at_local) {
+            continue;
+        }
+        let id = notification_id(s.id, kind);
+        spawn_fire(app, id, kind, at_local, body.clone());
+    }
+    Ok(())
 }
 
 #[cfg(test)]
