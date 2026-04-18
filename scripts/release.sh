@@ -126,12 +126,57 @@ build_and_verify() {
   log "Built: $DMG"
 }
 
+notarize_and_staple() {
+  log "notarytool submit (may take 2–10 min)…"
+  SUBMIT_JSON="$(xcrun notarytool submit "$DMG" \
+    --key "$APPLE_API_KEY_PATH" \
+    --key-id "$APPLE_API_KEY_ID" \
+    --issuer "$APPLE_API_ISSUER" \
+    --wait \
+    --output-format json)"
+  echo "$SUBMIT_JSON" | jq .
+  SUBMIT_ID="$(echo "$SUBMIT_JSON" | jq -r .id)"
+  STATUS="$(echo "$SUBMIT_JSON" | jq -r .status)"
+  if [[ "$STATUS" != "Accepted" ]]; then
+    log "notarization failed ($STATUS). Fetching log…"
+    xcrun notarytool log "$SUBMIT_ID" \
+      --key "$APPLE_API_KEY_PATH" \
+      --key-id "$APPLE_API_KEY_ID" \
+      --issuer "$APPLE_API_ISSUER" || true
+    die "notarization not Accepted."
+  fi
+  export SUBMIT_ID
+
+  log "stapler staple DMG…"
+  xcrun stapler staple "$DMG"
+  xcrun stapler validate "$DMG"
+
+  log "stapler staple .app (updater tarball must carry the staple)…"
+  xcrun stapler staple "$APP"
+  xcrun stapler validate "$APP"
+
+  log "Repacking Hearth.app.tar.gz with stapled .app…"
+  (cd "$(dirname "$APP")" && tar -czf Hearth.app.tar.gz Hearth.app)
+
+  log "Signing updater tarball with Tauri Ed25519 key…"
+  TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY" \
+  TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
+  npx tauri signer sign "$TARBALL" > /dev/null
+
+  # tauri signer writes <file>.sig next to the input; capture the content.
+  SIGNATURE="$(cat "$SIG_FILE")"
+  [[ -n "$SIGNATURE" ]] || die "updater signature empty."
+  export SIGNATURE
+  log "Updater signature ready (len=${#SIGNATURE})."
+}
+
 main() {
   preflight
   build_and_verify
-  log "(notarize/staple/publish stages added in subsequent tasks)"
+  notarize_and_staple
+  log "(manifest + gh release + post-verify added in the next task)"
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    log "dry-run: stopping before notarize."
+    log "dry-run: stopping before tag/release."
   fi
 }
 
