@@ -134,10 +134,46 @@ build_and_verify() {
   codesign --verify --deep --strict --verbose=2 "$APP" \
     || die "codesign verify failed on $APP"
 
+  # Snapshot the produced bundle into dist/release/snapshot so that any
+  # post-build cleanup (XProtect, Gatekeeper quarantine, accidental rebuild)
+  # doesn't kill the pipeline. Before we need the originals (staple app,
+  # re-tarball, sign), we check if they're still there and restore from the
+  # snapshot if not. One-time cost; takes maybe ~150 MB and a few seconds.
+  SNAPSHOT_DIR="$ROOT/dist/release/snapshot"
+  rm -rf "$SNAPSHOT_DIR"
+  mkdir -p "$SNAPSHOT_DIR"
+  log "Snapshotting bundle artifacts → $SNAPSHOT_DIR"
+  cp -R "$APP" "$SNAPSHOT_DIR/"
+  cp    "$TARBALL" "$SNAPSHOT_DIR/"
+  cp    "$SIG_FILE" "$SNAPSHOT_DIR/"
+  cp    "$DMG" "$SNAPSHOT_DIR/"
+
   log "Built: $DMG"
 }
 
+# Restore an artifact from the snapshot if the current bundle path is gone.
+# Tauri's post-build cleanup (or a spurious mac daemon) occasionally wipes
+# bundle/macos/ between notarize and staple — we saw this on the first
+# 0.3.0 attempt. Calling this before each file read makes staple/sign
+# resilient without changing semantics.
+restore_if_missing() {
+  local src="$1" dst="$2"
+  if [[ ! -e "$dst" ]]; then
+    [[ -e "$src" ]] || die "snapshot missing: $src (cannot restore $dst)"
+    log "Restoring $(basename "$dst") from snapshot"
+    mkdir -p "$(dirname "$dst")"
+    cp -R "$src" "$dst"
+  fi
+}
+
 notarize_and_staple() {
+  # Belt-and-suspenders: if the snapshot step preserved the DMG/app/tarball
+  # and the bundle dir has since been cleared, restore them before notarize.
+  restore_if_missing "$SNAPSHOT_DIR/$(basename "$DMG")" "$DMG"
+  restore_if_missing "$SNAPSHOT_DIR/Hearth.app" "$APP"
+  restore_if_missing "$SNAPSHOT_DIR/$(basename "$TARBALL")" "$TARBALL"
+  restore_if_missing "$SNAPSHOT_DIR/$(basename "$SIG_FILE")" "$SIG_FILE"
+
   log "notarytool submit (may take 2–10 min)…"
   SUBMIT_JSON="$(xcrun notarytool submit "$DMG" \
     --key "$APPLE_API_KEY_PATH" \
@@ -159,10 +195,12 @@ notarize_and_staple() {
   export SUBMIT_ID
 
   log "stapler staple DMG…"
+  restore_if_missing "$SNAPSHOT_DIR/$(basename "$DMG")" "$DMG"
   xcrun stapler staple "$DMG"
   xcrun stapler validate "$DMG"
 
   log "stapler staple .app (updater tarball must carry the staple)…"
+  restore_if_missing "$SNAPSHOT_DIR/Hearth.app" "$APP"
   xcrun stapler staple "$APP"
   xcrun stapler validate "$APP"
 
