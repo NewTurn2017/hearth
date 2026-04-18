@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-18
+
+### Changed
+- README: 프로젝트 보드에 "Drag & Drop 재정렬" 기능 명확히 표기.
+- README: 일정 알림, 로그인 시 자동실행 기능 설명 추가.
+- README: v0.2.0 → 현재 로 버전 표기 개선.
+
 ## [0.3.0] - 2026-04-18
 
 ### Added
@@ -18,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - 한글로 입력한 뒤 Enter 로 저장할 때 저장되지 않던 문제 (IME composition이 첫 Enter를 소비).
+- 프로젝트 우선순위 재정렬 Drag & Drop: 드롭존 너비를 카드 전체로 확대해 드래그 가능 영역 개선.
+- 프로젝트 우선순위 재정렬: pointer-first 이벤트 전략으로 전환해 카드 클릭이 드래그로 오인식되던 충돌 해소.
+- 빨간 버튼(창 닫기) 클릭 시 Tauri 윈도우가 파괴되지 않고 숨겨지도록 수정 (재열기 가능하게).
 
 ### Removed / Changed
 - 로컬 MLX 백엔드 제거. AI 는 OpenAI 전용으로 정리했고, API 키는 **선택 사항**입니다. 키가 없으면 ⌘K AI 명령만 비활성화되고, 프로젝트·메모·캘린더·알림 등 나머지 기능은 그대로 동작합니다.

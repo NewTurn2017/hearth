@@ -26,10 +26,12 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 - **AI 도우미** — "내일 오후 3시에 치과 예약 추가해줘" 같은 한국어 지시를 그대로 실행
 - **변경 확인 다이얼로그** — 생성 · 수정 · 삭제 전에 항상 확인 모달 + 실행 후 Undo 토스트
 - **우클릭 컨텍스트 메뉴** — 프로젝트/메모 카드에서 설정, Ghostty·Finder 열기, 색상 변경, 프로젝트 이동, 삭제. 네이티브 WebKit 메뉴(Inspect Element 포함)는 전역 차단 — 개발자 도구는 `⌘⌥I`로 접근
-- **프로젝트 보드** — 우선순위 `P0~P4`, 경로, 평가 메모, **사용자 편집 가능 카테고리** (이름 변경 시 프로젝트에 자동 반영, 사용 중인 카테고리는 삭제 거부)
+- **프로젝트 보드** — 우선순위 `P0~P4` Drag & Drop 재정렬, 경로, 평가 메모, **사용자 편집 가능 카테고리** (이름 변경 시 프로젝트에 자동 반영, 사용 중인 카테고리는 삭제 거부)
 - **스티키 메모** — 5색 · 특정 프로젝트에 붙이기 · 떼기. 새 메모는 **내용 + 프로젝트 + 색상 다이얼로그**로 생성
 - **일정 캘린더** — `react-big-calendar` 기반 월/주/일 뷰, 드래그로 이동
-- **통합 설정 모달** — AI · 백업 · 카테고리 탭. 백업 위치를 사용자가 직접 지정 가능
+- **일정 알림** — 각 일정에 "알림 받기" 토글. "5분 전" / "정각" 오프셋 독립 선택. 알림이 켜진 일정은 캘린더에서 🔔 아이콘으로 표시
+- **로그인 시 자동실행** — 설정 → 일반에서 켜면 로그인 직후 백그라운드로 시작. Dock 클릭 시 창 복원. 자동실행 ON이면 알림이 로그인 이후 안정적으로 발송
+- **통합 설정 모달** — 일반(자동실행·알림) · AI · 백업 · 카테고리 탭. 백업 위치를 사용자가 직접 지정 가능
 - **AI 명령 팔레트 (선택)** — OpenAI 를 키로 연결하면 ⌘K 에서 자연어 명령 사용. 키 없으면 AI 만 비활성, 나머지는 그대로 동작
 - **로컬 저장** — 모든 데이터는 SQLite 한 파일(`~/Library/Application Support/com.newturn2017.hearth/`)에
 
@@ -41,7 +43,7 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 
 ### macOS (공식 릴리즈)
 
-1. [최신 릴리즈 페이지](https://github.com/NewTurn2017/hearth/releases/latest)에서 `Hearth_<버전>_aarch64.dmg` 다운로드 **(v0.2.0 은 Apple Silicon 전용. Intel Mac 지원은 후속 릴리즈.)**
+1. [최신 릴리즈 페이지](https://github.com/NewTurn2017/hearth/releases/latest)에서 `Hearth_<버전>_aarch64.dmg` 다운로드 **(현재 Apple Silicon 전용. Intel Mac 지원은 후속 릴리즈.)**
 2. DMG 더블클릭 → 열린 창에서 **Hearth.app** 을 **Applications** 폴더로 드래그
 3. **첫 실행만** Finder 에서 `Applications/Hearth.app` 우클릭 → **열기** (Gatekeeper 확인 1회)
 4. 이후에는 일반 앱처럼 실행
@@ -99,6 +101,19 @@ Ctrl+K  (Windows / Linux)
 | 메모 | 편집 · 색상 변경 (인라인 스와치) · 프로젝트 이동 · 삭제 |
 
 네이티브 WebKit 우클릭 메뉴는 전역 차단됩니다. 개발자 도구는 `⌘⌥I` (macOS) / `Ctrl+Shift+I` (Windows·Linux)로 계속 열 수 있습니다.
+
+### 데이터 초기화
+
+**설정 → 백업 → 위험 구역**에서 프로젝트 · 메모 · 일정 · 클라이언트를 한 번에 초기화할 수 있습니다. 카테고리 · AI 설정 · 백업 경로 · UI 스케일은 보존됩니다. 초기화 직전에 `pre-reset-<timestamp>.db` 스냅샷을 자동으로 생성해 두므로 실수로 초기화해도 **설정 → 백업 → 복원**에서 되돌릴 수 있습니다.
+
+### 일정 알림 설정
+
+1. 상단 바 **설정 → 일반** → **알림 허용** 버튼으로 macOS 알림 권한 부여 (최초 1회)
+2. 캘린더 탭에서 일정 카드 클릭 → 편집 모달의 **알림 받기** 토글 활성화
+3. **5분 전** / **정각** 두 오프셋을 독립적으로 선택
+4. 저장 후 캘린더에서 🔔 아이콘으로 알림 활성화 여부 확인 가능
+
+> 알림은 앱이 실행 중일 때만 발송됩니다. **설정 → 일반 → 로그인 시 자동실행**을 켜두면 로그인 이후에도 알림이 안정적으로 옵니다. 개발 모드(`npm run tauri dev`)에서는 macOS가 "Terminal" 이름으로 알림을 표시합니다 — 릴리즈 빌드에서는 "Hearth"로 표시됩니다.
 
 ### 카테고리 관리
 
@@ -188,7 +203,7 @@ npm run tauri build
 ┌────────────────────────────────────────────────────────┐
 │  React 19 · Tailwind 4 · cmdk command palette          │
 │  ├── ContextMenu primitive + useContextMenu hook       │
-│  ├── SettingsDialog (AI · 백업 · 카테고리 tabs)          │
+│  ├── SettingsDialog (일반 · AI · 백업 · 카테고리 tabs)     │
 │  ├── NewMemoDialog + MemoProjectPickerDialog           │
 │  └── useCategories (reactive store, event-driven)      │
 └──────────────┬─────────────────────────────────────────┘
@@ -196,10 +211,11 @@ npm run tauri build
 ┌──────────────┴─────────────────────────────────────────┐
 │  Rust core: rusqlite + reqwest + tokio                 │
 │  ├── cmd_ai.rs         tool-calling agent loop         │
-│  ├── ai_tools.rs       17-tool registry                │
+│  ├── ai_tools.rs       18-tool registry                │
 │  ├── cmd_projects      memos · schedules · clients     │
 │  ├── cmd_categories    CRUD + rename cascade           │
 │  ├── cmd_backup        KV-backed backup dir + rotation │
+│  ├── cmd_notify        in-process reminder scheduler   │
 │  ├── cmd_settings      settings KV helpers             │
 │  └── db.rs             schema + idempotent seed        │
 └──────────────┬─────────────────────────────────────────┘

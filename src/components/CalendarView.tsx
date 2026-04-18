@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import moment from "moment";
 import "moment/locale/ko";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import { CalendarDays, Plus } from "lucide-react";
 import { ScheduleModal } from "./ScheduleModal";
 import { useSchedules } from "../hooks/useSchedules";
@@ -11,6 +13,8 @@ import { Button } from "../ui/Button";
 
 moment.locale("ko");
 const localizer = momentLocalizer(moment);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar as any);
 
 interface CalendarEvent {
   id: number;
@@ -111,6 +115,27 @@ export function CalendarView() {
     }
   };
 
+  const handleEventDrop = async ({
+    event,
+    start,
+  }: {
+    event: CalendarEvent;
+    start: Date | string;
+    end: Date | string;
+  }) => {
+    const s = event.resource;
+    const newDate = moment(start).format("YYYY-MM-DD");
+    await update(s.id, {
+      date: newDate,
+      time: s.time ?? undefined,
+      location: s.location ?? undefined,
+      description: s.description ?? undefined,
+      notes: s.notes ?? undefined,
+      remind_before_5min: s.remind_before_5min,
+      remind_at_start: s.remind_at_start,
+    });
+  };
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex justify-between items-center mb-5">
@@ -128,7 +153,7 @@ export function CalendarView() {
         </Button>
       </div>
       <div className="flex-1 min-h-0">
-        <Calendar
+        <DnDCalendar
           localizer={localizer}
           events={events}
           startAccessor="start"
@@ -136,6 +161,8 @@ export function CalendarView() {
           selectable
           onSelectSlot={handleSelectSlot}
           onSelectEvent={handleSelectEvent}
+          onEventDrop={handleEventDrop}
+          draggableAccessor={() => true}
           style={{ height: "100%" }}
           views={["month"]}
           defaultView="month"
