@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-18
+
+### Changed
+- **New app icon** — a warm flame over a hearthstone in a deep midnight squircle. The scaffold-default Tauri logo is gone; Hearth now looks like its name.
+
+### Fixed
+- `scripts/release.sh` updater-signing regression: the standalone `tauri signer sign` CLI refuses to accept `--private-key-path` when `TAURI_SIGNING_PRIVATE_KEY` is also present in the environment. The release driver now scrubs that env var for just the sign call. This fix is what makes v0.2.1 (and any future release) shippable.
+
 ## [0.2.0] - 2026-04-18
 
 First public release.
@@ -27,5 +35,6 @@ First public release.
 - Windows and Linux builds are not yet distributed.
 - The OpenAI API key is still stored in the local SQLite database in plain text; migration to the macOS Keychain is tracked in a separate spec.
 
-[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.1
 [0.2.0]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.0
