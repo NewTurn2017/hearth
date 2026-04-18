@@ -170,13 +170,75 @@ notarize_and_staple() {
   log "Updater signature ready (len=${#SIGNATURE})."
 }
 
+write_manifest_and_notes() {
+  log "Writing dist/release/latest.json…"
+  "$ROOT/scripts/generate-manifest.sh" "$VERSION" "$SIGNATURE"
+
+  log "Extracting release notes…"
+  mkdir -p dist/release
+  "$ROOT/scripts/extract-release-notes.sh" "$VERSION" > dist/release/notes.md
+
+  # Append user-facing install/update footer.
+  cat >> dist/release/notes.md <<'EOF'
+
+---
+
+**설치 (macOS)**
+
+`Hearth_*_universal.dmg` 를 받아서 Applications 로 드래그하세요. 첫 실행만 우클릭 → "열기" 로 Gatekeeper 를 1회 통과하면 됩니다 (공증된 빌드라 "알 수 없는 개발자" 경고는 없습니다).
+
+**업데이트**
+
+앱이 켜져 있으면 자동으로 새 버전을 확인합니다. 업데이트 토스트에서 "지금 재시작" 을 누르면 2–3초 내에 새 버전으로 교체됩니다.
+EOF
+}
+
+publish_and_verify() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "dry-run: skipping git tag + gh release create."
+    log "artifacts prepared:"
+    ls -lh "$DMG" "$TARBALL" "$SIG_FILE" dist/release/latest.json dist/release/notes.md
+    return 0
+  fi
+
+  log "Creating signed git tag $TAG…"
+  git tag -s "$TAG" -m "Hearth $VERSION"
+  git push origin "$TAG"
+
+  log "gh release create…"
+  gh release create "$TAG" \
+    --repo "$GH_REPO" \
+    --title "Hearth $VERSION" \
+    --notes-file dist/release/notes.md \
+    "$DMG" \
+    "$TARBALL" \
+    "$SIG_FILE" \
+    "dist/release/latest.json"
+
+  log "Post-verify: latest.json version round-trip…"
+  REMOTE_VER="$(curl -sL "https://github.com/$GH_REPO/releases/latest/download/latest.json" | jq -r .version)"
+  [[ "$REMOTE_VER" == "$VERSION" ]] \
+    || die "permalink mismatch: expected $VERSION got $REMOTE_VER"
+
+  log "Release published:"
+  log "  https://github.com/$GH_REPO/releases/tag/$TAG"
+}
+
 main() {
   preflight
   build_and_verify
   notarize_and_staple
-  log "(manifest + gh release + post-verify added in the next task)"
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    log "dry-run: stopping before tag/release."
+  write_manifest_and_notes
+  publish_and_verify
+
+  log "Done."
+  log "  version:    $VERSION"
+  log "  tag:        $TAG"
+  log "  dmg:        $DMG"
+  log "  notarize:   ${SUBMIT_ID:-(n/a)}"
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    log "  release:    https://github.com/$GH_REPO/releases/tag/$TAG"
+    log "  manifest:   https://github.com/$GH_REPO/releases/latest/download/latest.json"
   fi
 }
 
