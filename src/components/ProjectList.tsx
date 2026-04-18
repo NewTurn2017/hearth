@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   DndContext,
   DragOverlay,
   PointerSensor,
   closestCorners,
+  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -18,7 +19,39 @@ import { PRIORITIES, PRIORITY_COLORS, PRIORITY_LABELS } from "../types";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
 import { useToast } from "../ui/Toast";
+import { cn } from "../lib/cn";
 import * as api from "../api";
+
+/**
+ * Wraps a priority group's card grid so dropping on gutters / whitespace
+ * still counts as a drop on that group (append at end). Without this, only
+ * direct card hovers registered, which made cross-group moves feel like a
+ * tiny target. `closestCorners` will still prefer a specific card when the
+ * pointer is over one — the wrapper wins only on empty space.
+ */
+function GroupDropZone({
+  priority,
+  active,
+  children,
+}: {
+  priority: Priority;
+  active: boolean;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `priority-${priority}-group` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "w-full rounded-[var(--radius-md)] p-1 transition-colors",
+        active && "border-2 border-dashed border-[var(--color-border)]",
+        active && isOver && "border-[var(--color-brand)] bg-[var(--color-surface-2)]"
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function ProjectList({
   projects,
@@ -190,19 +223,24 @@ export function ProjectList({
                       label={`${priority} 비어 있음 · 드래그해서 추가`}
                     />
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {items.map((project) => (
-                        <ProjectCard
-                          key={project.id}
-                          project={project}
-                          onUpdate={onUpdate}
-                          onDelete={onDelete}
-                          onOpenGhostty={(path) => api.openInGhostty(path)}
-                          onOpenFinder={(path) => api.openInFinder(path)}
-                          onOpenDetail={onOpenDetail}
-                        />
-                      ))}
-                    </div>
+                    <GroupDropZone
+                      priority={priority}
+                      active={activeId !== null}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {items.map((project) => (
+                          <ProjectCard
+                            key={project.id}
+                            project={project}
+                            onUpdate={onUpdate}
+                            onDelete={onDelete}
+                            onOpenGhostty={(path) => api.openInGhostty(path)}
+                            onOpenFinder={(path) => api.openInFinder(path)}
+                            onOpenDetail={onOpenDetail}
+                          />
+                        ))}
+                      </div>
+                    </GroupDropZone>
                   )}
                 </SortableContext>
               </div>
