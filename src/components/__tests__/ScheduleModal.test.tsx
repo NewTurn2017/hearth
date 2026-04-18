@@ -55,6 +55,18 @@ describe("ScheduleModal notify toggle", () => {
     );
   });
 
+  it("disables save and shows hint when notify is on but time is cleared", () => {
+    render(<ScheduleModal onSave={vi.fn()} onClose={vi.fn()} initialDate="2026-04-20" />);
+    // Turn notify on — time auto-populates to 09:00 per Task 12 spec.
+    fireEvent.click(screen.getByLabelText("알림 받기"));
+    // Clear it.
+    const timeInput = screen.getByLabelText("시간") as HTMLInputElement;
+    fireEvent.change(timeInput, { target: { value: "" } });
+    // Save must be disabled + hint visible.
+    expect(screen.getByRole("button", { name: "저장" })).toBeDisabled();
+    expect(screen.getByText("시간을 입력해 주세요.")).toBeInTheDocument();
+  });
+
   it("hydrates notify=true when editing a schedule with time", () => {
     render(
       <ScheduleModal
@@ -96,7 +108,7 @@ describe("ScheduleModal IME-safe Enter", () => {
     render(<ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" />);
     const location = screen.getByLabelText("장소");
     fireEvent.keyDown(location, {
-      key: "Enter",
+      key: "Process", // Safari/WebKit emits "Process" while IME is mid-composition
       code: "Enter",
       keyCode: 229, // WebKit legacy marker for IME-in-progress
       isComposing: true,
