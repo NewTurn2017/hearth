@@ -38,10 +38,13 @@ die() { printf '\033[1;31m[release]\033[0m %s\n' "$*" >&2; exit 1; }
 preflight() {
   log "Preflight…"
 
-  # Clean git + on main
+  # Clean git + on main (dry-run may run from any branch so engineers can
+  # verify the pipeline end-to-end before merging the feature branch).
   [[ -z "$(git status --porcelain)" ]] || die "git working tree not clean."
   BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-  [[ "$BRANCH" == "main" ]] || die "not on main (current: $BRANCH)."
+  if [[ "$DRY_RUN" -eq 0 && "$BRANCH" != "main" ]]; then
+    die "not on main (current: $BRANCH). Re-run with --dry-run to validate the pipeline from any branch."
+  fi
 
   # Version sync across 3 manifests
   VER_PKG="$(jq -r .version package.json)"
@@ -64,12 +67,12 @@ preflight() {
 
   # .env.release fields
   for v in APPLE_API_KEY_PATH APPLE_API_KEY_ID APPLE_API_ISSUER \
-           TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD GH_REPO; do
+           TAURI_SIGNING_PRIVATE_KEY_PATH TAURI_SIGNING_PRIVATE_KEY_PASSWORD GH_REPO; do
     [[ -n "${!v:-}" ]] || die ".env.release missing $v"
   done
   [[ -f "$APPLE_API_KEY_PATH" ]] || die "APPLE_API_KEY_PATH not a file: $APPLE_API_KEY_PATH"
-  [[ -f "$TAURI_SIGNING_PRIVATE_KEY" ]] \
-    || die "TAURI_SIGNING_PRIVATE_KEY not a file: $TAURI_SIGNING_PRIVATE_KEY"
+  [[ -f "$TAURI_SIGNING_PRIVATE_KEY_PATH" ]] \
+    || die "TAURI_SIGNING_PRIVATE_KEY_PATH not a file: $TAURI_SIGNING_PRIVATE_KEY_PATH"
 
   # Tooling
   command -v gh >/dev/null         || die "gh CLI not installed."
@@ -98,6 +101,12 @@ preflight() {
 }
 
 build_and_verify() {
+  # `tauri build` reads TAURI_SIGNING_PRIVATE_KEY (with a transparent path
+  # fallback — if the value is a valid filesystem path it's treated as one).
+  # Our .env.release stores the path under TAURI_SIGNING_PRIVATE_KEY_PATH for
+  # consistency with `tauri signer sign --private-key-path`. Bridge the two.
+  export TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY_PATH"
+
   log "npm ci…"
   npm ci --silent
 
@@ -159,9 +168,14 @@ notarize_and_staple() {
   (cd "$(dirname "$APP")" && tar -czf Hearth.app.tar.gz Hearth.app)
 
   log "Signing updater tarball with Tauri Ed25519 key…"
-  TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY" \
-  TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
-  npx tauri signer sign "$TARBALL" > /dev/null
+  # `tauri signer sign` (standalone CLI) treats the env var TAURI_SIGNING_PRIVATE_KEY
+  # as *inline* key material — only `tauri build` auto-detects paths. Use the explicit
+  # --private-key-path flag to avoid silent failures when the env var holds a filesystem
+  # path (the common and documented convention in .env.release.example).
+  npx tauri signer sign \
+    --private-key-path "$TAURI_SIGNING_PRIVATE_KEY_PATH" \
+    --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
+    "$TARBALL" > /dev/null
 
   # tauri signer writes <file>.sig next to the input; capture the content.
   SIGNATURE="$(cat "$SIG_FILE")"
