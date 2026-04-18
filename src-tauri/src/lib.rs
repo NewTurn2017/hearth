@@ -1,6 +1,7 @@
 pub mod ai_tools;
 mod cmd_actions;
 mod cmd_ai;
+mod cmd_autostart;
 mod cmd_backup;
 mod cmd_categories;
 mod cmd_clients;
@@ -101,6 +102,8 @@ pub fn run() {
             cmd_settings::set_ui_scale,
             cmd_notify::notifications_permission,
             cmd_notify::notifications_request,
+            cmd_autostart::get_autostart,
+            cmd_autostart::set_autostart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
