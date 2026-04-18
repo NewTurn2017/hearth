@@ -79,3 +79,28 @@ describe("ScheduleModal notify toggle", () => {
     expect(screen.getByLabelText("5분 전")).toBeChecked();
   });
 });
+
+describe("ScheduleModal IME-safe Enter", () => {
+  it("submits on Enter when composition is not active", () => {
+    const onSave = vi.fn();
+    render(<ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" />);
+    const location = screen.getByLabelText("장소");
+    // fireEvent.keyDown exposes the synthetic KeyboardEvent; jsdom default
+    // isComposing=false / keyCode=13 for Enter.
+    fireEvent.keyDown(location, { key: "Enter", code: "Enter" });
+    expect(onSave).toHaveBeenCalled();
+  });
+
+  it("does NOT submit on Enter during IME composition", () => {
+    const onSave = vi.fn();
+    render(<ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" />);
+    const location = screen.getByLabelText("장소");
+    fireEvent.keyDown(location, {
+      key: "Enter",
+      code: "Enter",
+      keyCode: 229, // WebKit legacy marker for IME-in-progress
+      isComposing: true,
+    });
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});
