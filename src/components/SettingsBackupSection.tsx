@@ -6,7 +6,7 @@
 // `data.db` and the app only fully settles after the next launch.
 
 import { useEffect, useState } from "react";
-import { FolderCog, RotateCcw, Save } from "lucide-react";
+import { AlertTriangle, FolderCog, RotateCcw, Save, Trash2 } from "lucide-react";
 import { ask, open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
@@ -103,6 +103,30 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
     }
   };
 
+  const handleReset = async () => {
+    const ok = await ask(
+      "모든 프로젝트 · 메모 · 일정 · 클라이언트가 삭제됩니다.\n" +
+        "카테고리 · AI 설정 · 백업 경로 · UI 스케일은 유지됩니다.\n\n" +
+        "초기화 직전 스냅샷이 백업 폴더에 저장되므로 '최근 백업' 에서 복원할 수 있습니다.\n\n" +
+        "계속하시겠습니까?",
+      { title: "데이터 초기화", kind: "warning" }
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const snapshot = await api.resetData();
+      window.dispatchEvent(new CustomEvent("backup:changed"));
+      window.dispatchEvent(new CustomEvent("projects:changed"));
+      window.dispatchEvent(new CustomEvent("memos:changed"));
+      window.dispatchEvent(new CustomEvent("schedules:changed"));
+      toast.success(`초기화 완료 — 스냅샷: ${snapshot}`);
+    } catch (e) {
+      toast.error(`초기화 실패: ${e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -182,6 +206,33 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
             ))}
           </ul>
         )}
+      </div>
+
+      <div
+        className={cn(
+          "rounded-[var(--radius-md)] border border-[var(--color-danger)]/60",
+          "bg-[var(--color-danger)]/5 p-3 flex flex-col gap-2"
+        )}
+      >
+        <div className="flex items-center gap-1.5 text-[var(--color-danger)]">
+          <Icon icon={AlertTriangle} size={14} />
+          <span className="text-[12px] font-medium">위험 구역</span>
+        </div>
+        <p className="text-[11px] text-[var(--color-text-dim)] leading-relaxed">
+          프로젝트 · 메모 · 일정 · 클라이언트를 모두 삭제합니다. 카테고리 · AI 설정 · 백업 경로는 유지돼요. 초기화 직전 스냅샷이 <span className="font-mono">pre-reset-…</span> 이름으로 백업 폴더에 저장되므로 '최근 백업' 에서 되돌릴 수 있습니다.
+        </p>
+        <div className="flex justify-end">
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={Trash2}
+            onClick={handleReset}
+            disabled={busy}
+            className="!text-[var(--color-danger)] !border-[var(--color-danger)]/40 hover:!bg-[var(--color-danger)]/10"
+          >
+            데이터 초기화
+          </Button>
+        </div>
       </div>
     </div>
   );

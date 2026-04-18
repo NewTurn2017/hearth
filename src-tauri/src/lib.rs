@@ -82,6 +82,7 @@ pub fn run() {
             cmd_backup::list_backups,
             cmd_backup::get_backup_dir,
             cmd_backup::set_backup_dir,
+            cmd_backup::reset_data,
             cmd_categories::get_categories,
             cmd_categories::create_category,
             cmd_categories::update_category,
