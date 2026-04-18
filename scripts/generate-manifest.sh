@@ -31,8 +31,7 @@ jq -n \
     notes:   $notes,
     pub_date: $pub,
     platforms: {
-      "darwin-aarch64": { signature: $sig, url: $url },
-      "darwin-x86_64":  { signature: $sig, url: $url }
+      "darwin-aarch64": { signature: $sig, url: $url }
     }
   }' > "$OUT"
 

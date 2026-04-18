@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 First public release.
 
 ### Added
-- macOS universal DMG (aarch64 + x86_64), signed with Developer ID and notarized by Apple.
+- macOS Apple Silicon (aarch64) DMG, signed with Developer ID and notarized by Apple.
 - Auto-updater (`tauri-plugin-updater`): checks for updates 30 seconds after launch and every 24 hours. When a newer version is available, a toast offers "지금 재시작" (install now) or "나중에" (skip this version).
 - `CHANGELOG.md` + `docs/releasing.md` + `scripts/release.sh` release tooling.
 - Content Security Policy restricting network access to `self`, the OpenAI API, and the local MLX endpoint.
@@ -23,6 +23,7 @@ First public release.
 - README Installation section now points to the GitHub Releases DMG.
 
 ### Known limitations
+- Intel Mac (x86_64) builds are not yet distributed — v0.2.0 is Apple Silicon only. MLX backend was Apple Silicon exclusive already.
 - Windows and Linux builds are not yet distributed.
 - The OpenAI API key is still stored in the local SQLite database in plain text; migration to the macOS Keychain is tracked in a separate spec.
 

@@ -42,7 +42,7 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 
 ### macOS (공식 릴리즈)
 
-1. [최신 릴리즈 페이지](https://github.com/NewTurn2017/hearth/releases/latest)에서 `Hearth_<버전>_universal.dmg` 다운로드
+1. [최신 릴리즈 페이지](https://github.com/NewTurn2017/hearth/releases/latest)에서 `Hearth_<버전>_aarch64.dmg` 다운로드 **(v0.2.0 은 Apple Silicon 전용. Intel Mac 지원은 후속 릴리즈.)**
 2. DMG 더블클릭 → 열린 창에서 **Hearth.app** 을 **Applications** 폴더로 드래그
 3. **첫 실행만** Finder 에서 `Applications/Hearth.app` 우클릭 → **열기** (Gatekeeper 확인 1회)
 4. 이후에는 일반 앱처럼 실행

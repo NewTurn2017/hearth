@@ -82,10 +82,12 @@ preflight() {
   xcrun --find stapler    >/dev/null || die "xcrun stapler missing; install Xcode CLT."
   security find-identity -v -p codesigning | grep -q "Developer ID Application: jaehyun jang (2UANJX7ATM)" \
     || die "Developer ID signing identity not in keychain."
-  rustup target list --installed | grep -q aarch64-apple-darwin \
-    || die "rustup target aarch64-apple-darwin not installed."
-  rustup target list --installed | grep -q x86_64-apple-darwin \
-    || die "rustup target x86_64-apple-darwin not installed."
+  # v0.2.0 ships aarch64 (Apple Silicon) only. MLX is Apple Silicon exclusive
+  # anyway; Intel support is a follow-up if demand appears.
+  command -v rustc >/dev/null || die "rustc not installed."
+  HOST_TRIPLE="$(rustc -vV | awk '/^host:/ {print $2}')"
+  [[ "$HOST_TRIPLE" == "aarch64-apple-darwin" ]] \
+    || die "host rustc triple must be aarch64-apple-darwin (got: $HOST_TRIPLE)"
 
   # Tests
   if [[ "$SKIP_TESTS" -eq 0 ]]; then
@@ -113,12 +115,12 @@ build_and_verify() {
   log "cargo fetch…"
   (cd src-tauri && cargo fetch --quiet)
 
-  log "tauri build (universal-apple-darwin)…"
-  npm run tauri -- build --target universal-apple-darwin
+  log "tauri build (aarch64-apple-darwin)…"
+  npm run tauri -- build --target aarch64-apple-darwin
 
-  DMG_DIR="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
-  MACOS_DIR="src-tauri/target/universal-apple-darwin/release/bundle/macos"
-  DMG="$(ls "$DMG_DIR"/Hearth_*_universal.dmg 2>/dev/null | head -1)"
+  DMG_DIR="src-tauri/target/aarch64-apple-darwin/release/bundle/dmg"
+  MACOS_DIR="src-tauri/target/aarch64-apple-darwin/release/bundle/macos"
+  DMG="$(ls "$DMG_DIR"/Hearth_*_aarch64.dmg 2>/dev/null | head -1)"
   APP="$MACOS_DIR/Hearth.app"
   TARBALL="$MACOS_DIR/Hearth.app.tar.gz"
   SIG_FILE="$MACOS_DIR/Hearth.app.tar.gz.sig"
@@ -199,7 +201,7 @@ write_manifest_and_notes() {
 
 **설치 (macOS)**
 
-`Hearth_*_universal.dmg` 를 받아서 Applications 로 드래그하세요. 첫 실행만 우클릭 → "열기" 로 Gatekeeper 를 1회 통과하면 됩니다 (공증된 빌드라 "알 수 없는 개발자" 경고는 없습니다).
+`Hearth_*_aarch64.dmg` 를 받아서 Applications 로 드래그하세요. 첫 실행만 우클릭 → "열기" 로 Gatekeeper 를 1회 통과하면 됩니다 (공증된 빌드라 "알 수 없는 개발자" 경고는 없습니다). v0.2.0 은 Apple Silicon 전용입니다.
 
 **업데이트**
 

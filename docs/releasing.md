@@ -7,7 +7,7 @@ End-to-end checklist for cutting a new macOS release. Runs fully from a develope
 - `Developer ID Application: jaehyun jang (2UANJX7ATM)` in keychain
 - `.env.release` filled from `.env.release.example`
 - `/Users/genie/dev/private/apple_developer/hearth_updater.key` (+ passphrase)
-- `rustup target add aarch64-apple-darwin x86_64-apple-darwin`
+- `rustc -vV` reports host triple `aarch64-apple-darwin` (v0.2.0 ships Apple Silicon only — Homebrew rust or rustup both work)
 - `gh auth status` OK
 - `xcrun --find notarytool && xcrun --find stapler` both resolve
 
@@ -38,7 +38,7 @@ Skip this section for releases **after** v0.2.0 — it only exists to prove the 
 For the **first** release (v0.2.0):
 
 1. Check out a throwaway branch. Temporarily set `version = "0.1.9"` in all three manifests and `pubkey` unchanged.
-2. `npm run tauri build -- --target universal-apple-darwin` — you get a local `fake-0.1.9.app`.
+2. `npm run tauri build -- --target aarch64-apple-darwin` — you get a local `fake-0.1.9.app`.
 3. In a macOS guest/test user account, copy the fake app into `~/Applications` and launch.
 4. While that fake app is running, upload the real v0.2.0 build to a **private** test GitHub Release (draft, or a separate test repo). Point the fake build's endpoint at that test `latest.json`.
 5. Wait ~30 s after app launch. The "새 버전 0.2.0 준비됨" toast should appear.
