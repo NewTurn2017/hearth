@@ -5,6 +5,7 @@ mod cmd_backup;
 mod cmd_categories;
 mod cmd_clients;
 mod cmd_memos;
+mod cmd_notify;
 mod cmd_projects;
 mod cmd_schedules;
 mod cmd_settings;
