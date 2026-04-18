@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://api.openai.com http://127.0.0.1:18080 http://localhost:18080; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; object-src 'none'"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://api.openai.com; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; object-src 'none'"
     }
   },
   "bundle": {
@@ -30,7 +30,7 @@
     "createUpdaterArtifacts": true,
     "category": "public.app-category.productivity",
     "shortDescription": "Local-first personal workspace.",
-    "longDescription": "Hearth is a local-first personal workspace that unifies projects, sticky memos, and schedules, driven by an AI command palette that runs entirely on-device (MLX) or via OpenAI.",
+    "longDescription": "Hearth is a local-first personal workspace that unifies projects, sticky memos, and schedules, driven by an optional AI command palette powered by OpenAI.",
     "publisher": "Jaehyun Jang",
     "copyright": "© 2026 Jaehyun Jang",
     "homepage": "https://github.com/NewTurn2017/hearth",

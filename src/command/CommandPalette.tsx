@@ -8,7 +8,6 @@ import {
   type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { Loader2 } from "lucide-react";
 import { useCmdK } from "../lib/shortcuts";
 import { useToast } from "../ui/Toast";
 import { Dialog } from "../ui/Dialog";
@@ -21,7 +20,6 @@ import { useCommandState } from "./useCommandState";
 import type { LocalCommand } from "./types";
 import { useAi } from "../hooks/useAi";
 import { buildSystemPrompt } from "./buildSystemPrompt";
-import * as api from "../api";
 import type { AgentResult, ChatMessage, ToolCall } from "../types";
 import type { Project, Schedule, Memo } from "../types";
 
@@ -76,16 +74,6 @@ export function CommandPalette({
     state.setOpen(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   });
-
-  // Eagerly start the MLX server as soon as the user enters AI mode
-  // (so the loading dialog appears right after typing `?`, before they've
-  // even finished the question).
-  useEffect(() => {
-    if (state.mode !== "ai") return;
-    ai.ensureRunning().catch(() => {
-      /* surfaced via serverState === 'failed' dialog */
-    });
-  }, [state.mode, ai.ensureRunning]);
 
   // Editing the question invalidates any prior answer or pending mutation —
   // otherwise approving an old "delete #3" modal after retyping a new query
@@ -363,64 +351,6 @@ export function CommandPalette({
         )}
       </Dialog>
 
-      {/* MLX 서버 부팅 대기 다이얼로그 — 최초 모델 로드가 수십 초 걸리므로
-          사용자에게 진행 상황을 분명히 보여준다. */}
-      <Dialog
-        open={ai.serverState.kind === "starting"}
-        onClose={() => {
-          /* 시작 중에는 임의 종료 방지 — 명시적 취소 버튼으로만 */
-        }}
-        labelledBy="ai-loading-title"
-      >
-        <h2
-          id="ai-loading-title"
-          className="text-heading text-[var(--color-text-hi)] mb-2"
-        >
-          AI 서버 시작 중
-        </h2>
-        <p className="text-[13px] text-[var(--color-text)] mb-4">
-          MLX 모델을 로드하고 있습니다. 최초 실행 시 수십 초 ~ 최대 2분 걸릴 수 있어요.
-        </p>
-        <div className="flex items-center gap-2 text-[12px] text-[var(--color-text-muted)] mb-5">
-          <Loader2 size={14} className="animate-spin" aria-hidden />
-          <span>127.0.0.1:18080 연결 대기 중…</span>
-        </div>
-        <div className="flex justify-end">
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              try {
-                await api.stopAiServer();
-              } finally {
-                ai.resetServerState();
-              }
-            }}
-          >
-            취소
-          </Button>
-        </div>
-      </Dialog>
-
-      <Dialog
-        open={ai.serverState.kind === "failed"}
-        onClose={ai.resetServerState}
-        labelledBy="ai-error-title"
-      >
-        <h2
-          id="ai-error-title"
-          className="text-heading text-[var(--color-text-hi)] mb-2"
-        >
-          AI 서버 시작 실패
-        </h2>
-        <p className="text-[13px] text-[var(--color-danger)] mb-5 whitespace-pre-line break-words">
-          {ai.serverState.kind === "failed" ? ai.serverState.error : ""}
-        </p>
-        <div className="flex justify-end">
-          <Button variant="primary" autoFocus onClick={ai.resetServerState}>
-            확인
-          </Button>
-        </div>
-      </Dialog>
     </>
   );
 }

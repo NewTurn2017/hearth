@@ -18,7 +18,7 @@
 
 ---
 
-Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관리하는 **로컬 퍼스트 데스크톱 앱**입니다. 모든 데이터는 로컬 SQLite에 저장되고, `⌘K` 커맨드 팔레트에서 **AI에게 자연어로 지시**하면 tool-calling으로 실제 항목을 만들고 고치고 찾아줍니다. AI 백엔드는 **로컬 MLX**(오프라인) 또는 **OpenAI** 중 선택할 수 있습니다.
+Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관리하는 **로컬 퍼스트 데스크톱 앱**입니다. 모든 데이터는 로컬 SQLite에 저장되고, `⌘K` 커맨드 팔레트에서 **AI에게 자연어로 지시**하면 tool-calling으로 실제 항목을 만들고 고치고 찾아줍니다. AI(OpenAI 연동)는 선택 사항이며, 키 없이도 나머지 기능은 전부 정상 동작합니다.
 
 ## Features
 
@@ -30,8 +30,7 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 - **스티키 메모** — 5색 · 특정 프로젝트에 붙이기 · 떼기. 새 메모는 **내용 + 프로젝트 + 색상 다이얼로그**로 생성
 - **일정 캘린더** — `react-big-calendar` 기반 월/주/일 뷰, 드래그로 이동
 - **통합 설정 모달** — AI · 백업 · 카테고리 탭. 백업 위치를 사용자가 직접 지정 가능
-- **듀얼 AI 백엔드** — 로컬 MLX(`localhost:18080`) 또는 OpenAI `gpt-5.4-mini` 런타임 전환
-- **오프라인 가능** — MLX 백엔드 쓰면 인터넷 없이 전부 동작
+- **AI 명령 팔레트 (선택)** — OpenAI 를 키로 연결하면 ⌘K 에서 자연어 명령 사용. 키 없으면 AI 만 비활성, 나머지는 그대로 동작
 - **로컬 저장** — 모든 데이터는 SQLite 한 파일(`~/Library/Application Support/com.newturn2017.hearth/`)에
 
 ## Screenshots
@@ -62,8 +61,8 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 | 항목 | 최소 사양 |
 |------|----------|
 | OS | macOS 11+ (Big Sur), Windows 10+, Linux (glibc 2.31+) |
-| 메모리 | 4 GB (MLX 백엔드 쓰면 16 GB 권장) |
-| 저장 공간 | 150 MB (MLX 모델 별도, ~3 GB) |
+| 메모리 | 4 GB |
+| 저장 공간 | 150 MB |
 | 기타 | Rust 1.75+, Node.js 20+, npm (소스 빌드 시) |
 
 ## Usage
@@ -108,32 +107,15 @@ Ctrl+K  (Windows / Linux)
 - 이름을 바꾸면 해당 카테고리를 사용 중인 **모든 프로젝트가 트랜잭션 안에서 자동 갱신**됩니다
 - 사용 중인 카테고리는 삭제 버튼이 비활성화되며, 몇 개의 프로젝트가 물려 있는지도 같이 표시됩니다
 
-## AI Setup
+## AI Setup — OpenAI
 
-Hearth는 상단 바 **설정** 버튼(🛠 아이콘)의 **AI 탭**에서 백엔드를 고릅니다.
+AI 명령 팔레트는 OpenAI를 사용합니다. API 키는 **선택 사항**이며, 키 없이도 Hearth의 프로젝트·메모·캘린더·알림 등 모든 핵심 기능은 정상 동작합니다. 키가 없으면 `⌘K` AI 모드만 비활성화됩니다.
 
-### 로컬 MLX (오프라인, Apple Silicon 권장)
-
-```bash
-# huggingface-cli 설치 (pipx 권장)
-brew install pipx
-pipx ensurepath
-pipx install "huggingface_hub[cli]"
-
-# 기본 모델 (~3 GB, Apple Silicon 최적화)
-huggingface-cli download mlx-community/gemma-4-e4b-it-4bit
-
-# 로컬 서버 기동
-mlx_lm.server --model mlx-community/gemma-4-e4b-it-4bit --port 18080
-```
-
-Hearth 설정에서 provider를 **`local`** 로 두면 `http://127.0.0.1:18080` 에 자동으로 붙습니다. 한 번 모델을 캐시해두면 이후 인터넷 없이 전부 동작합니다.
-
-### OpenAI (클라우드, 모든 플랫폼)
+> 로컬 MLX 백엔드는 0.3.0에서 제거되었습니다. MLX 설정 파일에 개발자 머신의 절대 경로(`/Users/genie/dev/side/supergemma-bench/start-mlx.sh`)가 하드코딩되어 있어 다른 사용자에게는 동작하지 않았고, 공증된 릴리즈 번들에 해당 경로가 누출되는 문제가 있었습니다.
 
 1. [platform.openai.com/api-keys](https://platform.openai.com/api-keys) 에서 API 키 발급
-2. 상단 바 **설정** → **AI** 탭 → provider **`openai`** 선택
-3. API 키 붙여넣기
+2. 상단 바 **설정** → **AI** 탭
+3. API 키 붙여넣기 → **저장**
 
 모델은 `gpt-5.4-mini` 하드코딩 (도구 호출 정확도 + 단가 균형). 키는 로컬 SQLite의 settings 테이블에 평문으로 저장되니 공용 기기 사용은 피해주세요.
 
@@ -222,10 +204,8 @@ npm run tauri build
 │  └── db.rs             schema + idempotent seed        │
 └──────────────┬─────────────────────────────────────────┘
                │ HTTP (chat completions)
-      ┌────────┴────────┐
-      ▼                 ▼
-  Local MLX         OpenAI
-  (offline)      (gpt-5.4-mini)
+               ▼
+           OpenAI (gpt-5.4-mini)
 ```
 
 **Tool-calling loop** (`cmd_ai.rs`)
@@ -252,7 +232,7 @@ npm run tauri build
 
 ## Contributing
 
-이슈와 PR 환영합니다. 버그 제보는 재현 절차 · OS · 백엔드(MLX/OpenAI) · 콘솔 로그를 같이 남겨 주세요.
+이슈와 PR 환영합니다. 버그 제보는 재현 절차 · OS · 콘솔 로그를 같이 남겨 주세요.
 
 ## License
 

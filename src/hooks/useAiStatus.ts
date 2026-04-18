@@ -1,43 +1,32 @@
-// Lightweight poller for the MLX server state so UI chrome (e.g. TopBar pill)
-// can show liveness without coupling to the chat flow in `useAi`. Polls every
-// 5s — cheap because the backend cached `probe_alive` result amounts to one
-// HTTP GET against 127.0.0.1.
+// Simple AI status — reflects whether an OpenAI key is stored. No polling,
+// no server lifecycle. Updates via the "ai-settings:changed" event.
 import { useEffect, useState } from "react";
-import type { AiServerState } from "../types";
 import * as api from "../api";
 
-const POLL_INTERVAL_MS = 5000;
+export type AiStatus = "configured" | "missing" | "unknown";
 
-export function useAiStatus(): AiServerState {
-  const [state, setState] = useState<AiServerState>({ kind: "idle" });
+export function useAiStatus(): AiStatus {
+  const [status, setStatus] = useState<AiStatus>("unknown");
 
   useEffect(() => {
     let cancelled = false;
 
-    const tick = async () => {
+    const refresh = async () => {
       try {
-        const next = await api.aiServerStatus();
-        if (!cancelled) setState(next);
+        const s = await api.getAiSettings();
+        if (!cancelled) setStatus(s.has_openai_key ? "configured" : "missing");
       } catch {
-        // Backend unreachable — keep last known state. Tauri reconnect will heal.
+        // Leave whatever was last seen.
       }
     };
 
-    tick();
-    const id = setInterval(tick, POLL_INTERVAL_MS);
-    // Trigger an immediate re-probe when either the settings change or a
-    // start/stop action completes, so the pill does not lag behind by up to
-    // POLL_INTERVAL_MS waiting for the next tick.
-    const onChange = () => tick();
-    window.addEventListener("ai-settings:changed", onChange);
-    window.addEventListener("ai-server:changed", onChange);
+    refresh();
+    window.addEventListener("ai-settings:changed", refresh);
     return () => {
       cancelled = true;
-      clearInterval(id);
-      window.removeEventListener("ai-settings:changed", onChange);
-      window.removeEventListener("ai-server:changed", onChange);
+      window.removeEventListener("ai-settings:changed", refresh);
     };
   }, []);
 
-  return state;
+  return status;
 }
