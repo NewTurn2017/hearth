@@ -5,8 +5,9 @@ export function EmptyDropZone({ id, label }: { id: string; label: string }) {
   return (
     <div
       ref={setNodeRef}
+      style={{ display: "block", width: "100%", minHeight: 96 }}
       className={
-        "w-full min-h-[88px] flex items-center justify-center rounded-[var(--radius-md)] border-2 border-dashed px-3 py-6 text-[12px] transition-colors " +
+        "box-border rounded-[var(--radius-md)] border-2 border-dashed px-3 py-7 text-[12px] text-center transition-colors " +
         (isOver
           ? "border-[var(--color-brand)] bg-[var(--color-surface-3)] text-[var(--color-text)]"
           : "border-[var(--color-border)] text-[var(--color-text-dim)]")

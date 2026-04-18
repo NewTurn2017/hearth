@@ -4,11 +4,16 @@ import {
   DragOverlay,
   PointerSensor,
   closestCorners,
+  pointerWithin,
   useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import type {
+  CollisionDetection,
+  DragEndEvent,
+  DragStartEvent,
+} from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Plus, FolderOpen } from "lucide-react";
 import { ProjectCard } from "./ProjectCard";
@@ -23,11 +28,23 @@ import { cn } from "../lib/cn";
 import * as api from "../api";
 
 /**
+ * Pointer-first collision detection. Whatever droppable's rect the cursor
+ * is inside wins immediately — no "draggable corners closer to another
+ * droppable's corners" ambiguity. Falls back to `closestCorners` only when
+ * the pointer isn't over any droppable at all (e.g. dragging between
+ * groups through vertical whitespace).
+ */
+const collisionDetection: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args);
+  if (pointer.length > 0) return pointer;
+  return closestCorners(args);
+};
+
+/**
  * Wraps a priority group's card grid so dropping on gutters / whitespace
- * still counts as a drop on that group (append at end). Without this, only
- * direct card hovers registered, which made cross-group moves feel like a
- * tiny target. `closestCorners` will still prefer a specific card when the
- * pointer is over one — the wrapper wins only on empty space.
+ * still counts as a drop on that group (append at end). With pointer-first
+ * collision the cursor wins — hover a card, that card is the target; hover
+ * whitespace inside the group, this wrapper is the target.
  */
 function GroupDropZone({
   priority,
@@ -190,7 +207,7 @@ export function ProjectList({
       </div>
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
