@@ -14,6 +14,7 @@
 [![Rust](https://img.shields.io/badge/Rust-edition%202021-000000?logo=rust)](https://rust-lang.org)
 [![License](https://img.shields.io/github/license/NewTurn2017/hearth)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://tauri.app)
+[![Latest Release](https://img.shields.io/github/v/release/NewTurn2017/hearth?display_name=tag&sort=semver)](https://github.com/NewTurn2017/hearth/releases/latest)
 
 ---
 
@@ -39,16 +40,31 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 
 ## Installation
 
-릴리즈 바이너리는 아직 없습니다. 지금은 [Building from Source](#building-from-source) 섹션을 참고해 직접 빌드해 주세요.
+### macOS (공식 릴리즈)
 
-**시스템 요구사항**
+1. [최신 릴리즈 페이지](https://github.com/NewTurn2017/hearth/releases/latest)에서 `Hearth_<버전>_universal.dmg` 다운로드
+2. DMG 더블클릭 → 열린 창에서 **Hearth.app** 을 **Applications** 폴더로 드래그
+3. **첫 실행만** Finder 에서 `Applications/Hearth.app` 우클릭 → **열기** (Gatekeeper 확인 1회)
+4. 이후에는 일반 앱처럼 실행
+
+> 앱이 공증 (notarization) 된 상태라 "알 수 없는 개발자" 경고는 뜨지 않습니다. 첫 실행 시 네트워크 지연으로 "인터넷에서 다운로드되었습니다" 확인 프롬프트가 1회 뜰 수 있어요 — 그냥 "열기"로 통과.
+
+### 업데이트
+
+앱을 켜 두면 30초 뒤부터, 그리고 이후 24시간마다 새 버전을 자동으로 확인합니다. 새 버전이 있으면 우측 하단에 토스트가 뜨고, **지금 재시작** 을 누르면 2-3초 안에 새 버전으로 교체됩니다. **나중에** 를 누르면 해당 버전은 다음 릴리즈가 나오기 전까지 다시 조르지 않습니다.
+
+### Windows / Linux
+
+아직 공식 빌드 없음. 원하면 [Building from Source](#building-from-source) 참고.
+
+### 시스템 요구사항
 
 | 항목 | 최소 사양 |
 |------|----------|
-| OS | macOS 13+, Windows 10+, Linux (glibc 2.31+) |
+| OS | macOS 11+ (Big Sur), Windows 10+, Linux (glibc 2.31+) |
 | 메모리 | 4 GB (MLX 백엔드 쓰면 16 GB 권장) |
 | 저장 공간 | 150 MB (MLX 모델 별도, ~3 GB) |
-| 기타 | Rust 1.75+, Node.js 20+, npm |
+| 기타 | Rust 1.75+, Node.js 20+, npm (소스 빌드 시) |
 
 ## Usage
 
