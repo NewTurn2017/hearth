@@ -18,13 +18,15 @@ if [[ ! -f "$CHANGELOG" ]]; then
   exit 66
 fi
 
-# Emit lines between "## [VER]" and the next "## [" heading (exclusive).
+# Emit lines between "## [VER]" and either the next "## [" heading or the
+# Keep-A-Changelog link-reference footer ("[name]: https://..."), exclusive.
 awk -v ver="$VER" '
   BEGIN { found = 0; in_section = 0 }
   /^## \[/ {
     if (in_section) { exit }
     if ($0 ~ "^## \\[" ver "\\]") { found = 1; in_section = 1; next }
   }
+  in_section && /^\[[^]]+\]:[[:space:]]*https?:\/\// { exit }
   in_section { print }
   END { if (!found) exit 1 }
 ' "$CHANGELOG" | sed -e '/./,$!d' | awk 'NR>0 { buf = buf $0 "\n" } END { printf "%s", buf }'

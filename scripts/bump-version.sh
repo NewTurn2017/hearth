@@ -35,14 +35,14 @@ import pathlib, re, sys
 new = sys.argv[1]
 p = pathlib.Path("src-tauri/Cargo.toml")
 text = p.read_text()
-out = re.sub(
+out, count = re.subn(
     r'(\[package\][\s\S]*?\nversion\s*=\s*")([^"]+)(")',
     lambda m: m.group(1) + new + m.group(3),
     text,
     count=1,
 )
-if out == text:
-    sys.exit("Failed to substitute version in Cargo.toml")
+if count == 0:
+    sys.exit("Failed to locate version in Cargo.toml [package] block")
 p.write_text(out)
 PY
 
