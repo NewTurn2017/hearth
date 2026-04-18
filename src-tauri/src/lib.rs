@@ -28,6 +28,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--hidden"]),
+        ))
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let app_data_dir = app
                 .path()
@@ -46,6 +51,21 @@ pub fn run() {
             app.manage(cmd_ai::AiManager::new(
                 "/Users/genie/dev/side/supergemma-bench/start-mlx.sh".to_string(),
             ));
+
+            let launched_hidden = std::env::args().any(|a| a == "--hidden");
+            if !launched_hidden {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = crate::cmd_notify::reschedule_all_future(&app_handle) {
+                    eprintln!("notification boot reschedule failed: {e}");
+                }
+            });
 
             Ok(())
         })
@@ -105,6 +125,16 @@ pub fn run() {
             cmd_autostart::get_autostart,
             cmd_autostart::set_autostart,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
+                if !has_visible_windows {
+                    if let Some(win) = app_handle.get_webview_window("main") {
+                        let _ = win.show();
+                        let _ = win.set_focus();
+                    }
+                }
+            }
+        });
 }
