@@ -4,7 +4,9 @@
 
 **Goal:** Ship v0.3.0 with three user-facing additions and one bug fix — macOS auto-start on login (hidden), native time picker with opt-in notification toggle, 5-min-before and on-time desktop notifications, plus a fix for the Korean IME Enter-swallow bug in the schedule save flow.
 
-**Architecture:** DB is the source of truth for notifications; on boot we cancel and re-schedule all future reminders. `tauri-plugin-autostart` handles Login Items (silent `--hidden` flag), `tauri-plugin-notification` handles scheduled macOS user notifications. Two new bool columns on `schedules` carry reminder preferences. ScheduleModal gains a `notify` toggle that gates the time picker + two reminder checkboxes. A new "일반" settings tab exposes autostart + notification permission.
+**Architecture:** DB is the source of truth for notifications; on boot we re-schedule all future reminders. `tauri-plugin-autostart` handles Login Items (silent `--hidden` flag), `tauri-plugin-notification` provides the `.show()` display primitive and the macOS permission plumbing. Two new bool columns on `schedules` carry reminder preferences. ScheduleModal gains a `notify` toggle that gates the time picker + two reminder checkboxes. A new "일반" settings tab exposes autostart + notification permission.
+
+**Scheduler implementation note (revised 2026-04-18):** The notification plugin's `Schedule::At` variant and `.cancel()` / `.pending()` APIs ship **mobile-only** (iOS/Android). Desktop — including macOS — exposes `.show()` only. We therefore keep reminders in an in-process scheduler: each active reminder is a `tokio` task that `sleep_until`s its trigger time, then calls `.show()`. A `Mutex<HashMap<i32, JoinHandle>>` on `AppState` lets us abort tasks for cancel/update. The auto-start feature (app running on login) covers the common case; a force-quit user loses queued reminders until the app runs again and `reschedule_all_future` rehydrates from DB.
 
 **Tech Stack:** Tauri 2 (Rust), tauri-plugin-autostart, tauri-plugin-notification, React 19 + TypeScript, rusqlite, chrono, Vitest, `cargo test`.
 
@@ -12,71 +14,13 @@
 
 ---
 
-## Phase 0: Pre-flight (verify plugin APIs)
+## Phase 0: Pre-flight — ✅ DONE (captured inline in plan revisions)
 
-Since plugin API shapes can drift across minor versions, the very first task pins the exact APIs we'll call. All later tasks refer back to the notes captured here.
+**Findings (already applied to later tasks):**
 
-### Task 1: Verify plugin APIs against docs
-
-**Files:**
-- Read-only — no file changes, just documentation capture
-
-- [ ] **Step 1: Resolve plugin doc sources via context7**
-
-Run (the `Skill` equivalent in your environment — any docs tool works):
-
-```
-mcp__plugin_context7_context7__resolve-library-id  { libraryName: "tauri-plugin-notification" }
-mcp__plugin_context7_context7__resolve-library-id  { libraryName: "tauri-plugin-autostart" }
-```
-
-Then:
-
-```
-mcp__plugin_context7_context7__query-docs { id: "...", query: "schedule notification at a specific date macOS Rust" }
-mcp__plugin_context7_context7__query-docs { id: "...", query: "enable disable isEnabled with args macOS Rust" }
-```
-
-- [ ] **Step 2: Capture the exact notification Rust API**
-
-Write a short note inline in `docs/superpowers/plans/2026-04-18-schedule-notifications-autostart.md` at the end of this task — list:
-
-- Plugin crate version (e.g., `2.0.0-rc.*` or `2.x`)
-- Builder method for scheduled delivery. Expected shape (Tauri 2 convention):
-
-```rust
-use tauri_plugin_notification::{NotificationExt, Schedule};
-
-app.notification()
-    .builder()
-    .title("…")
-    .body("…")
-    .id(notification_id)              // i32, stable for cancel()
-    .schedule(Schedule::At {
-        date: chrono::DateTime<chrono::Utc>,
-        allow_while_idle: true,
-    })
-    .show()?;
-```
-
-- Cancel API. Expected: `app.notification().cancel(vec![id1, id2])?;`
-- Permission probe: `app.notification().permission_state()` → `PermissionState::{Granted, Denied, Unknown}`.
-- Request permission: `app.notification().request_permission()`.
-
-If the real API diverges, update the notes and adjust later tasks accordingly.
-
-- [ ] **Step 3: Capture the exact autostart Rust API**
-
-- Init: `tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"]))`.
-- JS side: `@tauri-apps/plugin-autostart` exports `enable()`, `disable()`, `isEnabled()`. Args passed in `init` are persisted into the generated plist `ProgramArguments`.
-- Rust-side enable/disable: via `AutoLaunchManager` extension trait — `app.autolaunch().enable()?;`, `.disable()?`, `.is_enabled()?`.
-
-- [ ] **Step 4: Commit the captured notes**
-
-```bash
-git add docs/superpowers/plans/2026-04-18-schedule-notifications-autostart.md
-git commit -m "docs(plan): pin tauri plugin API shapes for notifications + autostart"
-```
+- **autostart**: `tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden".to_string()]))`. ManagerExt via `app.autolaunch()`: `enable()`, `disable()`, `is_enabled() -> Result<bool>`. JS: `enable / disable / isEnabled` from `@tauri-apps/plugin-autostart`. Capability: `autostart:default` (or individually `autostart:allow-enable`/`allow-disable`/`allow-is-enabled`).
+- **notification**: `tauri_plugin_notification::init()`. Builder pattern `app.notification().builder().title().body().show()` exists. **IMPORTANT**: `Schedule::At` / `.cancel()` / `.pending()` are MOBILE-ONLY. Desktop macOS has only `.show()` for immediate display. Plan uses an in-process `tokio` scheduler (see Task 6) instead of plugin-level scheduling.
+- **Permission**: commands expose `is_permission_granted -> Result<Option<bool>>` and `request_permission -> Result<PermissionState>`. Task 8 normalizes both to a `"granted" | "denied" | "unknown"` string.
 
 ---
 
@@ -557,34 +501,71 @@ git commit -m "feat(notify): pure helpers for reminder time math + stable ids"
 
 ---
 
-### Task 6: cmd_notify — schedule/cancel against the plugin
+### Task 6: cmd_notify — in-process scheduler (apply / cancel)
 
 **Files:**
 - Modify: `src-tauri/src/cmd_notify.rs`
+- Modify: `src-tauri/src/lib.rs` (register `Scheduler` in `AppState`)
 
-- [ ] **Step 1: Add plugin-backed apply/cancel**
+> **Why in-process:** `tauri-plugin-notification` does not expose `Schedule::At` / `cancel()` on desktop. Each reminder becomes a `tokio::spawn`'d task that `sleep_until`s the trigger, then calls `.show()`. We track handles in a `Mutex<HashMap<i32, JoinHandle<()>>>` so we can abort on cancel/update.
+
+- [ ] **Step 1: Add the Scheduler state**
+
+In `src-tauri/src/cmd_notify.rs`, append:
+
+```rust
+use std::collections::HashMap;
+use std::sync::Mutex;
+use tauri::{AppHandle, Manager};
+use tauri_plugin_notification::NotificationExt;
+use tokio::task::JoinHandle;
+
+use crate::models::Schedule;
+
+#[derive(Default)]
+pub struct Scheduler {
+    handles: Mutex<HashMap<i32, JoinHandle<()>>>,
+}
+
+impl Scheduler {
+    pub fn new() -> Self { Self::default() }
+
+    fn abort(&self, id: i32) {
+        if let Ok(mut map) = self.handles.lock() {
+            if let Some(h) = map.remove(&id) { h.abort(); }
+        }
+    }
+
+    fn insert(&self, id: i32, handle: JoinHandle<()>) {
+        if let Ok(mut map) = self.handles.lock() {
+            if let Some(prev) = map.insert(id, handle) { prev.abort(); }
+        }
+    }
+}
+
+/// Cancel both possible ids for a schedule. Calling with a schedule id whose
+/// handles aren't present is a no-op.
+pub fn cancel_for_id(app: &AppHandle, schedule_id: i64) {
+    let Some(sched) = app.try_state::<Scheduler>() else { return; };
+    let ids = [
+        notification_id(schedule_id, ReminderKind::Before5Min),
+        notification_id(schedule_id, ReminderKind::AtStart),
+    ];
+    for id in ids { sched.abort(id); }
+}
+```
+
+Register `Scheduler` in `src-tauri/src/lib.rs` setup, alongside `AppState`:
+
+```rust
+app.manage(crate::cmd_notify::Scheduler::new());
+```
+
+- [ ] **Step 2: Add body formatter + apply_for**
 
 Append to `src-tauri/src/cmd_notify.rs`:
 
 ```rust
-use tauri::AppHandle;
-use tauri_plugin_notification::NotificationExt;
-
-use crate::models::Schedule;
-
-/// Cancel both possible ids for a schedule. Cancelling a non-existent id is
-/// a no-op in the plugin.
-pub fn cancel_for_id(app: &AppHandle, schedule_id: i64) {
-    let ids = vec![
-        notification_id(schedule_id, ReminderKind::Before5Min),
-        notification_id(schedule_id, ReminderKind::AtStart),
-    ];
-    if let Err(e) = app.notification().cancel(ids) {
-        eprintln!("notification cancel failed for schedule {schedule_id}: {e}");
-    }
-}
-
-/// Body text shared across both reminder kinds.
 fn reminder_body(s: &Schedule) -> String {
     let mut parts: Vec<String> = Vec::new();
     if let Some(d) = s.description.as_deref().filter(|t| !t.is_empty()) {
@@ -593,10 +574,41 @@ fn reminder_body(s: &Schedule) -> String {
     if let Some(l) = s.location.as_deref().filter(|t| !t.is_empty()) {
         parts.push(format!("@ {l}"));
     }
-    if parts.is_empty() {
-        "일정".to_string()
-    } else {
-        parts.join(" ")
+    if parts.is_empty() { "일정".to_string() } else { parts.join(" ") }
+}
+
+fn title_for(kind: ReminderKind) -> &'static str {
+    match kind {
+        ReminderKind::Before5Min => "일정 5분 전",
+        ReminderKind::AtStart    => "일정 시작",
+    }
+}
+
+/// Spawn a tokio task that sleeps until `at_local`, then calls the plugin's
+/// `.show()` on the main thread via the app handle. On cancel the task is
+/// aborted.
+fn spawn_fire(app: &AppHandle, id: i32, kind: ReminderKind, at_local: chrono::DateTime<chrono::Local>, body: String) {
+    let handle = app.clone();
+    let task: JoinHandle<()> = tauri::async_runtime::spawn(async move {
+        let now = chrono::Local::now();
+        let delta = at_local.signed_duration_since(now);
+        // signed_duration_since can be negative if the system clock shifted —
+        // treat negative as "fire immediately" for safety.
+        let secs = delta.num_seconds().max(0) as u64;
+        tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
+        if let Err(e) = handle
+            .notification()
+            .builder()
+            .title(title_for(kind))
+            .body(body)
+            .show()
+        {
+            eprintln!("notification show failed for id {id}: {e}");
+        }
+    });
+
+    if let Some(sched) = app.try_state::<Scheduler>() {
+        sched.insert(id, task);
     }
 }
 
@@ -609,7 +621,8 @@ pub fn apply_for(app: &AppHandle, s: &Schedule) -> Result<(), String> {
         return Ok(()); // no time → nothing to schedule
     };
 
-    let now = Local::now();
+    let now = chrono::Local::now();
+    let body = reminder_body(s);
     let mut reqs: Vec<ReminderKind> = Vec::new();
     if s.remind_before_5min { reqs.push(ReminderKind::Before5Min); }
     if s.remind_at_start   { reqs.push(ReminderKind::AtStart); }
@@ -617,48 +630,29 @@ pub fn apply_for(app: &AppHandle, s: &Schedule) -> Result<(), String> {
     for kind in reqs {
         let Some(at_local) = compute_at(&s.date, time, kind) else { continue };
         if should_skip_past(now, at_local) { continue; }
-        let at_utc = at_local.with_timezone(&chrono::Utc);
         let id = notification_id(s.id, kind);
-        let title = match kind {
-            ReminderKind::Before5Min => "일정 5분 전",
-            ReminderKind::AtStart    => "일정 시작",
-        };
-        app.notification()
-            .builder()
-            .id(id)
-            .title(title)
-            .body(reminder_body(s))
-            .schedule(tauri_plugin_notification::Schedule::At {
-                date: at_utc,
-                allow_while_idle: true,
-            })
-            .show()
-            .map_err(|e| e.to_string())?;
+        spawn_fire(app, id, kind, at_local, body.clone());
     }
     Ok(())
 }
 ```
 
-**Note:** If `Step 1 of Task 1` revealed a different API shape (e.g., no `.id()` or different Schedule enum), update the two calls above to match. The body and logic stay identical.
-
-- [ ] **Step 2: Build to catch API mismatches**
+- [ ] **Step 3: Build**
 
 ```bash
-cd /Users/genie/dev/tools/hearth/src-tauri && cargo build --lib
+cd /Users/genie/dev/tools/hearth/.worktrees/v0.3.0-notifications-autostart/src-tauri && cargo build --lib
 ```
 
-Fix until it compiles.
-
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add src-tauri/src/cmd_notify.rs
-git commit -m "feat(notify): apply + cancel reminders via plugin"
+git add src-tauri/src/cmd_notify.rs src-tauri/src/lib.rs
+git commit -m "feat(notify): in-process tokio scheduler for reminders"
 ```
 
 ---
 
-### Task 7: cmd_notify — boot reschedule
+### Task 7: cmd_notify — boot reschedule from DB
 
 **Files:**
 - Modify: `src-tauri/src/cmd_notify.rs`
@@ -668,17 +662,15 @@ git commit -m "feat(notify): apply + cancel reminders via plugin"
 Append to `src-tauri/src/cmd_notify.rs`:
 
 ```rust
-use tauri::Manager;
 use crate::AppState;
 
-/// Walk the DB, cancel every schedule with any reminder flag set, then
-/// re-apply just the future ones. Runs once at boot.
+/// Walk the DB, abort any stale scheduler tasks, then re-apply just the
+/// future reminders. Runs once at boot; no-op if the scheduler state isn't
+/// yet registered (shouldn't happen — setup() manages it before spawning).
 pub fn reschedule_all_future(app: &AppHandle) -> Result<(), String> {
     let state = app.state::<AppState>();
     let db = state.db.lock().map_err(|e| e.to_string())?;
 
-    // Pull everything with any reminder flag, past or future — so we can
-    // cancel stale future entries from a prior boot before re-applying.
     let mut stmt = db
         .prepare(
             "SELECT id, date, time, location, description, notes, \
@@ -724,7 +716,7 @@ pub fn reschedule_all_future(app: &AppHandle) -> Result<(), String> {
 
 ```bash
 git add src-tauri/src/cmd_notify.rs
-git commit -m "feat(notify): reschedule_all_future walks DB to restore reminders"
+git commit -m "feat(notify): reschedule_all_future rehydrates scheduler from DB"
 ```
 
 ---
@@ -788,28 +780,39 @@ pub fn delete_schedule(
 Append to `src-tauri/src/cmd_notify.rs`:
 
 ```rust
+use tauri_plugin_notification::PermissionState;
+
 #[tauri::command]
 pub async fn notifications_permission(app: AppHandle) -> Result<String, String> {
-    match app.notification().permission_state() {
-        Ok(tauri_plugin_notification::PermissionState::Granted) => Ok("granted".into()),
-        Ok(tauri_plugin_notification::PermissionState::Denied)  => Ok("denied".into()),
-        Ok(_) => Ok("unknown".into()),
-        Err(e) => Err(e.to_string()),
-    }
+    // The plugin exposes `permission_state()` via the `Notification` struct.
+    // Returns PermissionState::{Granted, Denied, Default}; the "prompt" state
+    // from the JS side maps to `Default`, which we surface as "unknown".
+    let state = app
+        .notification()
+        .permission_state()
+        .map_err(|e| e.to_string())?;
+    Ok(match state {
+        PermissionState::Granted => "granted".into(),
+        PermissionState::Denied  => "denied".into(),
+        _                        => "unknown".into(),
+    })
 }
 
 #[tauri::command]
 pub async fn notifications_request(app: AppHandle) -> Result<String, String> {
-    match app.notification().request_permission() {
-        Ok(tauri_plugin_notification::PermissionState::Granted) => Ok("granted".into()),
-        Ok(tauri_plugin_notification::PermissionState::Denied)  => Ok("denied".into()),
-        Ok(_) => Ok("unknown".into()),
-        Err(e) => Err(e.to_string()),
-    }
+    let state = app
+        .notification()
+        .request_permission()
+        .map_err(|e| e.to_string())?;
+    Ok(match state {
+        PermissionState::Granted => "granted".into(),
+        PermissionState::Denied  => "denied".into(),
+        _                        => "unknown".into(),
+    })
 }
 ```
 
-Adjust if the plugin exposes a different return type (see Task 1 notes).
+**Note:** If the plugin's `permission_state()` / `request_permission()` methods have a different name (e.g. hidden behind a command module) the implementer should look at `tauri-plugin-notification` crate docs for the exact trait path and adapt. The normalization logic (PermissionState → string) is the source of truth.
 
 - [ ] **Step 3: Register commands**
 
