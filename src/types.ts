@@ -139,18 +139,9 @@ export type AgentResult =
   | { kind: "final"; reply: string; client_intents: ToolCall[] }
   | { kind: "pending"; call: ToolCall; label: string; history: ChatMessage[] };
 
-export type AiServerState =
-  | { kind: "idle" }
-  | { kind: "starting" }
-  | { kind: "running"; port: number }
-  | { kind: "failed"; error: string };
-
-/** Persisted AI provider configuration. The raw OpenAI API key never crosses
- *  this boundary — `has_openai_key` tells the UI whether to show a "stored"
- *  badge instead of a blank password field. Model selection is not exposed:
- *  the backend uses a hard-coded OpenAI model and auto-detects the local MLX
- *  model from the running process. */
+/** Persisted AI configuration. The raw OpenAI API key never crosses this
+ *  boundary — `has_openai_key` tells the UI whether to show a "stored"
+ *  badge instead of a blank password field. */
 export interface AiSettings {
-  provider: "local" | "openai";
   has_openai_key: boolean;
 }

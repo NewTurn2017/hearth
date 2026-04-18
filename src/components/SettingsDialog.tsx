@@ -4,7 +4,7 @@
 // input survives a tab switch; only the `active` prop flips so each section
 // can refetch on activation.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { cn } from "../lib/cn";
@@ -32,6 +32,12 @@ export function SettingsDialog({
   initialTab?: TabKey;
 }) {
   const [tab, setTab] = useState<TabKey>(initialTab);
+
+  // Sync the active tab whenever the dialog (re-)opens via a different entry
+  // point — e.g. the AiStatusPill dispatches "settings:open" with tab:"ai".
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [open, initialTab]);
 
   return (
     <Dialog

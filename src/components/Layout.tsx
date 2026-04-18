@@ -32,6 +32,7 @@ export function Layout({
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<"general" | "ai" | "backup" | "categories">("general");
   const toast = useToast();
 
   const togglePriority = (p: Priority) => {
@@ -76,6 +77,16 @@ export function Layout({
     const onNew = () => setNewMemoOpen(true);
     window.addEventListener("memo:new-dialog", onNew);
     return () => window.removeEventListener("memo:new-dialog", onNew);
+  }, []);
+
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab?: "general" | "ai" | "backup" | "categories" }>).detail;
+      setSettingsOpen(true);
+      if (detail?.tab) setSettingsInitialTab(detail.tab);
+    };
+    window.addEventListener("settings:open", onOpen);
+    return () => window.removeEventListener("settings:open", onOpen);
   }, []);
 
   const openNewMemo = useCallback(() => {
@@ -143,7 +154,7 @@ export function Layout({
         active={activeTab}
         onChange={setActiveTab}
         onImport={handleImport}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={() => { setSettingsInitialTab("general"); setSettingsOpen(true); }}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -181,6 +192,7 @@ export function Layout({
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        initialTab={settingsInitialTab}
       />
     </div>
   );
