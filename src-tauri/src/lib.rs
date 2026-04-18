@@ -70,12 +70,22 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                cmd_backup::auto_backup_on_close(window.app_handle());
-                if let Some(mgr) = window.app_handle().try_state::<cmd_ai::AiManager>() {
-                    cmd_ai::kill_child(&mgr);
-                    cmd_ai::kill_mlx_if_ours(&mgr);
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    #[cfg(target_os = "macos")]
+                    {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
                 }
+                tauri::WindowEvent::Destroyed => {
+                    cmd_backup::auto_backup_on_close(window.app_handle());
+                    if let Some(mgr) = window.app_handle().try_state::<cmd_ai::AiManager>() {
+                        cmd_ai::kill_child(&mgr);
+                        cmd_ai::kill_mlx_if_ours(&mgr);
+                    }
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![

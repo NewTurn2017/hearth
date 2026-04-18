@@ -42,7 +42,7 @@ impl ReminderKind {
 pub fn notification_id(schedule_id: i64, kind: ReminderKind) -> i32 {
     // i64 schedule ids above INT_MAX/10 would overflow; in practice the SQLite
     // autoincrement on a personal app stays tiny. Clamp defensively.
-    let base = (schedule_id as i64).min(i32::MAX as i64 / 10) as i32;
+    let base = schedule_id.min(i32::MAX as i64 / 10) as i32;
     base * 10 + kind.code()
 }
 

@@ -731,6 +731,32 @@ fn list_schedules(app: &AppHandle, args: &Value) -> Result<Value, String> {
     Ok(json!({ "count": rows.len(), "schedules": rows }))
 }
 
+fn load_schedule_row(db: &rusqlite::Connection, id: i64) -> Result<crate::models::Schedule, String> {
+    db.query_row(
+        "SELECT id, date, time, location, description, notes, \
+         remind_before_5min, remind_at_start, created_at, updated_at \
+         FROM schedules WHERE id = ?1",
+        [id],
+        |row| {
+            let b5: i64 = row.get(6)?;
+            let ba: i64 = row.get(7)?;
+            Ok(crate::models::Schedule {
+                id: row.get(0)?,
+                date: row.get(1)?,
+                time: row.get(2)?,
+                location: row.get(3)?,
+                description: row.get(4)?,
+                notes: row.get(5)?,
+                remind_before_5min: b5 != 0,
+                remind_at_start: ba != 0,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+            })
+        },
+    )
+    .map_err(|e| e.to_string())
+}
+
 fn create_schedule(app: &AppHandle, args: &Value) -> Result<Value, String> {
     let date = args
         .get("date")
@@ -745,13 +771,26 @@ fn create_schedule(app: &AppHandle, args: &Value) -> Result<Value, String> {
     let notes = args.get("notes").and_then(|v| v.as_str());
 
     let state = app.state::<crate::AppState>();
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.execute(
-        "INSERT INTO schedules (date, time, location, description, notes) VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![date, time, location, description, notes],
-    )
-    .map_err(|e| e.to_string())?;
-    let id = db.last_insert_rowid();
+    let id = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        db.execute(
+            "INSERT INTO schedules (date, time, location, description, notes) VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![date, time, location, description, notes],
+        )
+        .map_err(|e| e.to_string())?;
+        db.last_insert_rowid()
+    };
+
+    // Sync the in-process scheduler with the new row (remind_* default to 0,
+    // but apply_for is idempotent and a no-op for rows with no reminders set).
+    {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        if let Ok(sched) = load_schedule_row(&db, id) {
+            drop(db);
+            crate::cmd_notify::apply_for(app, &sched).ok();
+        }
+    }
+
     Ok(json!({ "ok": true, "id": id, "date": date }))
 }
 
@@ -797,12 +836,26 @@ fn update_schedule(app: &AppHandle, args: &Value) -> Result<Value, String> {
     );
 
     let state = app.state::<crate::AppState>();
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    let refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-    let changed = db.execute(&sql, refs.as_slice()).map_err(|e| e.to_string())?;
-    if changed == 0 {
-        return Err(format!("no schedule with id {}", id));
+    {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        let refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let changed = db.execute(&sql, refs.as_slice()).map_err(|e| e.to_string())?;
+        if changed == 0 {
+            return Err(format!("no schedule with id {}", id));
+        }
     }
+
+    // Re-load the merged row and re-apply notifications so the scheduler
+    // reflects the updated state (remind_* columns are unchanged by AI partial
+    // updates but we must not leave stale timer handles if e.g. time changed).
+    {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        if let Ok(sched) = load_schedule_row(&db, id) {
+            drop(db);
+            crate::cmd_notify::apply_for(app, &sched).ok();
+        }
+    }
+
     Ok(json!({ "ok": true, "id": id }))
 }
 
@@ -816,5 +869,8 @@ fn delete_schedule(app: &AppHandle, args: &Value) -> Result<Value, String> {
     if changed == 0 {
         return Err(format!("no schedule with id {}", id));
     }
+    drop(db);
+    // Cancel any in-process notification tasks for the deleted schedule.
+    crate::cmd_notify::cancel_for_id(app, id);
     Ok(json!({ "ok": true, "id": id }))
 }
