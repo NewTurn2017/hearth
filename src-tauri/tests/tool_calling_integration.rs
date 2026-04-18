@@ -10,7 +10,7 @@
 
 use chrono::{Duration, Local};
 use serde_json::{json, Value};
-use tauri_app_lib::ai_tools::{kind_of, specs, ToolKind};
+use hearth_lib::ai_tools::{kind_of, specs, ToolKind};
 
 const OPENAI_CHAT_URL: &str = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL: &str = "gpt-5.4-mini";
