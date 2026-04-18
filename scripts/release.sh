@@ -171,13 +171,14 @@ notarize_and_staple() {
 
   log "Signing updater tarball with Tauri Ed25519 key…"
   # `tauri signer sign` (standalone CLI) treats the env var TAURI_SIGNING_PRIVATE_KEY
-  # as *inline* key material — only `tauri build` auto-detects paths. Use the explicit
-  # --private-key-path flag to avoid silent failures when the env var holds a filesystem
-  # path (the common and documented convention in .env.release.example).
-  npx tauri signer sign \
-    --private-key-path "$TAURI_SIGNING_PRIVATE_KEY_PATH" \
-    --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
-    "$TARBALL" > /dev/null
+  # as *inline* key material and refuses to co-exist with --private-key-path. We set
+  # that env in build_and_verify so `tauri build` picks the key up with its transparent
+  # path fallback; unset it here so the standalone CLI accepts the explicit flag.
+  env -u TAURI_SIGNING_PRIVATE_KEY \
+    npx tauri signer sign \
+      --private-key-path "$TAURI_SIGNING_PRIVATE_KEY_PATH" \
+      --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
+      "$TARBALL" > /dev/null
 
   # tauri signer writes <file>.sig next to the input; capture the content.
   SIGNATURE="$(cat "$SIG_FILE")"
