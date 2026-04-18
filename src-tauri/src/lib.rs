@@ -48,10 +48,6 @@ pub fn run() {
             });
             app.manage(crate::cmd_notify::Scheduler::new());
 
-            app.manage(cmd_ai::AiManager::new(
-                "/Users/genie/dev/side/supergemma-bench/start-mlx.sh".to_string(),
-            ));
-
             let launched_hidden = std::env::args().any(|a| a == "--hidden");
             if !launched_hidden {
                 if let Some(window) = app.get_webview_window("main") {
@@ -80,10 +76,6 @@ pub fn run() {
                 }
                 tauri::WindowEvent::Destroyed => {
                     cmd_backup::auto_backup_on_close(window.app_handle());
-                    if let Some(mgr) = window.app_handle().try_state::<cmd_ai::AiManager>() {
-                        cmd_ai::kill_child(&mgr);
-                        cmd_ai::kill_mlx_if_ours(&mgr);
-                    }
                 }
                 _ => {}
             }
@@ -121,9 +113,6 @@ pub fn run() {
             cmd_categories::update_category,
             cmd_categories::delete_category,
             cmd_categories::reorder_categories,
-            cmd_ai::start_ai_server,
-            cmd_ai::stop_ai_server,
-            cmd_ai::ai_server_status,
             cmd_ai::ai_chat,
             cmd_ai::ai_confirm,
             cmd_settings::get_ai_settings,

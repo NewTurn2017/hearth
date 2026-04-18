@@ -1,8 +1,7 @@
-// Settings store for AI provider configuration.
+// Settings store for AI configuration.
 //
-// The app supports two AI backends:
-//   • "local"  — local MLX server (existing behavior, default)
-//   • "openai" — OpenAI-compatible REST API (https://api.openai.com/v1)
+// AI is OpenAI-only as of 0.3.0. The local MLX backend was removed because
+// it hard-coded a path that only worked on the original developer's machine.
 //
 // The OpenAI key is stored plaintext in the same SQLite DB as the rest of the
 // user's data. We do not use Keychain: this is a single-user desktop tool and
@@ -14,9 +13,8 @@
 // clears it; `None` leaves it untouched.
 //
 // Model selection is intentionally NOT exposed here: OpenAI uses the
-// `OPENAI_MODEL` constant in `cmd_ai`, and local MLX infers the loaded model
-// from the running process. Keeping a single source of truth avoids the
-// "wrong ID → 404 / HF 401" failure mode the UI picker used to create.
+// `OPENAI_MODEL` constant in `cmd_ai`. Keeping a single source of truth
+// avoids the "wrong ID → 404 / HF 401" failure mode a UI picker used to create.
 
 use crate::AppState;
 use serde::{Deserialize, Serialize};
@@ -24,7 +22,6 @@ use tauri::State;
 
 /// Keys used in the `settings` KV table. Centralized so any rename happens in
 /// one place and we don't typo the string at a read site.
-const K_PROVIDER: &str = "ai.provider";
 const K_OPENAI_KEY: &str = "ai.openai_api_key";
 const K_UI_SCALE: &str = "ui.scale";
 pub(crate) const K_BACKUP_DIR: &str = "backup.dir";
@@ -34,7 +31,6 @@ pub(crate) const K_AUTOSTART: &str = "autostart.enabled";
 /// boundary. The UI only needs to know whether one is on file.
 #[derive(Debug, Clone, Serialize)]
 pub struct AiSettingsView {
-    pub provider: String,
     pub has_openai_key: bool,
 }
 
@@ -42,7 +38,6 @@ pub struct AiSettingsView {
 /// when it needs to authorize an OpenAI request.
 #[derive(Debug, Clone)]
 pub struct AiSettingsFull {
-    pub provider: String,
     pub openai_api_key: Option<String>,
 }
 
@@ -50,7 +45,6 @@ impl AiSettingsFull {
     /// Convert to the IPC-safe view, stripping the secret.
     pub fn redact(&self) -> AiSettingsView {
         AiSettingsView {
-            provider: self.provider.clone(),
             has_openai_key: self
                 .openai_api_key
                 .as_deref()
@@ -89,22 +83,13 @@ pub(crate) fn write(db: &rusqlite::Connection, key: &str, value: &str) -> Result
 /// never hand the key back to the frontend.
 pub fn load_full(state: &State<'_, AppState>) -> Result<AiSettingsFull, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
-    let provider_raw = read(&db, K_PROVIDER)?;
-    let provider = if provider_raw.is_empty() {
-        "local".to_string()
-    } else {
-        provider_raw
-    };
     let key_raw = read(&db, K_OPENAI_KEY)?;
     let openai_api_key = if key_raw.is_empty() {
         None
     } else {
         Some(key_raw)
     };
-    Ok(AiSettingsFull {
-        provider,
-        openai_api_key,
-    })
+    Ok(AiSettingsFull { openai_api_key })
 }
 
 #[tauri::command]
@@ -114,7 +99,6 @@ pub fn get_ai_settings(state: State<'_, AppState>) -> Result<AiSettingsView, Str
 
 #[derive(Debug, Deserialize)]
 pub struct SaveAiSettingsInput {
-    pub provider: String,
     /// - `Some("")` → clear the stored key
     /// - `Some("sk-...")` → overwrite
     /// - `None` → keep whatever is already stored
@@ -127,22 +111,13 @@ pub fn save_ai_settings(
     state: State<'_, AppState>,
     input: SaveAiSettingsInput,
 ) -> Result<AiSettingsView, String> {
-    if input.provider != "local" && input.provider != "openai" {
-        return Err(format!(
-            "unknown provider '{}' (expected 'local' or 'openai')",
-            input.provider
-        ));
-    }
-
     let db = state.db.lock().map_err(|e| e.to_string())?;
-    write(&db, K_PROVIDER, &input.provider)?;
     if let Some(key) = input.openai_api_key {
         // Trim incidental whitespace — copy-paste commonly carries a newline.
         write(&db, K_OPENAI_KEY, key.trim())?;
     }
 
-    // Re-read to build the canonical view (handles provider fallback to
-    // "local" when the stored value is missing).
+    // Re-read to build the canonical view.
     drop(db);
     Ok(load_full(&state)?.redact())
 }
@@ -174,24 +149,20 @@ mod tests {
     #[test]
     fn redact_hides_the_key_but_reports_presence() {
         let with_key = AiSettingsFull {
-            provider: "openai".into(),
             openai_api_key: Some("sk-abc".into()),
         };
         let v = with_key.redact();
-        assert_eq!(v.provider, "openai");
         assert!(v.has_openai_key);
     }
 
     #[test]
     fn redact_reports_absence_when_key_is_none_or_empty() {
         let none = AiSettingsFull {
-            provider: "local".into(),
             openai_api_key: None,
         };
         assert!(!none.redact().has_openai_key);
 
         let empty = AiSettingsFull {
-            provider: "local".into(),
             openai_api_key: Some(String::new()),
         };
         assert!(!empty.redact().has_openai_key);

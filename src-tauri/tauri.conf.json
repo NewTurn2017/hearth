@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://api.openai.com http://127.0.0.1:18080 http://localhost:18080; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; object-src 'none'"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://api.openai.com; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; object-src 'none'"
     }
   },
   "bundle": {
