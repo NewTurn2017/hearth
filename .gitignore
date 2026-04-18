@@ -28,3 +28,7 @@ dist-ssr
 
 # Git worktrees
 .worktrees/
+
+# Release pipeline
+.env.release
+dist/release/

@@ -1,16 +1,27 @@
 {
   "name": "hearth",
+  "version": "0.2.0",
   "private": true,
-  "version": "0.1.0",
-  "description": "Local-first personal workspace for projects, memos, and schedules — with an AI command palette.",
   "type": "module",
+  "description": "Local-first personal workspace for projects, memos, and schedules — with an AI command palette.",
+  "author": "Jaehyun Jang <hyuni2020@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/NewTurn2017/hearth",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NewTurn2017/hearth.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NewTurn2017/hearth/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release": "bash scripts/release.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -20,6 +31,8 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "@types/react-big-calendar": "^1.16.3",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -35,6 +48,7 @@
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
