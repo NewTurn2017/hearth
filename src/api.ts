@@ -116,6 +116,8 @@ export const restoreDb = (srcPath: string) =>
 
 export const listBackups = () => invoke<BackupInfo[]>("list_backups");
 
+export const resetData = () => invoke<string>("reset_data");
+
 // AI
 import type {
   AgentResult,

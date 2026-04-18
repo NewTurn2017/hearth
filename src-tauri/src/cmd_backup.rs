@@ -131,9 +131,11 @@ pub fn list_backups(
         .map_err(|e| e.to_string())?
         .filter_map(|e| e.ok())
         .filter(|e| {
-            e.file_name()
-                .to_string_lossy()
-                .starts_with("hearth-backup-")
+            let name = e.file_name();
+            let n = name.to_string_lossy();
+            // `hearth-backup-*.db` → regular rolling backups
+            // `pre-reset-*.db`     → snapshots captured right before a reset
+            n.starts_with("hearth-backup-") || n.starts_with("pre-reset-")
         })
         .filter_map(|e| {
             let meta = e.metadata().ok()?;
@@ -155,6 +157,57 @@ pub fn list_backups(
         .collect();
     backups.sort_by(|a, b| b.filename.cmp(&a.filename));
     Ok(backups)
+}
+
+/// Wipe user content (projects, memos, schedules, clients) in a single
+/// transaction, after taking a `pre-reset-<ts>.db` snapshot in the backup
+/// directory. The snapshot uses its own filename prefix so the normal
+/// rolling-retention logic (which only touches `hearth-backup-*.db`) leaves
+/// it alone — the user should always be able to get back to the pre-reset
+/// state via the Restore list in the 백업 tab.
+///
+/// Categories, settings (AI creds, backup dir, UI scale), and the
+/// `sqlite_sequence` table are **preserved** — the intent is "empty my
+/// workspace" not "factory reset."
+#[tauri::command]
+pub fn reset_data(
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    // 1) Flush WAL so the snapshot carries the latest committed state.
+    {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        db.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+            .map_err(|e| e.to_string())?;
+    }
+
+    // 2) Copy the current DB to <backup_dir>/pre-reset-<ts>.db.
+    let source = db_path(&app)?;
+    let dir = backup_dir(&app, &state)?;
+    let timestamp = Local::now().format("%Y-%m-%d-%H%M%S");
+    let snapshot = dir.join(format!("pre-reset-{}.db", timestamp));
+    fs::copy(&source, &snapshot)
+        .map_err(|e| format!("pre-reset snapshot failed: {}", e))?;
+
+    // 3) Wipe user content in a single transaction. `sqlite_sequence` is
+    // reset too so the next created row starts at id=1 again — otherwise
+    // AUTOINCREMENT would keep climbing past the deleted max.
+    {
+        let mut db = state.db.lock().map_err(|e| e.to_string())?;
+        let tx = db.transaction().map_err(|e| e.to_string())?;
+        for table in ["memos", "schedules", "projects", "clients"] {
+            tx.execute(&format!("DELETE FROM {}", table), [])
+                .map_err(|e| e.to_string())?;
+        }
+        tx.execute(
+            "DELETE FROM sqlite_sequence WHERE name IN (?, ?, ?, ?)",
+            ["memos", "schedules", "projects", "clients"],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
+    }
+
+    Ok(snapshot.to_string_lossy().to_string())
 }
 
 pub fn auto_backup_on_close(app: &AppHandle) {
