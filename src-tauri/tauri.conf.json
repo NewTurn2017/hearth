@@ -30,7 +30,7 @@
     "createUpdaterArtifacts": true,
     "category": "public.app-category.productivity",
     "shortDescription": "Local-first personal workspace.",
-    "longDescription": "Hearth is a local-first personal workspace that unifies projects, sticky memos, and schedules, driven by an AI command palette that runs entirely on-device (MLX) or via OpenAI.",
+    "longDescription": "Hearth is a local-first personal workspace that unifies projects, sticky memos, and schedules, driven by an optional AI command palette powered by OpenAI.",
     "publisher": "Jaehyun Jang",
     "copyright": "© 2026 Jaehyun Jang",
     "homepage": "https://github.com/NewTurn2017/hearth",
