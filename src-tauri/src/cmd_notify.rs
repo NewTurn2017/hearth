@@ -13,6 +13,7 @@ use tauri_plugin_notification::NotificationExt;
 use tauri::async_runtime::JoinHandle;
 
 use crate::models::Schedule;
+use crate::AppState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReminderKind {
@@ -189,6 +190,56 @@ pub fn apply_for(app: &AppHandle, s: &Schedule) -> Result<(), String> {
         }
         let id = notification_id(s.id, kind);
         spawn_fire(app, id, kind, at_local, body.clone());
+    }
+    Ok(())
+}
+
+/// Walk the DB, abort any stale scheduler tasks, then re-apply just the
+/// future reminders. Runs once at boot; no-op if the scheduler state isn't
+/// yet registered (shouldn't happen — setup() manages it before spawning).
+pub fn reschedule_all_future(app: &AppHandle) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+
+    let rows: Vec<Schedule> = {
+        let mut stmt = db
+            .prepare(
+                "SELECT id, date, time, location, description, notes, \
+                 remind_before_5min, remind_at_start, created_at, updated_at \
+                 FROM schedules \
+                 WHERE remind_before_5min = 1 OR remind_at_start = 1",
+            )
+            .map_err(|e| e.to_string())?;
+
+        let rows: Vec<Schedule> = stmt
+            .query_map([], |row| {
+                let b5: i64 = row.get(6)?;
+                let ba: i64 = row.get(7)?;
+                Ok(Schedule {
+                    id: row.get(0)?,
+                    date: row.get(1)?,
+                    time: row.get(2)?,
+                    location: row.get(3)?,
+                    description: row.get(4)?,
+                    notes: row.get(5)?,
+                    remind_before_5min: b5 != 0,
+                    remind_at_start: ba != 0,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            })
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect();
+        rows
+    }; // stmt dropped here
+
+    drop(db);
+
+    for s in rows {
+        if let Err(e) = apply_for(app, &s) {
+            eprintln!("reschedule failed for {}: {}", s.id, e);
+        }
     }
     Ok(())
 }
