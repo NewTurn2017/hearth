@@ -97,11 +97,41 @@ preflight() {
   log "Preflight OK — version=$VERSION tag=$TAG"
 }
 
+build_and_verify() {
+  log "npm ci…"
+  npm ci --silent
+
+  log "cargo fetch…"
+  (cd src-tauri && cargo fetch --quiet)
+
+  log "tauri build (universal-apple-darwin)…"
+  npm run tauri -- build --target universal-apple-darwin
+
+  DMG_DIR="src-tauri/target/universal-apple-darwin/release/bundle/dmg"
+  MACOS_DIR="src-tauri/target/universal-apple-darwin/release/bundle/macos"
+  DMG="$(ls "$DMG_DIR"/Hearth_*_universal.dmg 2>/dev/null | head -1)"
+  APP="$MACOS_DIR/Hearth.app"
+  TARBALL="$MACOS_DIR/Hearth.app.tar.gz"
+  SIG_FILE="$MACOS_DIR/Hearth.app.tar.gz.sig"
+  [[ -f "$DMG" ]]     || die "DMG not produced: $DMG_DIR"
+  [[ -d "$APP" ]]     || die "Hearth.app not produced: $APP"
+  [[ -f "$TARBALL" ]] || die "updater tarball not produced: $TARBALL"
+  [[ -f "$SIG_FILE" ]] || die "updater signature not produced: $SIG_FILE"
+  export DMG APP TARBALL SIG_FILE
+
+  log "codesign --verify…"
+  codesign --verify --deep --strict --verbose=2 "$APP" \
+    || die "codesign verify failed on $APP"
+
+  log "Built: $DMG"
+}
+
 main() {
   preflight
-  log "(build/sign/notarize/publish stages are added in subsequent tasks)"
+  build_and_verify
+  log "(notarize/staple/publish stages added in subsequent tasks)"
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    log "dry-run: stopping before tag/release."
+    log "dry-run: stopping before notarize."
   fi
 }
 
