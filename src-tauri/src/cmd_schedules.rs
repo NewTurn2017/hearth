@@ -1,7 +1,7 @@
 use crate::models::Schedule;
 use crate::AppState;
 use serde::Deserialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[derive(Debug, Deserialize)]
 pub struct ScheduleInput {
@@ -69,6 +69,7 @@ pub fn get_schedules(
 
 #[tauri::command]
 pub fn create_schedule(
+    app: AppHandle,
     state: State<'_, AppState>,
     data: ScheduleInput,
 ) -> Result<Schedule, String> {
@@ -89,16 +90,21 @@ pub fn create_schedule(
     .map_err(|e| e.to_string())?;
 
     let id = db.last_insert_rowid();
-    db.query_row(
-        &format!("SELECT {} FROM schedules WHERE id = ?1", SELECT_COLS),
-        [id],
-        row_to_schedule,
-    )
-    .map_err(|e| e.to_string())
+    let sched = db
+        .query_row(
+            &format!("SELECT {} FROM schedules WHERE id = ?1", SELECT_COLS),
+            [id],
+            row_to_schedule,
+        )
+        .map_err(|e| e.to_string())?;
+    drop(db);
+    crate::cmd_notify::apply_for(&app, &sched).ok();
+    Ok(sched)
 }
 
 #[tauri::command]
 pub fn update_schedule(
+    app: AppHandle,
     state: State<'_, AppState>,
     id: i64,
     data: ScheduleInput,
@@ -120,19 +126,29 @@ pub fn update_schedule(
     )
     .map_err(|e| e.to_string())?;
 
-    db.query_row(
-        &format!("SELECT {} FROM schedules WHERE id = ?1", SELECT_COLS),
-        [id],
-        row_to_schedule,
-    )
-    .map_err(|e| e.to_string())
+    let sched = db
+        .query_row(
+            &format!("SELECT {} FROM schedules WHERE id = ?1", SELECT_COLS),
+            [id],
+            row_to_schedule,
+        )
+        .map_err(|e| e.to_string())?;
+    drop(db);
+    crate::cmd_notify::apply_for(&app, &sched).ok();
+    Ok(sched)
 }
 
 #[tauri::command]
-pub fn delete_schedule(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+pub fn delete_schedule(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: i64,
+) -> Result<(), String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     db.execute("DELETE FROM schedules WHERE id = ?1", [id])
         .map_err(|e| e.to_string())?;
+    drop(db);
+    crate::cmd_notify::cancel_for_id(&app, id);
     Ok(())
 }
 

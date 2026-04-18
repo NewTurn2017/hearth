@@ -244,6 +244,40 @@ pub fn reschedule_all_future(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ── Permission commands ────────────────────────────────────────────────────
+
+use tauri_plugin_notification::PermissionState;
+
+/// Return the current notification permission state as a normalized string.
+/// Desktop (macOS/Windows/Linux) always returns `"granted"` from the plugin;
+/// the command still normalises so the JS side has a stable contract.
+#[tauri::command]
+pub async fn notifications_permission(app: AppHandle) -> Result<String, String> {
+    let state = app
+        .notification()
+        .permission_state()
+        .map_err(|e| e.to_string())?;
+    Ok(match state {
+        PermissionState::Granted => "granted".into(),
+        PermissionState::Denied => "denied".into(),
+        _ => "unknown".into(),
+    })
+}
+
+/// Request notification permission and return the result as a normalized string.
+#[tauri::command]
+pub async fn notifications_request(app: AppHandle) -> Result<String, String> {
+    let state = app
+        .notification()
+        .request_permission()
+        .map_err(|e| e.to_string())?;
+    Ok(match state {
+        PermissionState::Granted => "granted".into(),
+        PermissionState::Denied => "denied".into(),
+        _ => "unknown".into(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
