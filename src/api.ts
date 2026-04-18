@@ -50,24 +50,21 @@ export const searchProjects = (query: string) =>
 export const getSchedules = (month?: string) =>
   invoke<Schedule[]>("get_schedules", { month: month ?? null });
 
-export const createSchedule = (data: {
+export type ScheduleInput = {
   date: string;
   time?: string;
   location?: string;
   description?: string;
   notes?: string;
-}) => invoke<Schedule>("create_schedule", { data });
+  remind_before_5min?: boolean;
+  remind_at_start?: boolean;
+};
 
-export const updateSchedule = (
-  id: number,
-  data: {
-    date: string;
-    time?: string;
-    location?: string;
-    description?: string;
-    notes?: string;
-  }
-) => invoke<Schedule>("update_schedule", { id, data });
+export const createSchedule = (data: ScheduleInput) =>
+  invoke<Schedule>("create_schedule", { data });
+
+export const updateSchedule = (id: number, data: ScheduleInput) =>
+  invoke<Schedule>("update_schedule", { id, data });
 
 export const deleteSchedule = (id: number) =>
   invoke<void>("delete_schedule", { id });
@@ -186,3 +183,15 @@ export const reorderCategories = (ids: number[]) =>
 export const getBackupDir = () => invoke<string>("get_backup_dir");
 export const setBackupDir = (path: string) =>
   invoke<string>("set_backup_dir", { path });
+
+// 자동 시작 (autostart)
+export const getAutostart = () => invoke<boolean>("get_autostart");
+export const setAutostart = (enabled: boolean) =>
+  invoke<void>("set_autostart", { enabled });
+
+// 알림 권한 (notification permissions)
+export type NotificationPermission = "granted" | "denied" | "unknown";
+export const notificationsPermission = () =>
+  invoke<NotificationPermission>("notifications_permission");
+export const notificationsRequest = () =>
+  invoke<NotificationPermission>("notifications_request");

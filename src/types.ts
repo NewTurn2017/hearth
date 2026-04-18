@@ -18,6 +18,8 @@ export interface Schedule {
   location: string | null;
   description: string | null;
   notes: string | null;
+  remind_before_5min: boolean;
+  remind_at_start: boolean;
   created_at: string;
   updated_at: string;
 }
