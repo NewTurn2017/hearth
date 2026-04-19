@@ -8,6 +8,13 @@ vi.mock("../../api", () => ({
   setAutostart: vi.fn().mockResolvedValue(undefined),
   notificationsPermission: vi.fn().mockResolvedValue("unknown"),
   notificationsRequest: vi.fn().mockResolvedValue("granted"),
+  getQuickCaptureShortcut: vi.fn().mockResolvedValue("CommandOrControl+Shift+H"),
+  getQuickCaptureShortcutError: vi.fn().mockResolvedValue(""),
+  rebindQuickCaptureShortcut: vi.fn().mockResolvedValue("CommandOrControl+Shift+H"),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
 }));
 
 import * as api from "../../api";
