@@ -9,7 +9,7 @@
 
 **Local-first personal workspace for projects, memos, and schedules — driven by an AI command palette.**
 
-<video src="https://github.com/NewTurn2017/hearth/releases/download/assets-v1/my-video_2026-04-19_14-35-22.mp4" controls></video>
+[![Hearth 소개 영상](https://img.youtube.com/vi/hPBY_6mK-5o/maxresdefault.jpg)](https://youtu.be/hPBY_6mK-5o)
 
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
