@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 import { NewProjectDialog } from "./NewProjectDialog";
@@ -13,6 +14,7 @@ import { PRIORITIES } from "../types";
 import { useAppUpdater } from "../hooks/useAppUpdater";
 import { useDbRecoveryNotice } from "../hooks/useDbRecoveryNotice";
 import { useCmdF } from "../lib/shortcuts";
+import { useToast } from "../ui/Toast";
 import * as api from "../api";
 
 export function Layout({
@@ -27,6 +29,7 @@ export function Layout({
 }) {
   const pendingUpdate = useAppUpdater();
   useDbRecoveryNotice();
+  const toast = useToast();
   const [version, setVersion] = useState<string>("");
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +91,19 @@ export function Layout({
     window.addEventListener("settings:open", onOpen);
     return () => window.removeEventListener("settings:open", onOpen);
   }, []);
+
+  useEffect(() => {
+    let off: UnlistenFn | null = null;
+    listen<{ memoId: number }>("memo:quick-captured", (e) => {
+      const { memoId } = e.payload;
+      toast.success("메모 추가됨");
+      window.dispatchEvent(new CustomEvent("memo:focus", { detail: { memoId } }));
+      window.dispatchEvent(new Event("memos:changed"));
+    }).then((f) => (off = f));
+    return () => {
+      if (off) off();
+    };
+  }, [toast]);
 
   const openNewMemo = useCallback(() => {
     setActiveTab("memos");
