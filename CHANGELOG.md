@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-04-19
+
+### Fixed
+- **자동 업데이트 실패 수정 (`failed to unpack ._Hearth.app`)**: 릴리즈 스크립트가 macOS `tar` 기본 동작으로 AppleDouble 메타데이터(`._Hearth.app`)를 tarball 에 포함시켜 Tauri updater 가 압축 해제에 실패하던 문제. `COPYFILE_DISABLE=1` + `--no-xattrs` 로 메타데이터 제외. 0.4.1 업데이트가 실패했다면 0.4.2 로 바로 올라옵니다.
+
+### Notes
+- 0.4.1 의 기능 변경(기본 터미널, Finder 피커)은 그대로 포함됩니다.
+
 ## [0.4.1] - 2026-04-19
 
 ### Changed

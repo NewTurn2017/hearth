@@ -205,7 +205,11 @@ notarize_and_staple() {
   xcrun stapler validate "$APP"
 
   log "Repacking Hearth.app.tar.gz with stapled .app…"
-  (cd "$(dirname "$APP")" && tar -czf Hearth.app.tar.gz Hearth.app)
+  # COPYFILE_DISABLE=1 keeps macOS `tar` from emitting AppleDouble (`._Hearth.app`)
+  # metadata files alongside the bundle. Tauri's updater unpacks the archive with
+  # a strict loop and aborts on those extra entries ("failed to unpack `._Hearth.app`"),
+  # which is how 0.4.1 shipped broken. Keep this flag set here forever.
+  (cd "$(dirname "$APP")" && COPYFILE_DISABLE=1 tar --no-xattrs -czf Hearth.app.tar.gz Hearth.app)
 
   log "Signing updater tarball with Tauri Ed25519 key…"
   # `tauri signer sign` (standalone CLI) treats the env var TAURI_SIGNING_PRIVATE_KEY
