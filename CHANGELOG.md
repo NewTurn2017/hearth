@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-04-19
+
+### Changed
+- **프로젝트 경로 열기: Ghostty → macOS 기본 터미널 (Terminal.app)**: `open -a Ghostty` 하드코딩을 제거하고 시스템 기본 Terminal.app 을 호출합니다. 컨텍스트 메뉴/호버 버튼 라벨도 "터미널에서 열기" 로 변경.
+
+### Added
+- **프로젝트 경로 Finder 피커**: 프로젝트 생성/편집 폼의 경로 입력 옆에 폴더 선택 버튼이 생겼습니다. 직접 입력 대신 Finder 다이얼로그로 폴더를 고를 수 있고, 기존 경로가 있으면 그 위치부터 열립니다.
+
 ## [0.4.0] - 2026-04-19
 
 ### Added

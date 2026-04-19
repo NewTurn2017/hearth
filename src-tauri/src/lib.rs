@@ -123,7 +123,7 @@ pub fn run() {
             cmd_memos::update_memo_by_number,
             cmd_memos::delete_memo_by_number,
             cmd_clients::get_clients,
-            cmd_actions::open_in_ghostty,
+            cmd_actions::open_in_terminal,
             cmd_actions::open_in_finder,
             cmd_actions::import_excel,
             cmd_backup::backup_db,

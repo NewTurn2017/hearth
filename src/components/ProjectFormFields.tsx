@@ -1,5 +1,9 @@
 import type { KeyboardEvent } from "react";
+import { FolderSearch } from "lucide-react";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Input } from "../ui/Input";
+import { Icon } from "../ui/Icon";
+import { Tooltip } from "../ui/Tooltip";
 import { PRIORITIES } from "../types";
 import type { Priority } from "../types";
 import { useCategories } from "../hooks/useCategories";
@@ -85,12 +89,39 @@ export function ProjectFormFields({
           ))}
         </select>
       </div>
-      <Input
-        placeholder="경로 (선택)"
-        value={value.path}
-        onChange={(e) => onChange({ path: e.target.value })}
-        onKeyDown={onKey}
-      />
+      <div className="flex gap-2">
+        <Input
+          placeholder="경로 (선택)"
+          value={value.path}
+          onChange={(e) => onChange({ path: e.target.value })}
+          onKeyDown={onKey}
+          className="flex-1"
+        />
+        <Tooltip label="Finder에서 폴더 선택">
+          <button
+            type="button"
+            onClick={async () => {
+              const picked = await openDialog({
+                directory: true,
+                multiple: false,
+                defaultPath: value.path || undefined,
+              });
+              if (typeof picked === "string" && picked) {
+                onChange({ path: picked });
+              }
+            }}
+            className={
+              "h-9 w-9 inline-flex items-center justify-center shrink-0 " +
+              "rounded-[var(--radius-md)] bg-[var(--color-surface-2)] " +
+              "border border-[var(--color-border)] text-[var(--color-text-muted)] " +
+              "hover:text-[var(--color-brand-hi)] hover:border-[var(--color-brand-hi)]"
+            }
+            aria-label="Finder에서 폴더 선택"
+          >
+            <Icon icon={FolderSearch} size={14} />
+          </button>
+        </Tooltip>
+      </div>
       {includeEvaluation && (
         <textarea
           className={

@@ -251,7 +251,7 @@ export function ProjectList({
                             project={project}
                             onUpdate={onUpdate}
                             onDelete={onDelete}
-                            onOpenGhostty={(path) => api.openInGhostty(path)}
+                            onOpenTerminal={(path) => api.openInTerminal(path)}
                             onOpenFinder={(path) => api.openInFinder(path)}
                             onOpenDetail={onOpenDetail}
                           />

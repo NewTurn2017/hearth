@@ -23,14 +23,14 @@ export function ProjectCard({
   project,
   onUpdate,
   onDelete,
-  onOpenGhostty,
+  onOpenTerminal,
   onOpenFinder,
   onOpenDetail,
 }: {
   project: Project;
   onUpdate: (id: number, fields: Record<string, string>) => void;
   onDelete: (id: number) => void;
-  onOpenGhostty: (path: string) => void;
+  onOpenTerminal: (path: string) => void;
   onOpenFinder: (path: string) => void;
   onOpenDetail: (project: Project) => void;
 }) {
@@ -60,10 +60,10 @@ export function ProjectCard({
     ...(project.path
       ? ([
           {
-            id: "ghostty",
-            label: "Ghostty에서 열기",
+            id: "terminal",
+            label: "터미널에서 열기",
             icon: Play,
-            onSelect: () => api.openInGhostty(project.path!),
+            onSelect: () => api.openInTerminal(project.path!),
           },
           {
             id: "finder",
@@ -133,11 +133,11 @@ export function ProjectCard({
       >
         {project.path && (
           <>
-            <Tooltip label="Ghostty에서 열기">
+            <Tooltip label="터미널에서 열기">
               <button
-                onClick={() => onOpenGhostty(project.path!)}
+                onClick={() => onOpenTerminal(project.path!)}
                 className="w-7 h-7 inline-flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-brand-hi)] hover:bg-[var(--color-surface-1)]"
-                aria-label="Ghostty에서 열기"
+                aria-label="터미널에서 열기"
               >
                 <Icon icon={Play} size={14} />
               </button>

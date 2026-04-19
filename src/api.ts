@@ -92,8 +92,8 @@ export const reorderMemos = (ids: number[]) =>
 export const getClients = () => invoke<Client[]>("get_clients");
 
 // 액션
-export const openInGhostty = (path: string) =>
-  invoke<void>("open_in_ghostty", { path });
+export const openInTerminal = (path: string) =>
+  invoke<void>("open_in_terminal", { path });
 
 export const openInFinder = (path: string) =>
   invoke<void>("open_in_finder", { path });

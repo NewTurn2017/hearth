@@ -5,15 +5,18 @@ use std::process::Command;
 use tauri::State;
 
 #[tauri::command]
-pub fn open_in_ghostty(path: String) -> Result<(), String> {
+pub fn open_in_terminal(path: String) -> Result<(), String> {
     let p = Path::new(&path);
     if !p.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
+    // macOS 기본 터미널 앱(Terminal.app)에서 해당 경로를 연다.
+    // 사용자가 기본 터미널을 다른 앱(iTerm 등)으로 바꿨더라도 `open -a Terminal`은
+    // 시스템 Terminal.app을 호출하므로, 추후 기본값 감지가 필요하면 여기서 분기한다.
     Command::new("open")
-        .args(["-a", "Ghostty", &path])
+        .args(["-a", "Terminal", &path])
         .spawn()
-        .map_err(|e| format!("Failed to open Ghostty: {}", e))?;
+        .map_err(|e| format!("Failed to open Terminal: {}", e))?;
     Ok(())
 }
 
