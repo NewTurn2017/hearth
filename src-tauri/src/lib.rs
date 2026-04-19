@@ -17,6 +17,7 @@ mod models;
 
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 pub struct AppState {
     pub db: Mutex<rusqlite::Connection>,
@@ -34,6 +35,7 @@ pub fn run() {
             Some(vec!["--hidden"]),
         ))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let app_data_dir = app
                 .path()
@@ -87,6 +89,51 @@ pub fn run() {
                     eprintln!("notification boot reschedule failed: {e}");
                 }
             });
+
+            // Pre-build the quick-capture overlay window (hidden).
+            let _ = crate::cmd_quick_capture::ensure_window(app.handle());
+
+            // Read saved combo (falls back to DEFAULT_COMBO) and register the
+            // global shortcut. Failure must NOT crash the app.
+            let combo = {
+                let state = app.state::<AppState>();
+                let db = state.db.lock().map_err(|e| e.to_string());
+                match db {
+                    Ok(db) => crate::cmd_quick_capture::read_combo(&db)
+                        .unwrap_or_else(|_| crate::cmd_quick_capture::DEFAULT_COMBO.to_string()),
+                    Err(_) => crate::cmd_quick_capture::DEFAULT_COMBO.to_string(),
+                }
+            };
+
+            let shortcut_result = app
+                .global_shortcut()
+                .on_shortcut(combo.as_str(), |app_handle, _shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        let _ = crate::cmd_quick_capture::toggle_quick_capture_window(
+                            app_handle.clone(),
+                        );
+                    }
+                });
+
+            // Write success/failure to KV — non-fatal on error.
+            let error_msg = match shortcut_result {
+                Ok(()) => String::new(),
+                Err(e) => {
+                    eprintln!("quick-capture shortcut registration failed: {e}");
+                    e.to_string()
+                }
+            };
+            {
+                let app_state = app.state::<AppState>();
+                let db_guard = app_state.db.lock();
+                if let Ok(db) = db_guard {
+                    let _ = crate::cmd_settings::write(
+                        &db,
+                        crate::cmd_quick_capture::K_SHORTCUT_LAST_ERROR,
+                        &error_msg,
+                    );
+                }
+            }
 
             Ok(())
         })
@@ -148,6 +195,13 @@ pub fn run() {
             cmd_notify::notifications_request,
             cmd_autostart::get_autostart,
             cmd_autostart::set_autostart,
+            cmd_quick_capture::get_quick_capture_shortcut,
+            cmd_quick_capture::get_quick_capture_shortcut_error,
+            cmd_quick_capture::rebind_quick_capture_shortcut,
+            cmd_quick_capture::show_quick_capture_window,
+            cmd_quick_capture::hide_quick_capture_window,
+            cmd_quick_capture::toggle_quick_capture_window,
+            cmd_quick_capture::resize_quick_capture_window,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
