@@ -70,6 +70,65 @@ fn canonical_base(tok: &str) -> Result<String, String> {
     }
 }
 
+use crate::cmd_settings;
+use crate::AppState;
+use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
+
+/// Read the saved combo, falling back to the default. Returns a value
+/// already normalized to Tauri accelerator form.
+pub(crate) fn read_combo(db: &rusqlite::Connection) -> Result<String, String> {
+    let raw = cmd_settings::read(db, K_SHORTCUT)?;
+    let combo = if raw.trim().is_empty() {
+        DEFAULT_COMBO.to_string()
+    } else {
+        raw
+    };
+    normalize_accelerator(&combo)
+}
+
+#[tauri::command]
+pub fn get_quick_capture_shortcut(state: State<'_, AppState>) -> Result<String, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    read_combo(&db)
+}
+
+#[tauri::command]
+pub fn get_quick_capture_shortcut_error(state: State<'_, AppState>) -> Result<String, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    cmd_settings::read(&db, K_SHORTCUT_LAST_ERROR)
+}
+
+#[tauri::command]
+pub fn rebind_quick_capture_shortcut(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    combo: String,
+) -> Result<String, String> {
+    let normalized = normalize_accelerator(&combo)?;
+    let old = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        read_combo(&db)?
+    };
+
+    let gs = app.global_shortcut();
+    // unregister accepts &str via TryInto<ShortcutWrapper>
+    let _ = gs.unregister(old.as_str());
+    if let Err(e) = gs.register(normalized.as_str()) {
+        // Roll back: re-register the old shortcut (best-effort)
+        let _ = gs.register(old.as_str());
+        return Err(format!("register shortcut failed: {e}"));
+    }
+
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    cmd_settings::write(&db, K_SHORTCUT, &normalized)?;
+    cmd_settings::write(&db, K_SHORTCUT_LAST_ERROR, "")?;
+    drop(db);
+
+    let _ = app.emit("quick-capture-shortcut:changed", &normalized);
+    Ok(normalized)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
