@@ -8,6 +8,7 @@ mod cmd_clients;
 mod cmd_memos;
 mod cmd_notify;
 mod cmd_projects;
+mod cmd_quick_capture;
 mod cmd_schedules;
 mod cmd_settings;
 mod db;
