@@ -189,3 +189,22 @@ export const notificationsPermission = () =>
   invoke<NotificationPermission>("notifications_permission");
 export const notificationsRequest = () =>
   invoke<NotificationPermission>("notifications_request");
+
+// Quick Capture
+export const getQuickCaptureShortcut = () =>
+  invoke<string>("get_quick_capture_shortcut");
+
+export const getQuickCaptureShortcutError = () =>
+  invoke<string>("get_quick_capture_shortcut_error");
+
+export const rebindQuickCaptureShortcut = (combo: string) =>
+  invoke<string>("rebind_quick_capture_shortcut", { combo });
+
+export const showQuickCaptureWindow = () =>
+  invoke<void>("show_quick_capture_window");
+
+export const hideQuickCaptureWindow = () =>
+  invoke<void>("hide_quick_capture_window");
+
+export const resizeQuickCaptureWindow = (height: number) =>
+  invoke<void>("resize_quick_capture_window", { height });
