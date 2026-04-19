@@ -26,6 +26,7 @@ export function ProjectCard({
   onOpenTerminal,
   onOpenFinder,
   onOpenDetail,
+  highlighted,
 }: {
   project: Project;
   onUpdate: (id: number, fields: Record<string, string>) => void;
@@ -33,6 +34,7 @@ export function ProjectCard({
   onOpenTerminal: (path: string) => void;
   onOpenFinder: (path: string) => void;
   onOpenDetail: (project: Project) => void;
+  highlighted?: boolean;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -117,13 +119,15 @@ export function ProjectCard({
     <div
       ref={setNodeRef}
       style={style}
+      data-project-id={project.id}
       onDoubleClick={() => onOpenDetail(project)}
       onContextMenu={openMenu}
       className={cn(
         "group relative flex flex-col gap-2 p-3 rounded-[var(--radius-md)]",
         "bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)]",
         "border border-transparent hover:border-[var(--color-border)]",
-        "transition-colors duration-[120ms] cursor-default select-none"
+        "transition-colors duration-[120ms] cursor-default select-none",
+        highlighted && "find-highlight"
       )}
     >
       <div

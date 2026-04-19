@@ -6,11 +6,13 @@ import { NewProjectDialog } from "./NewProjectDialog";
 import { NewMemoDialog } from "./NewMemoDialog";
 import { SettingsDialog } from "./SettingsDialog";
 import { CommandPalette } from "../command/CommandPalette";
+import { FindPalette } from "./FindPalette";
 import { buildLocalCommands } from "../command/dispatch";
 import type { Tab, Priority, ToolCall } from "../types";
 import { PRIORITIES } from "../types";
 import { useAppUpdater } from "../hooks/useAppUpdater";
 import { useDbRecoveryNotice } from "../hooks/useDbRecoveryNotice";
+import { useCmdF } from "../lib/shortcuts";
 import * as api from "../api";
 
 export function Layout({
@@ -64,6 +66,8 @@ export function Layout({
 
   const [newMemoOpen, setNewMemoOpen] = useState(false);
   const [newMemoProjectId, setNewMemoProjectId] = useState<number | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
+  useCmdF(() => setFindOpen(true));
 
   useEffect(() => {
     const onNew = (e: Event) => {
@@ -177,6 +181,11 @@ export function Layout({
           memos: await api.getMemos(),
         })}
         onClientIntent={handleClientIntent}
+      />
+      <FindPalette
+        open={findOpen}
+        onClose={() => setFindOpen(false)}
+        onNavigate={setActiveTab}
       />
       <NewProjectDialog
         open={newProjectOpen}

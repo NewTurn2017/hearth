@@ -1,6 +1,6 @@
 {
   "name": "hearth",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "type": "module",
   "description": "Local-first personal workspace for projects, memos, and schedules — with an AI command palette.",
@@ -38,6 +38,7 @@
     "@types/react-big-calendar": "^1.16.3",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "fuse.js": "^7.3.0",
     "lucide-react": "^0.475.0",
     "moment": "^2.30.1",
     "react": "^19.1.0",

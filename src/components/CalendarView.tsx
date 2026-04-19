@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import moment from "moment";
@@ -69,6 +69,34 @@ export function CalendarView() {
   // react-big-calendar's uncontrolled mode silently drops navigation events
   // when you don't pair `date` with `onNavigate`.
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+  const [pendingFocusId, setPendingFocusId] = useState<number | null>(null);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+
+  // FindPalette emits `schedule:focus` with the target schedule id. On a cold
+  // tab switch the `schedules` list hasn't loaded yet, so we just stash the
+  // id here and let a second effect apply it once the data arrives.
+  useEffect(() => {
+    const onFocus = (e: Event) => {
+      const detail = (e as CustomEvent<{ scheduleId?: number; date?: string }>)
+        .detail;
+      const id = detail?.scheduleId;
+      if (typeof id !== "number") return;
+      setPendingFocusId(id);
+    };
+    window.addEventListener("schedule:focus", onFocus);
+    return () => window.removeEventListener("schedule:focus", onFocus);
+  }, []);
+
+  useEffect(() => {
+    if (pendingFocusId === null) return;
+    const found = schedules.find((s) => s.id === pendingFocusId);
+    if (!found) return;
+    setCurrentDate(moment(found.date).toDate());
+    setHighlightedId(found.id);
+    setPendingFocusId(null);
+    const t = window.setTimeout(() => setHighlightedId(null), 2400);
+    return () => window.clearTimeout(t);
+  }, [pendingFocusId, schedules]);
 
   const events: CalendarEvent[] = useMemo(
     () =>
@@ -171,6 +199,11 @@ export function CalendarView() {
           messages={messages}
           formats={formats}
           culture="ko"
+          eventPropGetter={(event) =>
+            event.id === highlightedId
+              ? { className: "rbc-event-find-highlight" }
+              : {}
+          }
         />
       </div>
       {modal && (

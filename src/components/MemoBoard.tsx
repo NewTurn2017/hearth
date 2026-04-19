@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -44,6 +44,31 @@ export function MemoBoard() {
   );
 
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+
+  // Listen for search-palette focus requests. We scroll the card into view
+  // and trigger a one-shot glow via `find-highlight`. Re-keying on every
+  // event (setHighlightedId(null) → id) so repeated clicks on the same memo
+  // restart the animation instead of sitting on a static ring.
+  useEffect(() => {
+    const onFocus = (e: Event) => {
+      const detail = (e as CustomEvent<{ memoId?: number }>).detail;
+      const id = detail?.memoId;
+      if (typeof id !== "number") return;
+      setHighlightedId(null);
+      requestAnimationFrame(() => {
+        setHighlightedId(id);
+        const el = document.querySelector<HTMLElement>(
+          `[data-memo-id="${id}"]`
+        );
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      const t = window.setTimeout(() => setHighlightedId(null), 2000);
+      return () => window.clearTimeout(t);
+    };
+    window.addEventListener("memo:focus", onFocus);
+    return () => window.removeEventListener("memo:focus", onFocus);
+  }, []);
 
   const handleDragStart = (e: DragStartEvent) => {
     if (typeof e.active.id === "number") setActiveId(e.active.id);
@@ -179,6 +204,7 @@ export function MemoBoard() {
                           onUpdate={update}
                           onDelete={remove}
                           sequenceNumber={seq.get(m.id) ?? 0}
+                          highlighted={m.id === highlightedId}
                         />
                       ))}
                     </div>

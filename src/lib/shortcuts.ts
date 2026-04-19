@@ -19,3 +19,18 @@ export function useCmdK(handler: () => void) {
     return () => window.removeEventListener("keydown", onKey);
   }, [handler]);
 }
+
+/** Listen for ⌘F / Ctrl+F globally. Calls `handler` with no arg. */
+export function useCmdF(handler: () => void) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = isMac() ? e.metaKey : e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        handler();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handler]);
+}

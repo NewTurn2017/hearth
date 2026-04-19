@@ -1,6 +1,6 @@
 [package]
 name = "hearth"
-version = "0.4.2"
+version = "0.4.3"
 description = "Local-first personal workspace for projects, memos, and schedules."
 authors = ["Jaehyun Jang <hyuni2020@gmail.com>"]
 license = "MIT"

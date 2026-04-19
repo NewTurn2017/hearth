@@ -17,12 +17,14 @@ export function MemoCard({
   onUpdate,
   onDelete,
   sequenceNumber,
+  highlighted,
 }: {
   memo: Memo;
   projects: Project[];
   onUpdate: (id: number, fields: Record<string, unknown>) => void;
   onDelete: (id: number) => void;
   sequenceNumber: number;
+  highlighted?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState(memo.content);
@@ -109,12 +111,16 @@ export function MemoCard({
   return (
     <div
       ref={setNodeRef}
+      data-memo-id={memo.id}
       style={{
         ...style,
         backgroundColor: colorDef.bg,
         color: colorDef.text,
       }}
-      className="memo-card rounded-xl p-5 hover:shadow-xl transition-shadow relative group min-h-[160px] flex flex-col"
+      className={cn(
+        "memo-card rounded-xl p-5 hover:shadow-xl transition-shadow relative group min-h-[160px] flex flex-col",
+        highlighted && "find-highlight"
+      )}
       onContextMenu={openMenu}
     >
       <span

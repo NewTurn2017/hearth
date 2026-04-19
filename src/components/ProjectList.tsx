@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -93,6 +93,39 @@ export function ProjectList({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
   const [activeId, setActiveId] = useState<number | null>(null);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const [pendingFocusId, setPendingFocusId] = useState<number | null>(null);
+
+  // FindPalette → project:focus. Stash the id; a second effect consumes it
+  // once the target card is actually rendered (the project may be filtered
+  // out of the current view, in which case the scroll silently no-ops).
+  useEffect(() => {
+    const onFocus = (e: Event) => {
+      const detail = (e as CustomEvent<{ projectId?: number }>).detail;
+      const id = detail?.projectId;
+      if (typeof id !== "number") return;
+      setPendingFocusId(id);
+    };
+    window.addEventListener("project:focus", onFocus);
+    return () => window.removeEventListener("project:focus", onFocus);
+  }, []);
+
+  useEffect(() => {
+    if (pendingFocusId === null) return;
+    const exists = projects.some((p) => p.id === pendingFocusId);
+    if (!exists) return;
+    const id = pendingFocusId;
+    setPendingFocusId(null);
+    requestAnimationFrame(() => {
+      setHighlightedId(id);
+      const el = document.querySelector<HTMLElement>(
+        `[data-project-id="${id}"]`
+      );
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    const t = window.setTimeout(() => setHighlightedId(null), 2000);
+    return () => window.clearTimeout(t);
+  }, [pendingFocusId, projects]);
 
   const groups = useMemo(() => {
     const map = new Map<Priority, Project[]>();
@@ -254,6 +287,7 @@ export function ProjectList({
                             onOpenTerminal={(path) => api.openInTerminal(path)}
                             onOpenFinder={(path) => api.openInFinder(path)}
                             onOpenDetail={onOpenDetail}
+                            highlighted={project.id === highlightedId}
                           />
                         ))}
                       </div>
