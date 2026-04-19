@@ -35,3 +35,6 @@ dist/release/
 
 # Claude Code local settings
 .claude/
+
+# Local video editing scratch
+video-intro/
