@@ -72,7 +72,7 @@ fn canonical_base(tok: &str) -> Result<String, String> {
 
 use crate::cmd_settings;
 use crate::AppState;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 /// Read the saved combo, falling back to the default. Returns a value
@@ -127,6 +127,78 @@ pub fn rebind_quick_capture_shortcut(
 
     let _ = app.emit("quick-capture-shortcut:changed", &normalized);
     Ok(normalized)
+}
+
+pub(crate) fn ensure_window(app: &AppHandle) -> Result<tauri::WebviewWindow, String> {
+    if let Some(w) = app.get_webview_window(WINDOW_LABEL) {
+        return Ok(w);
+    }
+    let url = WebviewUrl::App("index.html?window=quick-capture".into());
+    let window = WebviewWindowBuilder::new(app, WINDOW_LABEL, url)
+        .title("Quick Capture")
+        .inner_size(560.0, 80.0)
+        .resizable(false)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible(false)
+        .focused(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(window)
+}
+
+fn position_top_center(w: &tauri::WebviewWindow) -> Result<(), String> {
+    let monitor = w
+        .primary_monitor()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "no primary monitor".to_string())?;
+    let size = monitor.size();
+    let win_size = w.outer_size().map_err(|e| e.to_string())?;
+    let x = (size.width as i32 - win_size.width as i32) / 2;
+    let y = (size.height as i32 / 4).max(80);
+    w.set_position(PhysicalPosition { x, y })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn show_quick_capture_window(app: AppHandle) -> Result<(), String> {
+    let w = ensure_window(&app)?;
+    position_top_center(&w)?;
+    w.show().map_err(|e| e.to_string())?;
+    w.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn hide_quick_capture_window(app: AppHandle) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window(WINDOW_LABEL) {
+        w.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn toggle_quick_capture_window(app: AppHandle) -> Result<(), String> {
+    let w = ensure_window(&app)?;
+    let visible = w.is_visible().unwrap_or(false);
+    if visible {
+        w.hide().map_err(|e| e.to_string())
+    } else {
+        position_top_center(&w)?;
+        w.show().map_err(|e| e.to_string())?;
+        w.set_focus().map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+pub fn resize_quick_capture_window(app: AppHandle, height: u32) -> Result<(), String> {
+    if let Some(w) = app.get_webview_window(WINDOW_LABEL) {
+        let clamped = height.clamp(80, 200);
+        w.set_size(LogicalSize::new(560.0, clamped as f64))
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
