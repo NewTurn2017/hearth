@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Play, FolderOpen, X, Settings2, Trash2 } from "lucide-react";
+import { GripVertical, Play, FolderOpen, X, Settings2, StickyNote, Trash2 } from "lucide-react";
 import type { Project, Priority } from "../types";
 import {
   CATEGORY_COLORS,
@@ -42,6 +42,15 @@ export function ProjectCard({
   const { menu, open: openMenu, close: closeMenu } = useContextMenu();
 
   const menuItems: ContextMenuItem[] = [
+    {
+      id: "add-memo",
+      label: "프로젝트 메모 추가",
+      icon: StickyNote,
+      onSelect: () =>
+        window.dispatchEvent(
+          new CustomEvent("memo:new-dialog", { detail: { projectId: project.id } })
+        ),
+    },
     {
       id: "settings",
       label: "프로젝트 설정",

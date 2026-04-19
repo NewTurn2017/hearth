@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ask, open } from "@tauri-apps/plugin-dialog";
+import { getVersion } from "@tauri-apps/api/app";
 import { TopBar } from "./TopBar";
 import { Sidebar } from "./Sidebar";
 import { NewProjectDialog } from "./NewProjectDialog";
@@ -9,7 +9,6 @@ import { CommandPalette } from "../command/CommandPalette";
 import { buildLocalCommands } from "../command/dispatch";
 import type { Tab, Priority, ToolCall } from "../types";
 import { PRIORITIES } from "../types";
-import { useToast } from "../ui/Toast";
 import { useAppUpdater } from "../hooks/useAppUpdater";
 import { useDbRecoveryNotice } from "../hooks/useDbRecoveryNotice";
 import * as api from "../api";
@@ -24,8 +23,22 @@ export function Layout({
     openNewProject: () => void;
   }) => React.ReactNode;
 }) {
-  useAppUpdater();
+  const pendingUpdate = useAppUpdater();
   useDbRecoveryNotice();
+  const [version, setVersion] = useState<string>("");
+  useEffect(() => {
+    let cancelled = false;
+    void getVersion()
+      .then((v) => {
+        if (!cancelled) setVersion(v);
+      })
+      .catch(() => {
+        /* non-Tauri context (tests) — leave version empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [activeTab, setActiveTab] = useState<Tab>("projects");
   const [priorities, setPriorities] = useState<Set<Priority>>(new Set(PRIORITIES));
   // null = 전체 보기 (no filter, shows NULL-category rows too). A single
@@ -35,7 +48,6 @@ export function Layout({
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<"general" | "ai" | "backup" | "categories">("general");
-  const toast = useToast();
 
   const togglePriority = (p: Priority) => {
     setPriorities((prev) => {
@@ -45,38 +57,20 @@ export function Layout({
     });
   };
 
-  const handleImport = async () => {
-    const file = await open({
-      filters: [{ name: "Excel", extensions: ["xlsx", "xls"] }],
-    });
-    if (!file) return;
-    // Tauri 2's `window.confirm` returns a Promise, not a boolean — an
-    // un-awaited Promise would be serialized to Rust as an object and the
-    // `clear_existing: bool` arg would reject with "invalid type: map".
-    // Use the dialog plugin's async `ask` for a proper Yes/No prompt.
-    const clearExisting = await ask(
-      "기존 데이터를 삭제하고 새로 가져오시겠습니까?",
-      { title: "Excel 가져오기", kind: "warning" }
-    );
-    try {
-      const filePath = Array.isArray(file) ? file[0] : file;
-      const result = await api.importExcel(filePath, clearExisting);
-      toast.success(`${result.projects_imported}개 프로젝트 가져왔습니다`);
-      setTimeout(() => window.location.reload(), 800);
-    } catch (e) {
-      toast.error(`가져오기 실패: ${e}`);
-    }
-  };
-
   const openNewProject = useCallback(() => {
     setActiveTab("projects");
     setNewProjectOpen(true);
   }, []);
 
   const [newMemoOpen, setNewMemoOpen] = useState(false);
+  const [newMemoProjectId, setNewMemoProjectId] = useState<number | null>(null);
 
   useEffect(() => {
-    const onNew = () => setNewMemoOpen(true);
+    const onNew = (e: Event) => {
+      const detail = (e as CustomEvent<{ projectId?: number | null }>).detail;
+      setNewMemoProjectId(detail?.projectId ?? null);
+      setNewMemoOpen(true);
+    };
     window.addEventListener("memo:new-dialog", onNew);
     return () => window.removeEventListener("memo:new-dialog", onNew);
   }, []);
@@ -155,8 +149,9 @@ export function Layout({
       <TopBar
         active={activeTab}
         onChange={setActiveTab}
-        onImport={handleImport}
         onOpenSettings={() => { setSettingsInitialTab("general"); setSettingsOpen(true); }}
+        version={version}
+        pendingUpdate={pendingUpdate}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -190,6 +185,7 @@ export function Layout({
       <NewMemoDialog
         open={newMemoOpen}
         onClose={() => setNewMemoOpen(false)}
+        defaultProjectId={newMemoProjectId}
       />
       <SettingsDialog
         open={settingsOpen}

@@ -6,7 +6,15 @@
 // `data.db` and the app only fully settles after the next launch.
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, FolderCog, RotateCcw, Save, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Download,
+  FolderCog,
+  FolderOpen,
+  RotateCcw,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { ask, open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
@@ -56,7 +64,11 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
   }, []);
 
   const handlePickDir = async () => {
-    const picked = await openDialog({ directory: true, multiple: false });
+    const picked = await openDialog({
+      directory: true,
+      multiple: false,
+      defaultPath: dir || undefined,
+    });
     if (!picked) return;
     const next = Array.isArray(picked) ? picked[0] : picked;
     setBusy(true);
@@ -67,6 +79,38 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
       toast.success("백업 위치 변경됨");
     } catch (e) {
       toast.error(`변경 실패: ${e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRevealDir = async () => {
+    if (!dir) return;
+    try {
+      await api.openInFinder(dir);
+    } catch (e) {
+      toast.error(`폴더 열기 실패: ${e}`);
+    }
+  };
+
+  const handleImport = async () => {
+    const file = await openDialog({
+      filters: [{ name: "Excel", extensions: ["xlsx", "xls"] }],
+      defaultPath: dir || undefined,
+    });
+    if (!file) return;
+    const clearExisting = await ask(
+      "기존 데이터를 삭제하고 새로 가져오시겠습니까?",
+      { title: "Excel 가져오기", kind: "warning" }
+    );
+    setBusy(true);
+    try {
+      const filePath = Array.isArray(file) ? file[0] : file;
+      const result = await api.importExcel(filePath, clearExisting);
+      toast.success(`${result.projects_imported}개 프로젝트 가져왔습니다`);
+      setTimeout(() => window.location.reload(), 800);
+    } catch (e) {
+      toast.error(`가져오기 실패: ${e}`);
     } finally {
       setBusy(false);
     }
@@ -134,16 +178,31 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
           백업 위치
         </label>
         <div className="flex items-center gap-2">
-          <div
+          <button
+            type="button"
+            onClick={handleRevealDir}
+            disabled={busy || !dir}
+            title={dir ? `Finder에서 열기 — ${dir}` : dir}
             className={cn(
-              "flex-1 h-9 px-3 inline-flex items-center text-[12px] font-mono",
+              "flex-1 h-9 px-3 inline-flex items-center text-[12px] font-mono text-left",
               "rounded-[var(--radius-md)] bg-[var(--color-surface-2)]",
-              "border border-[var(--color-border)] text-[var(--color-text)] truncate"
+              "border border-[var(--color-border)] text-[var(--color-text)] truncate",
+              "hover:border-[var(--color-brand-hi)] hover:text-[var(--color-brand-hi)]",
+              "disabled:cursor-not-allowed disabled:hover:border-[var(--color-border)]",
+              "disabled:hover:text-[var(--color-text)]"
             )}
-            title={dir}
           >
             {loading ? "불러오는 중…" : dir || "(설정되지 않음)"}
-          </div>
+          </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={FolderOpen}
+            onClick={handleRevealDir}
+            disabled={busy || !dir}
+          >
+            열기
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -206,6 +265,26 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
             ))}
           </ul>
         )}
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[12px] font-medium text-[var(--color-text)]">
+            Excel 가져오기
+          </label>
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={Download}
+            onClick={handleImport}
+            disabled={busy}
+          >
+            파일 선택…
+          </Button>
+        </div>
+        <p className="text-[11px] text-[var(--color-text-dim)] leading-relaxed">
+          백업 위치에서 .xlsx/.xls 파일을 선택해 프로젝트를 가져옵니다. 기존 데이터를 유지하거나 초기화한 뒤 가져올지 선택할 수 있어요.
+        </p>
       </div>
 
       <div

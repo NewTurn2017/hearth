@@ -18,7 +18,7 @@ type TabKey = "general" | "ai" | "backup" | "categories";
 const TABS: { key: TabKey; label: string }[] = [
   { key: "general", label: "일반" },
   { key: "ai", label: "AI" },
-  { key: "backup", label: "백업" },
+  { key: "backup", label: "백업/가져오기" },
   { key: "categories", label: "카테고리" },
 ];
 

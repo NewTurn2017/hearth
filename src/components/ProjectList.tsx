@@ -244,7 +244,7 @@ export function ProjectList({
                       priority={priority}
                       active={activeId !== null}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3">
                         {items.map((project) => (
                           <ProjectCard
                             key={project.id}

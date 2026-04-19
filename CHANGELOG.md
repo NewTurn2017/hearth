@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-19
+
+### Added
+- **프로젝트 카드 우클릭 → "프로젝트 메모 추가"**: 메뉴 최상단에서 해당 프로젝트 스코프로 NewMemo 다이얼로그가 바로 열립니다.
+- **TopBar 버전 + 업데이트 버튼**: 앱 로고 옆에 현재 버전 (`v0.4.0`) 을 항상 표시하고, 새 버전이 감지되면 우측에 primary 색상 "업데이트 vX" 버튼이 나타납니다. 클릭 시 download + relaunch. 기존 sticky 토스트는 유지.
+- **설정 → 백업/가져오기** (탭 이름 `백업` → `백업/가져오기`):
+  - 백업 경로 박스를 클릭하거나 `열기` 버튼을 누르면 Finder 에서 현재 백업 폴더가 열립니다.
+  - `변경…` picker 가 현재 백업 위치에서 시작되도록 기본 경로 설정.
+  - `Excel 가져오기` 섹션이 설정 안으로 들어왔고, 파일 picker 도 백업 위치에서 열립니다.
+- **GFS 스타일 백업 보관 정책**: 단순 롤링 5개 → 최근 7일 (일별 1개) + 4주 (주별 1개) + 3개월 (월별 1개). 하루에 앱을 여러 번 닫아도 이전 복원점이 보존됩니다. `pre-reset-*.db` 스냅샷은 영향받지 않음.
+
+### Changed
+- **프로젝트 보드 반응형 그리드**: `grid-cols-1 md:grid-cols-2` → `repeat(auto-fill, minmax(320px, 1fr))`. 화면 넓이에 따라 1→2→3→4열 자동 확장 (MemoBoard 와 동일한 전략).
+- **TopBar 외부 `가져오기` 버튼 제거**: `설정 → 백업/가져오기` 탭으로 이동해 백업/가져오기 워크플로우가 한 곳에서 완결되도록 재편.
+
+### Migration
+- 백업 파일 (`hearth-backup-*.db`) 의 보관 정책이 바뀌어, 처음 종료/수동 백업이 실행될 때 기존 파일들이 새 버킷 규칙 (일/주/월) 으로 재분류됩니다. `pre-reset-*.db` 는 그대로 유지.
+
 ## [0.3.2] - 2026-04-19
 
 ### Fixed
@@ -81,7 +99,10 @@ First public release.
 - Windows and Linux builds are not yet distributed.
 - The OpenAI API key is still stored in the local SQLite database in plain text; migration to the macOS Keychain is tracked in a separate spec.
 
-[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/NewTurn2017/hearth/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/NewTurn2017/hearth/releases/tag/v0.4.0
+[0.3.2]: https://github.com/NewTurn2017/hearth/releases/tag/v0.3.2
+[0.3.1]: https://github.com/NewTurn2017/hearth/releases/tag/v0.3.1
 [0.3.0]: https://github.com/NewTurn2017/hearth/releases/tag/v0.3.0
 [0.2.2]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.2
 [0.2.1]: https://github.com/NewTurn2017/hearth/releases/tag/v0.2.1
