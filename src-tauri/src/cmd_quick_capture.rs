@@ -7,7 +7,7 @@
 
 pub(crate) const K_SHORTCUT: &str = "shortcut.quick_capture";
 pub(crate) const K_SHORTCUT_LAST_ERROR: &str = "shortcut.quick_capture.last_error";
-pub(crate) const DEFAULT_COMBO: &str = "CommandOrControl+Shift+H";
+pub(crate) const DEFAULT_COMBO: &str = "Control+Shift+H";
 pub(crate) const WINDOW_LABEL: &str = "quick-capture";
 
 /// Normalize a user-facing combo string to Tauri's accelerator format.
@@ -23,8 +23,9 @@ pub fn normalize_accelerator(input: &str) -> Result<String, String> {
             return Err(format!("Invalid accelerator: empty token in {input:?}"));
         }
         match tok.to_ascii_lowercase().as_str() {
-            "cmd" | "command" | "meta" | "super" | "commandorcontrol"
-            | "ctrl" | "control" => push_mod(&mut mods, "CommandOrControl"),
+            "commandorcontrol" | "cmdorctrl" => push_mod(&mut mods, "CommandOrControl"),
+            "cmd" | "command" | "meta" | "super" => push_mod(&mut mods, "Cmd"),
+            "ctrl" | "control" => push_mod(&mut mods, "Control"),
             "alt" | "option" | "opt" => push_mod(&mut mods, "Alt"),
             "shift" => push_mod(&mut mods, "Shift"),
             _ => {
@@ -206,14 +207,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn normalize_cmd_shift_letter() {
-        assert_eq!(
-            normalize_accelerator("Cmd+Shift+H").unwrap(),
-            "CommandOrControl+Shift+H"
-        );
+    fn normalize_preserves_literal_modifiers() {
+        // Cmd and Ctrl map to DISTINCT modifiers. On macOS, CommandOrControl
+        // resolves to Cmd, so mixing them up means a user who pressed ⌃⇧H
+        // (literal Control) would not match a registration for ⌘⇧H.
+        assert_eq!(normalize_accelerator("Cmd+Shift+H").unwrap(), "Cmd+Shift+H");
         assert_eq!(
             normalize_accelerator("ctrl+shift+h").unwrap(),
-            "CommandOrControl+Shift+H"
+            "Control+Shift+H"
         );
         assert_eq!(
             normalize_accelerator("CommandOrControl+Shift+H").unwrap(),
@@ -222,10 +223,10 @@ mod tests {
     }
 
     #[test]
-    fn normalize_duplicates_collapse() {
+    fn normalize_keeps_cmd_and_ctrl_distinct() {
         assert_eq!(
             normalize_accelerator("Cmd+Ctrl+H").unwrap(),
-            "CommandOrControl+H"
+            "Cmd+Control+H"
         );
     }
 
