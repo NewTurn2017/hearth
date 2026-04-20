@@ -9,8 +9,12 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, StickyNote } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Plus, StickyNote, LayoutList, LayoutGrid } from "lucide-react";
+import { Icon } from "../ui/Icon";
+import { cn } from "../lib/cn";
 import { MemoCard } from "./MemoCard";
+import { MemoMatrix } from "./MemoMatrix";
 import { useMemos } from "../hooks/useMemos";
 import { useProjects } from "../hooks/useProjects";
 import { PRIORITIES } from "../types";
@@ -45,6 +49,13 @@ export function MemoBoard() {
 
   const [activeId, setActiveId] = useState<number | null>(null);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const [view, setView] = useState<"list" | "matrix">(() => {
+    const v = localStorage.getItem("hearth.memoboard.view");
+    return v === "matrix" ? "matrix" : "list";
+  });
+  useEffect(() => {
+    localStorage.setItem("hearth.memoboard.view", view);
+  }, [view]);
 
   // Listen for search-palette focus requests. We scroll the card into view
   // and trigger a one-shot glow via `find-highlight`. Re-keying on every
@@ -151,14 +162,34 @@ export function MemoBoard() {
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex justify-between items-center mb-5">
         <h2 className="text-heading text-[var(--color-text-hi)]">메모보드</h2>
-        <Button
-          variant="primary"
-          size="sm"
-          leftIcon={Plus}
-          onClick={handleCreate}
-        >
-          메모 추가
-        </Button>
+        <div className="flex items-center gap-2">
+          <div
+            role="tablist"
+            aria-label="뷰 전환"
+            className="inline-flex rounded-md border border-[var(--color-border)] bg-[var(--color-surface-1)] p-0.5"
+          >
+            <ViewTab
+              active={view === "list"}
+              onClick={() => setView("list")}
+              icon={LayoutList}
+              label="리스트"
+            />
+            <ViewTab
+              active={view === "matrix"}
+              onClick={() => setView("matrix")}
+              icon={LayoutGrid}
+              label="매트릭스"
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={Plus}
+            onClick={handleCreate}
+          >
+            메모 추가
+          </Button>
+        </div>
       </div>
       {memos.length === 0 ? (
         <EmptyState
@@ -166,6 +197,15 @@ export function MemoBoard() {
           icon={StickyNote}
           title="메모가 없습니다"
           description="⌘K 또는 메모 추가 버튼으로 시작하세요"
+        />
+      ) : view === "matrix" ? (
+        <MemoMatrix
+          groups={groups}
+          projects={projects}
+          sequence={seq}
+          highlightedId={highlightedId}
+          onUpdate={update}
+          onDelete={remove}
         />
       ) : (
         <DndContext
@@ -224,5 +264,35 @@ export function MemoBoard() {
         </DndContext>
       )}
     </div>
+  );
+}
+
+function ViewTab({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-1 text-[12px] rounded",
+        active
+          ? "bg-[var(--color-surface-2)] text-[var(--color-text-hi)]"
+          : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+      )}
+    >
+      <Icon icon={icon} size={14} />
+      {label}
+    </button>
   );
 }
