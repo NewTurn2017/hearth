@@ -93,15 +93,23 @@ export function Layout({
   }, []);
 
   useEffect(() => {
-    let off: UnlistenFn | null = null;
+    // Guard against React StrictMode's double-effect + async listen():
+    // if cleanup runs before the listen() promise resolves, we set
+    // `cancelled` so the resolved handler unsubscribes immediately.
+    let cancelled = false;
+    let unlisten: UnlistenFn | undefined;
     listen<{ memoId: number }>("memo:quick-captured", (e) => {
       const { memoId } = e.payload;
       toast.success("메모 추가됨");
       window.dispatchEvent(new CustomEvent("memo:focus", { detail: { memoId } }));
       window.dispatchEvent(new Event("memos:changed"));
-    }).then((f) => (off = f));
+    }).then((f) => {
+      if (cancelled) f();
+      else unlisten = f;
+    });
     return () => {
-      if (off) off();
+      cancelled = true;
+      unlisten?.();
     };
   }, [toast]);
 

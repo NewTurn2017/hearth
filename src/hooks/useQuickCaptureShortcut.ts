@@ -31,13 +31,18 @@ export function useQuickCaptureShortcut() {
 
   useEffect(() => {
     void reload();
-    let off: UnlistenFn | null = null;
+    let cancelled = false;
+    let unlisten: UnlistenFn | undefined;
     listen<string>("quick-capture-shortcut:changed", (e) => {
       setCombo(e.payload);
       setError("");
-    }).then((f) => (off = f));
+    }).then((f) => {
+      if (cancelled) f();
+      else unlisten = f;
+    });
     return () => {
-      if (off) off();
+      cancelled = true;
+      unlisten?.();
     };
   }, [reload]);
 
