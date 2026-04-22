@@ -1,3 +1,4 @@
+mod cmd;
 mod db;
 mod util;
 
@@ -25,6 +26,11 @@ enum Commands {
     Db {
         #[command(subcommand)]
         sub: DbCmd,
+    },
+    /// Project management.
+    Project {
+        #[command(subcommand)]
+        sub: crate::cmd::project::ProjectCmd,
     },
 }
 
@@ -64,6 +70,7 @@ fn run() -> Result<()> {
 
     match cli.command {
         Commands::Db { sub } => cmd_db(cli.db.as_deref(), sub),
+        Commands::Project { sub } => crate::cmd::project::dispatch(cli.db.as_deref(), sub),
     }
 }
 
