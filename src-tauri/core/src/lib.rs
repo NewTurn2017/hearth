@@ -2,6 +2,7 @@
 //! audit log, search, views. No Tauri dependency.
 
 pub mod audit;
+pub mod categories;
 pub mod db;
 pub mod memos;
 pub mod models;
