@@ -1,6 +1,6 @@
 {
   "name": "hearth",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Local-first personal workspace for projects, memos, and schedules — with an AI command palette.",
