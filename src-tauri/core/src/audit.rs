@@ -66,7 +66,7 @@ pub fn write_audit(
     Ok(conn.last_insert_rowid())
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AuditEntry {
     pub id: i64,
     pub ts: String,

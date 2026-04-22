@@ -16,6 +16,10 @@ struct Cli {
     #[arg(short, long, global = true)]
     verbose: bool,
 
+    /// Human-readable table output for list commands.
+    #[arg(long, global = true)]
+    pretty: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -55,6 +59,27 @@ enum Commands {
     Overdue,
     /// Show aggregate statistics.
     Stats,
+    /// Audit log: show, undo, redo.
+    Log {
+        #[command(subcommand)]
+        sub: crate::cmd::log::LogCmd,
+    },
+    /// Undo the most recent N mutations (shortcut for `log undo`).
+    Undo {
+        /// Number of entries to undo.
+        #[arg(default_value_t = 1)]
+        count: i64,
+    },
+    /// Redo the most recently undone N mutations (shortcut for `log redo`).
+    Redo {
+        /// Number of entries to redo.
+        #[arg(default_value_t = 1)]
+        count: i64,
+    },
+    /// Export workspace data (JSON or SQLite copy).
+    Export(crate::cmd::export::ExportArgs),
+    /// Import workspace data from a JSON export.
+    Import(crate::cmd::import::ImportArgs),
 }
 
 #[derive(Subcommand)]
@@ -93,14 +118,27 @@ fn run() -> Result<()> {
 
     match cli.command {
         Commands::Db { sub } => cmd_db(cli.db.as_deref(), sub),
-        Commands::Project { sub } => crate::cmd::project::dispatch(cli.db.as_deref(), sub),
-        Commands::Memo { sub } => crate::cmd::memo::dispatch(cli.db.as_deref(), sub),
-        Commands::Schedule { sub } => crate::cmd::schedule::dispatch(cli.db.as_deref(), sub),
+        Commands::Project { sub } => {
+            crate::cmd::project::dispatch(cli.db.as_deref(), sub, cli.pretty)
+        }
+        Commands::Memo { sub } => crate::cmd::memo::dispatch(cli.db.as_deref(), sub, cli.pretty),
+        Commands::Schedule { sub } => {
+            crate::cmd::schedule::dispatch(cli.db.as_deref(), sub, cli.pretty)
+        }
         Commands::Category { sub } => crate::cmd::category::dispatch(cli.db.as_deref(), sub),
         Commands::Search(args) => crate::cmd::search::dispatch(cli.db.as_deref(), args),
         Commands::Today => crate::cmd::views::today(cli.db.as_deref()),
         Commands::Overdue => crate::cmd::views::overdue(cli.db.as_deref()),
         Commands::Stats => crate::cmd::views::stats(cli.db.as_deref()),
+        Commands::Log { sub } => crate::cmd::log::dispatch(cli.db.as_deref(), sub),
+        Commands::Undo { count } => {
+            crate::cmd::log::dispatch(cli.db.as_deref(), crate::cmd::log::LogCmd::Undo { count })
+        }
+        Commands::Redo { count } => {
+            crate::cmd::log::dispatch(cli.db.as_deref(), crate::cmd::log::LogCmd::Redo { count })
+        }
+        Commands::Export(args) => crate::cmd::export::dispatch(cli.db.as_deref(), args),
+        Commands::Import(args) => crate::cmd::import::dispatch(cli.db.as_deref(), args),
     }
 }
 
