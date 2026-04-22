@@ -1,6 +1,7 @@
 //! Hearth pure logic layer — schema, migrations, domain modules,
 //! audit log, search, views. No Tauri dependency.
 
+pub mod audit;
 pub mod db;
 pub mod models;
 
