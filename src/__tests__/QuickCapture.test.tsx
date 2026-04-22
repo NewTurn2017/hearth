@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 vi.mock("../api", () => ({
   createMemo: vi.fn().mockResolvedValue({ id: 42 }),
+  getTheme: vi.fn().mockResolvedValue(null),
   hideQuickCaptureWindow: vi.fn().mockResolvedValue(undefined),
   resizeQuickCaptureWindow: vi.fn().mockResolvedValue(undefined),
 }));

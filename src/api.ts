@@ -208,3 +208,20 @@ export const hideQuickCaptureWindow = () =>
 
 export const resizeQuickCaptureWindow = (height: number) =>
   invoke<void>("resize_quick_capture_window", { height });
+
+// Theme (persisted JSON blob — the frontend owns the schema; Rust just
+// round-trips the string).
+import type { ThemeSetting } from "./theme/types";
+
+export const getTheme = async (): Promise<ThemeSetting | null> => {
+  const raw = await invoke<string>("get_theme");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as ThemeSetting;
+  } catch {
+    return null;
+  }
+};
+
+export const setTheme = (theme: ThemeSetting): Promise<void> =>
+  invoke<void>("set_theme", { theme: JSON.stringify(theme) });
