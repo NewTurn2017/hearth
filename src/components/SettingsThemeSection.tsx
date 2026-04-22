@@ -87,13 +87,19 @@ export function SettingsThemeSection() {
   // Debounced preview: re-apply but do NOT persist until the user clicks 저장.
   useEffect(() => {
     if (!normalizedHex) return;
+    let cancelled = false;
     const t = setTimeout(() => {
       const preview: ThemeSetting = { kind: "custom", baseMode, brandHex: normalizedHex };
       // Apply visually only — the context's setTheme would persist, which we
       // only want on explicit save. Call applyTheme directly from here.
-      import("../theme/applyTheme").then((m) => m.applyTheme(preview));
+      import("../theme/applyTheme").then((m) => {
+        if (!cancelled) m.applyTheme(preview);
+      });
     }, 300);
-    return () => clearTimeout(t);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [normalizedHex, baseMode]);
 
   const onSavePreset = async (id: PresetId) => {
