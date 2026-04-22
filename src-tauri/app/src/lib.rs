@@ -14,6 +14,7 @@ mod cmd_settings;
 mod db;
 mod excel_import;
 mod models;
+mod watcher;
 
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
@@ -134,6 +135,8 @@ pub fn run() {
                     );
                 }
             }
+
+            crate::watcher::spawn(app.handle().clone());
 
             Ok(())
         })
