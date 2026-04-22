@@ -36,13 +36,18 @@ pub enum MemoCmd {
     Delete { id: i64 },
 }
 
-pub fn dispatch(db_path_flag: Option<&str>, sub: MemoCmd) -> Result<()> {
+pub fn dispatch(db_path_flag: Option<&str>, sub: MemoCmd, pretty: bool) -> Result<()> {
     let p = crate::db::resolve_db_path(db_path_flag)?;
     let mut conn = crate::db::open(&p)?;
     match sub {
         MemoCmd::List => {
             let all = memos::list(&conn)?;
-            crate::util::emit_ok(serde_json::to_value(&all).unwrap());
+            let val = serde_json::to_value(&all).unwrap();
+            if pretty {
+                crate::util::emit_ok_pretty(&val, &["id", "color", "content", "project_id"]);
+            } else {
+                crate::util::emit_ok(val);
+            }
         }
         MemoCmd::Get { id } => match memos::get(&conn, id)? {
             Some(m) => crate::util::emit_ok(serde_json::to_value(&m).unwrap()),

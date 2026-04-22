@@ -401,3 +401,108 @@ fn stats_returns_counts() {
     assert_eq!(data["total_projects"].as_i64().unwrap(), 1);
     assert!(data["total_schedules"].is_number());
 }
+
+// ── Task 9.1 — log / undo / redo ─────────────────────────────────────────────
+
+#[test]
+fn undo_reverts_last_mutation() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // Create a project via CLI
+    hearth(db_str)
+        .args(["project", "create", "UndoMe"])
+        .assert()
+        .success();
+
+    // Verify it exists
+    let v = stdout_json(hearth(db_str).args(["project", "list"]).assert());
+    assert_eq!(v["data"].as_array().unwrap().len(), 1);
+
+    // Undo
+    let v = stdout_json(hearth(db_str).args(["undo"]).assert());
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["undone"], 1);
+
+    // Should now be 0 projects
+    let v = stdout_json(hearth(db_str).args(["project", "list"]).assert());
+    assert_eq!(v["data"].as_array().unwrap().len(), 0);
+}
+
+// ── Task 10.1 — export ───────────────────────────────────────────────────────
+
+#[test]
+fn export_json_includes_projects() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // Create a project
+    hearth(db_str)
+        .args(["project", "create", "ExportMe", "--priority", "P1"])
+        .assert()
+        .success();
+
+    // Export to a temp file
+    let out_path = dir.path().join("export.json");
+    let out_str = out_path.to_str().unwrap();
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["export", "--out", out_str])
+            .assert(),
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["written"], out_str);
+
+    // Read the file and confirm the project is there
+    let contents = std::fs::read_to_string(&out_path).unwrap();
+    assert!(
+        contents.contains("ExportMe"),
+        "export file should contain project name"
+    );
+}
+
+// ── Task 10.2 — import ───────────────────────────────────────────────────────
+
+#[test]
+fn export_then_import_merge_roundtrip() {
+    let dir_a = TempDir::new().unwrap();
+    let db_a = dir_a.path().join("a.db");
+    let db_a_str = db_a.to_str().unwrap();
+
+    let dir_b = TempDir::new().unwrap();
+    let db_b = dir_b.path().join("b.db");
+    let db_b_str = db_b.to_str().unwrap();
+
+    // Create project in DB A
+    hearth(db_a_str)
+        .args(["project", "create", "RoundTripProj"])
+        .assert()
+        .success();
+
+    // Export from DB A
+    let export_path = dir_a.path().join("dump.json");
+    let export_str = export_path.to_str().unwrap();
+    hearth(db_a_str)
+        .args(["export", "--out", export_str])
+        .assert()
+        .success();
+
+    // Import into DB B (merge)
+    let v = stdout_json(
+        hearth(db_b_str)
+            .args(["import", export_str, "--merge"])
+            .assert(),
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["inserted_projects"], 1);
+    assert_eq!(v["data"]["dry_run"], false);
+
+    // DB B should now list the project
+    let v = stdout_json(hearth(db_b_str).args(["project", "list"]).assert());
+    let arr = v["data"].as_array().unwrap();
+    assert_eq!(arr.len(), 1);
+    assert_eq!(arr[0]["name"], "RoundTripProj");
+}

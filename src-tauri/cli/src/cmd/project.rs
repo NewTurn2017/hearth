@@ -52,7 +52,7 @@ pub enum ProjectCmd {
     LinkPath { id: i64, path: String },
 }
 
-pub fn dispatch(db_path_flag: Option<&str>, sub: ProjectCmd) -> Result<()> {
+pub fn dispatch(db_path_flag: Option<&str>, sub: ProjectCmd, pretty: bool) -> Result<()> {
     let p = crate::db::resolve_db_path(db_path_flag)?;
     let mut conn = crate::db::open(&p)?;
     match sub {
@@ -67,7 +67,12 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: ProjectCmd) -> Result<()> {
                     pri_ok && cat_ok
                 })
                 .collect();
-            crate::util::emit_ok(serde_json::to_value(&filtered).unwrap());
+            let val = serde_json::to_value(&filtered).unwrap();
+            if pretty {
+                crate::util::emit_ok_pretty(&val, &["id", "priority", "name", "category", "path"]);
+            } else {
+                crate::util::emit_ok(val);
+            }
         }
         ProjectCmd::Get { id } => match projects::get(&conn, id)? {
             Some(p) => crate::util::emit_ok(serde_json::to_value(&p).unwrap()),

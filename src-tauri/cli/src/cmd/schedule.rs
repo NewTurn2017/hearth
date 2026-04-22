@@ -62,7 +62,7 @@ pub enum ScheduleCmd {
     Delete { id: i64 },
 }
 
-pub fn dispatch(db_path_flag: Option<&str>, sub: ScheduleCmd) -> Result<()> {
+pub fn dispatch(db_path_flag: Option<&str>, sub: ScheduleCmd, pretty: bool) -> Result<()> {
     let p = crate::db::resolve_db_path(db_path_flag)?;
     let mut conn = crate::db::open(&p)?;
     match sub {
@@ -72,7 +72,15 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: ScheduleCmd) -> Result<()> {
             } else {
                 schedules::list(&conn, month.as_deref())?
             };
-            crate::util::emit_ok(serde_json::to_value(&all).unwrap());
+            let val = serde_json::to_value(&all).unwrap();
+            if pretty {
+                crate::util::emit_ok_pretty(
+                    &val,
+                    &["id", "date", "time", "description", "location"],
+                );
+            } else {
+                crate::util::emit_ok(val);
+            }
         }
         ScheduleCmd::Get { id } => match schedules::get(&conn, id)? {
             Some(s) => crate::util::emit_ok(serde_json::to_value(&s).unwrap()),
