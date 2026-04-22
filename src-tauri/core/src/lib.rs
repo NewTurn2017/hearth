@@ -9,6 +9,7 @@ pub mod memos;
 pub mod models;
 pub mod projects;
 pub mod schedules;
+pub mod search;
 
 #[cfg(test)]
 mod smoke_tests {
