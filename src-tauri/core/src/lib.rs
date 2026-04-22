@@ -8,6 +8,7 @@ pub mod db;
 pub mod memos;
 pub mod models;
 pub mod projects;
+pub mod scan;
 pub mod schedules;
 pub mod search;
 pub mod views;
