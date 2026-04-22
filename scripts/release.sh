@@ -48,8 +48,8 @@ preflight() {
 
   # Version sync across 3 manifests
   VER_PKG="$(jq -r .version package.json)"
-  VER_TAURI="$(jq -r .version src-tauri/tauri.conf.json)"
-  VER_CARGO="$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/.*"(.*)".*/\1/')"
+  VER_TAURI="$(jq -r .version src-tauri/app/tauri.conf.json)"
+  VER_CARGO="$(grep -m1 '^version' src-tauri/app/Cargo.toml | sed -E 's/.*"(.*)".*/\1/')"
   [[ "$VER_PKG" == "$VER_TAURI" && "$VER_PKG" == "$VER_CARGO" ]] \
     || die "version drift: package=$VER_PKG tauri=$VER_TAURI cargo=$VER_CARGO"
   VERSION="$VER_PKG"
