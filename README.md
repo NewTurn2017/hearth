@@ -184,6 +184,48 @@ OPENAI_API_KEY=sk-... cargo test --test tool_calling_integration \
 
 상세 스펙: `docs/superpowers/specs/2026-04-16-tool-calling-integration-tests-design.md`
 
+## CLI (Hearth 바이너리)
+
+`hearth` CLI 로 DB 를 직접 조작할 수 있습니다. 실행 중인 앱은 0.5~1 초 내로 변경을 자동 반영합니다 (PRAGMA data_version 폴링 기반).
+
+### 빌드 & 설치 (개발 모드)
+
+```bash
+cd src-tauri
+cargo build --release -p hearth-cli
+# 바이너리: src-tauri/target/release/hearth
+```
+
+### 주요 명령
+
+```bash
+hearth project list [--priority P0,P1] [--category Active]
+hearth project create "New Proj" --priority P1
+hearth memo create "buy milk" --color yellow
+hearth schedule create --date 2026-05-01 --time 09:00
+hearth search "agent"
+hearth today            # 오늘 일정 + P0 프로젝트 + 최근 메모
+hearth overdue          # 지난 일정 · 방치된 프로젝트
+hearth stats            # 전체 카운트/분포
+hearth log show --limit 20
+hearth log undo         # 마지막 변경 되돌리기
+hearth export --format json --out dump.json
+hearth import dump.json --merge
+```
+
+### DB 경로
+
+기본: `~/Library/Application Support/com.newturn2017.hearth/data.db`.
+`--db <PATH>` 또는 `HEARTH_DB` 환경변수로 덮어쓸 수 있습니다.
+
+### 출력 포맷
+
+기본 JSON (`{ok:true, data:...}`). `--pretty` 로 사람용 테이블 (list 명령 한정).
+
+### 안전성
+
+모든 mutation 은 `audit_log` 에 기록됩니다. `hearth log undo` / `redo` 로 되돌릴 수 있고, `hearth log show` 로 히스토리 조회 가능. 앱·CLI 변경이 하나의 히스토리를 공유합니다.
+
 ## Building from Source
 
 ```bash

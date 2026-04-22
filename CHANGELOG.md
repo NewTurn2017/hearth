@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - (unreleased)
+
+### Added
+- **Cargo workspace split**: `hearth-core` (pure logic) / `hearth-app` (Tauri) / `hearth-cli` (binary). All three share a single `Cargo.lock` and unified versioning.
+- **New `hearth` CLI binary** — full CRUD for projects / memos / schedules / categories / clients, plus composite views (`today`, `overdue`, `stats`), audit log (`log show` / `undo` / `redo`), and import/export (JSON).
+- **App live-refresh** — detects external DB writes via `PRAGMA data_version` polling (500ms) and emits window custom events (`projects:changed`, `memos:changed`, etc.) so the UI reflects CLI/background changes without restart.
+- **DB schema additions**:
+  - `audit_log` table: tracks all mutations (op, table, row_id, before/after JSON, source, timestamp, undone flag)
+  - FTS5 virtual tables: `projects_fts`, `memos_fts`, `schedules_fts` with sync triggers (standalone mode for CLI searches)
+- **Search powered by FTS5**: `hearth search` uses full-text search and returns ranked results with snippet highlighting.
+
+### Notes
+- App and CLI mutations share one `audit_log`. Changes made in the app appear in `hearth log show` and vice versa.
+- Wire the React Undo toast to `hearth_core::audit::undo` so app + CLI share one undo stack (optional, pending follow-up spec).
+
 ## [0.6.0] - 2026-04-20
 
 ### Added
