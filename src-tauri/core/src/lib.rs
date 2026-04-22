@@ -10,6 +10,7 @@ pub mod models;
 pub mod projects;
 pub mod schedules;
 pub mod search;
+pub mod views;
 
 #[cfg(test)]
 mod smoke_tests {
