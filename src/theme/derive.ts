@@ -57,7 +57,7 @@ export function rgbToHsl(r: number, g: number, b: number): Hsl {
         break;
     }
   }
-  return { h, s: s * 100, l: Math.round(l * 100) };
+  return { h, s: s * 100, l: l * 100 };
 }
 
 function hue2rgb(p: number, q: number, t: number) {
@@ -70,7 +70,7 @@ function hue2rgb(p: number, q: number, t: number) {
 }
 
 export function hslToHex(h: number, s: number, l: number): string {
-  const H = ((h % 360) + 360) % 360 / 360;
+  const H = (((h % 360) + 360) % 360) / 360;
   const S = Math.max(0, Math.min(100, s)) / 100;
   const L = Math.max(0, Math.min(100, l)) / 100;
   let R: number, G: number, B: number;

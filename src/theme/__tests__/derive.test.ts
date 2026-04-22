@@ -46,6 +46,12 @@ describe("rgbToHsl / hslToHex round-trip", () => {
     expect(hsl.l).toBe(100);
     expect(hslToHex(hsl.h, hsl.s, hsl.l).toLowerCase()).toBe("#ffffff");
   });
+  it("round-trips sky blue", () => {
+    // hex #38bdf8 — arctic brand-hi; exercises the case B: branch of rgbToHsl
+    const rgb = hexToRgb("#38bdf8");
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    expect(hslToHex(hsl.h, hsl.s, hsl.l).toLowerCase()).toBe("#38bdf8");
+  });
 });
 
 describe("deriveBrand", () => {
@@ -60,12 +66,12 @@ describe("deriveBrand", () => {
   it("brandHi clamps lightness minimum at 45% for very dark input", () => {
     const out = deriveBrand("#000000");
     const hsl = rgbToHsl(...Object.values(hexToRgb(out["--color-brand-hi"])) as [number, number, number]);
-    expect(hsl.l).toBe(45);
+    expect(hsl.l).toBeCloseTo(45, 0);
   });
   it("brandHi clamps lightness maximum at 75% for very light input", () => {
     const out = deriveBrand("#ffffff");
     const hsl = rgbToHsl(...Object.values(hexToRgb(out["--color-brand-hi"])) as [number, number, number]);
-    expect(hsl.l).toBe(75);
+    expect(hsl.l).toBeCloseTo(75, 0);
   });
   it("brandSoft is rgba with alpha 0.18", () => {
     expect(deriveBrand("#ff8000")["--color-brand-soft"]).toBe("rgba(255, 128, 0, 0.18)");
