@@ -36,9 +36,9 @@ export type ThemeSetting =
 
 export const DEFAULT_THEME: ThemeSetting = { kind: "preset", id: "warm-paper" };
 
-// The 11 CSS custom-property token names that the theme layer owns.
-// Priority, category, semantic, radius, shadow, motion, typography tokens
-// stay global in @theme (theme-independent).
+// The 13 CSS custom-property token names that the theme layer owns
+// (4 surface + 2 border + 4 text + 3 brand). Priority, category, semantic,
+// radius, shadow, motion, typography tokens stay global in @theme.
 export type ThemeTokens = {
   "--color-surface-0": string;
   "--color-surface-1": string;

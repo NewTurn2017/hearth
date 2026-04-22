@@ -6,8 +6,9 @@ import { Check } from "lucide-react";
 import { cn } from "../lib/cn";
 import { Button } from "../ui/Button";
 import { useTheme } from "../theme/ThemeContext";
-import { DARK_PRESETS, LIGHT_PRESETS, type PresetId, type ThemeSetting } from "../theme/types";
+import { DARK_PRESETS, LIGHT_PRESETS, type PresetId } from "../theme/types";
 import { PRESETS, PRESET_META } from "../theme/presets";
+import { applyTheme } from "../theme/applyTheme";
 
 const HEX_RE = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
@@ -85,21 +86,14 @@ export function SettingsThemeSection() {
   }, [hexInput]);
 
   // Debounced preview: re-apply but do NOT persist until the user clicks 저장.
+  // Apply visually only — the context's setTheme would persist, which we
+  // only want on explicit save.
   useEffect(() => {
     if (!normalizedHex) return;
-    let cancelled = false;
     const t = setTimeout(() => {
-      const preview: ThemeSetting = { kind: "custom", baseMode, brandHex: normalizedHex };
-      // Apply visually only — the context's setTheme would persist, which we
-      // only want on explicit save. Call applyTheme directly from here.
-      import("../theme/applyTheme").then((m) => {
-        if (!cancelled) m.applyTheme(preview);
-      });
+      applyTheme({ kind: "custom", baseMode, brandHex: normalizedHex });
     }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
+    return () => clearTimeout(t);
   }, [normalizedHex, baseMode]);
 
   const onSavePreset = async (id: PresetId) => {
