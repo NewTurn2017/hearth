@@ -3,6 +3,7 @@
 
 pub mod audit;
 pub mod categories;
+pub mod clients;
 pub mod db;
 pub mod memos;
 pub mod models;
