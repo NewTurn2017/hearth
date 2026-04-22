@@ -3,6 +3,19 @@ use predicates::prelude::*;
 use serde_json::Value;
 use tempfile::TempDir;
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+fn hearth(db_str: &str) -> Command {
+    let mut cmd = Command::cargo_bin("hearth").unwrap();
+    cmd.env("HEARTH_DB", db_str);
+    cmd
+}
+
+fn stdout_json(cmd: assert_cmd::assert::Assert) -> Value {
+    let out = cmd.success().get_output().stdout.clone();
+    serde_json::from_slice(&out).unwrap()
+}
+
 #[test]
 fn db_path_outputs_json() {
     let dir = TempDir::new().unwrap();
@@ -138,4 +151,253 @@ fn project_scan_reports_subdirs() {
     let v: Value = serde_json::from_slice(&out).unwrap();
     let hits = v["data"].as_array().unwrap();
     assert!(hits.len() >= 2);
+}
+
+// ── Task 7.1 — memo ──────────────────────────────────────────────────────────
+
+#[test]
+fn memo_create_list_delete_roundtrip() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // create
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["memo", "create", "dentist on friday", "--color", "blue"])
+            .assert(),
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["content"], "dentist on friday");
+    let id = v["data"]["id"].as_i64().unwrap();
+
+    // list
+    let v = stdout_json(hearth(db_str).args(["memo", "list"]).assert());
+    assert_eq!(v["data"].as_array().unwrap().len(), 1);
+
+    // get
+    let v = stdout_json(hearth(db_str).args(["memo", "get", &id.to_string()]).assert());
+    assert_eq!(v["data"]["content"], "dentist on friday");
+
+    // update content
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["memo", "update", &id.to_string(), "--content", "dentist on saturday"])
+            .assert(),
+    );
+    assert_eq!(v["data"]["content"], "dentist on saturday");
+
+    // delete
+    hearth(db_str)
+        .args(["memo", "delete", &id.to_string()])
+        .assert()
+        .success();
+
+    // list is empty
+    let v = stdout_json(hearth(db_str).args(["memo", "list"]).assert());
+    assert_eq!(v["data"].as_array().unwrap().len(), 0);
+}
+
+// ── Task 7.2 — schedule ──────────────────────────────────────────────────────
+
+#[test]
+fn schedule_create_list_delete_roundtrip() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // create
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "schedule", "create", "2026-05-10",
+                "--description", "dentist appointment",
+                "--remind-5min",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["date"], "2026-05-10");
+    assert_eq!(v["data"]["remind_before_5min"], true);
+    let id = v["data"]["id"].as_i64().unwrap();
+
+    // list (no filter)
+    let v = stdout_json(hearth(db_str).args(["schedule", "list"]).assert());
+    assert_eq!(v["data"].as_array().unwrap().len(), 1);
+
+    // list --month
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["schedule", "list", "--month", "2026-05"])
+            .assert(),
+    );
+    assert_eq!(v["data"].as_array().unwrap().len(), 1);
+
+    // list --from/--to range
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "schedule", "list",
+                "--from", "2026-05-01",
+                "--to", "2026-05-31",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"].as_array().unwrap().len(), 1);
+
+    // get
+    let v = stdout_json(hearth(db_str).args(["schedule", "get", &id.to_string()]).assert());
+    assert_eq!(v["data"]["description"], "dentist appointment");
+
+    // update
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["schedule", "update", &id.to_string(), "--date", "2026-05-11"])
+            .assert(),
+    );
+    assert_eq!(v["data"]["date"], "2026-05-11");
+
+    // delete
+    hearth(db_str)
+        .args(["schedule", "delete", &id.to_string()])
+        .assert()
+        .success();
+
+    let v = stdout_json(hearth(db_str).args(["schedule", "list"]).assert());
+    assert_eq!(v["data"].as_array().unwrap().len(), 0);
+}
+
+// ── Task 7.3 — category ──────────────────────────────────────────────────────
+
+#[test]
+fn category_create_rename_cascades_to_project() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // create category
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["category", "create", "OldName", "--color", "#ff0000"])
+            .assert(),
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["name"], "OldName");
+
+    // create project referencing that category
+    hearth(db_str)
+        .args(["project", "create", "MyProj", "--category", "OldName"])
+        .assert()
+        .success();
+
+    // rename
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["category", "rename", "OldName", "NewName"])
+            .assert(),
+    );
+    assert_eq!(v["data"]["name"], "NewName");
+
+    // project list should reflect new category name
+    let v = stdout_json(hearth(db_str).args(["project", "list"]).assert());
+    let arr = v["data"].as_array().unwrap();
+    assert_eq!(arr[0]["category"], "NewName");
+}
+
+#[test]
+fn category_delete_refuses_in_use() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // create category and project using it
+    let v = stdout_json(hearth(db_str).args(["category", "create", "Hot"]).assert());
+    let cat_id = v["data"]["id"].as_i64().unwrap();
+    hearth(db_str)
+        .args(["project", "create", "X", "--category", "Hot"])
+        .assert()
+        .success();
+
+    // delete should fail with exit code 1 and Korean "사용 중" in stderr
+    hearth(db_str)
+        .args(["category", "delete", &cat_id.to_string()])
+        .assert()
+        .code(1)
+        .stderr(predicate::str::contains("사용 중"));
+}
+
+// ── Task 8.1 — search ────────────────────────────────────────────────────────
+
+#[test]
+fn search_finds_memo_content() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // create memo with searchable content
+    hearth(db_str)
+        .args(["memo", "create", "dentist on friday"])
+        .assert()
+        .success();
+
+    // search
+    let v = stdout_json(hearth(db_str).args(["search", "dentist"]).assert());
+    assert_eq!(v["ok"], true);
+    let hits = v["data"].as_array().unwrap();
+    assert!(!hits.is_empty(), "expected at least one search hit");
+    assert_eq!(hits[0]["kind"], "memo");
+}
+
+// ── Task 8.2 — today / overdue / stats ───────────────────────────────────────
+
+#[test]
+fn today_returns_structured_view() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    let v = stdout_json(hearth(db_str).args(["today"]).assert());
+    assert_eq!(v["ok"], true);
+    let data = &v["data"];
+    assert!(data["date"].is_string(), "data.date should be a string");
+    assert!(data["schedules_today"].is_array(), "data.schedules_today should be an array");
+    assert!(data["p0_projects"].is_array(), "data.p0_projects should be an array");
+    assert!(data["recent_memos"].is_array(), "data.recent_memos should be an array");
+}
+
+#[test]
+fn overdue_returns_structured_view() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    let v = stdout_json(hearth(db_str).args(["overdue"]).assert());
+    assert_eq!(v["ok"], true);
+    let data = &v["data"];
+    assert!(data["overdue_schedules"].is_array());
+    assert!(data["stale_projects"].is_array());
+}
+
+#[test]
+fn stats_returns_counts() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    // create some data first
+    hearth(db_str)
+        .args(["memo", "create", "test memo"])
+        .assert()
+        .success();
+    hearth(db_str)
+        .args(["project", "create", "StatsProj"])
+        .assert()
+        .success();
+
+    let v = stdout_json(hearth(db_str).args(["stats"]).assert());
+    assert_eq!(v["ok"], true);
+    let data = &v["data"];
+    assert_eq!(data["total_memos"].as_i64().unwrap(), 1);
+    assert_eq!(data["total_projects"].as_i64().unwrap(), 1);
+    assert!(data["total_schedules"].is_number());
 }

@@ -32,6 +32,29 @@ enum Commands {
         #[command(subcommand)]
         sub: crate::cmd::project::ProjectCmd,
     },
+    /// Memo management.
+    Memo {
+        #[command(subcommand)]
+        sub: crate::cmd::memo::MemoCmd,
+    },
+    /// Schedule management.
+    Schedule {
+        #[command(subcommand)]
+        sub: crate::cmd::schedule::ScheduleCmd,
+    },
+    /// Category management.
+    Category {
+        #[command(subcommand)]
+        sub: crate::cmd::category::CategoryCmd,
+    },
+    /// Full-text search across projects, memos, and schedules.
+    Search(crate::cmd::search::SearchArgs),
+    /// Show today's schedules, P0 projects, and recent memos.
+    Today,
+    /// Show overdue schedules and stale projects.
+    Overdue,
+    /// Show aggregate statistics.
+    Stats,
 }
 
 #[derive(Subcommand)]
@@ -71,6 +94,13 @@ fn run() -> Result<()> {
     match cli.command {
         Commands::Db { sub } => cmd_db(cli.db.as_deref(), sub),
         Commands::Project { sub } => crate::cmd::project::dispatch(cli.db.as_deref(), sub),
+        Commands::Memo { sub } => crate::cmd::memo::dispatch(cli.db.as_deref(), sub),
+        Commands::Schedule { sub } => crate::cmd::schedule::dispatch(cli.db.as_deref(), sub),
+        Commands::Category { sub } => crate::cmd::category::dispatch(cli.db.as_deref(), sub),
+        Commands::Search(args) => crate::cmd::search::dispatch(cli.db.as_deref(), args),
+        Commands::Today => crate::cmd::views::today(cli.db.as_deref()),
+        Commands::Overdue => crate::cmd::views::overdue(cli.db.as_deref()),
+        Commands::Stats => crate::cmd::views::stats(cli.db.as_deref()),
     }
 }
 
