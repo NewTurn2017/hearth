@@ -42,6 +42,14 @@ pub enum ProjectCmd {
     },
     /// Delete a project.
     Delete { id: i64 },
+    /// Scan a directory for subfolders, flagging which are already registered.
+    Scan {
+        dir: String,
+        #[arg(long, default_value_t = 1)]
+        depth: u32,
+    },
+    /// Link an existing project to a filesystem path (with existence check).
+    LinkPath { id: i64, path: String },
 }
 
 pub fn dispatch(db_path_flag: Option<&str>, sub: ProjectCmd) -> Result<()> {
@@ -117,6 +125,36 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: ProjectCmd) -> Result<()> {
         ProjectCmd::Delete { id } => {
             projects::delete(&mut conn, Source::Cli, id)?;
             crate::util::emit_ok(serde_json::json!({ "deleted": id }));
+        }
+        ProjectCmd::Scan { dir, depth } => {
+            let all = projects::list(&conn)?;
+            let existing: Vec<String> = all.into_iter().filter_map(|p| p.path).collect();
+            let path = std::path::PathBuf::from(&dir);
+            let hits = hearth_core::scan::scan_dir(&path, depth, &existing)?;
+            crate::util::emit_ok(serde_json::to_value(&hits).unwrap());
+        }
+        ProjectCmd::LinkPath { id, path } => {
+            let pbuf = std::path::PathBuf::from(&path);
+            if !pbuf.is_dir() {
+                crate::util::emit_err(
+                    &format!("path is not an existing directory: {}", path),
+                    Some("pass an absolute path to an existing folder"),
+                );
+                std::process::exit(1);
+            }
+            let p = projects::update(
+                &mut conn,
+                Source::Cli,
+                id,
+                &UpdateProject {
+                    name: None,
+                    priority: None,
+                    category: None,
+                    path: Some(&path),
+                    evaluation: None,
+                },
+            )?;
+            crate::util::emit_ok(serde_json::to_value(&p).unwrap());
         }
     }
     Ok(())

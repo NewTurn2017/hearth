@@ -115,3 +115,27 @@ fn project_get_missing_returns_err_exit_1() {
         .code(1)
         .stderr(predicate::str::contains("not found"));
 }
+
+#[test]
+fn project_scan_reports_subdirs() {
+    let dir = TempDir::new().unwrap();
+    let db_path = dir.path().join("test.db");
+    std::fs::create_dir_all(dir.path().join("sub1")).unwrap();
+    std::fs::create_dir_all(dir.path().join("sub2")).unwrap();
+
+    let out = Command::cargo_bin("hearth")
+        .unwrap()
+        .env("HEARTH_DB", db_path.to_str().unwrap())
+        .args([
+            "project", "scan",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&out).unwrap();
+    let hits = v["data"].as_array().unwrap();
+    assert!(hits.len() >= 2);
+}
