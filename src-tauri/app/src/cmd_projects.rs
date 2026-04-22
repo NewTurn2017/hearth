@@ -1,5 +1,7 @@
-use crate::models::Project;
 use crate::AppState;
+use hearth_core::audit::Source;
+use hearth_core::models::Project;
+use hearth_core::projects::{self, NewProject, UpdateProject};
 use serde::Deserialize;
 use tauri::State;
 
@@ -15,66 +17,30 @@ pub fn get_projects(
     filter: Option<ProjectFilter>,
 ) -> Result<Vec<Project>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
-
-    let mut sql = String::from(
-        "SELECT id, priority, number, name, category, path, evaluation, sort_order, created_at, updated_at FROM projects"
-    );
-    let mut conditions: Vec<String> = vec![];
-    let mut params: Vec<String> = vec![];
-
-    if let Some(ref f) = filter {
-        if let Some(ref priorities) = f.priorities {
-            if !priorities.is_empty() {
-                let placeholders: Vec<String> = priorities
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| format!("?{}", params.len() + i + 1))
-                    .collect();
-                conditions.push(format!("priority IN ({})", placeholders.join(",")));
-                params.extend(priorities.clone());
+    let all = projects::list(&db).map_err(|e| e.to_string())?;
+    let filtered: Vec<Project> = all
+        .into_iter()
+        .filter(|p| match filter.as_ref() {
+            None => true,
+            Some(f) => {
+                let pri_ok = match f.priorities.as_ref() {
+                    None => true,
+                    Some(v) if v.is_empty() => true,
+                    Some(v) => v.contains(&p.priority),
+                };
+                let cat_ok = match f.categories.as_ref() {
+                    None => true,
+                    Some(v) if v.is_empty() => true,
+                    Some(v) => p
+                        .category
+                        .as_ref()
+                        .map_or(false, |c| v.contains(c)),
+                };
+                pri_ok && cat_ok
             }
-        }
-        if let Some(ref categories) = f.categories {
-            if !categories.is_empty() {
-                let placeholders: Vec<String> = categories
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| format!("?{}", params.len() + i + 1))
-                    .collect();
-                conditions.push(format!("category IN ({})", placeholders.join(",")));
-                params.extend(categories.clone());
-            }
-        }
-    }
-
-    if !conditions.is_empty() {
-        sql.push_str(" WHERE ");
-        sql.push_str(&conditions.join(" AND "));
-    }
-    sql.push_str(" ORDER BY CASE priority WHEN 'P0' THEN 0 WHEN 'P1' THEN 1 WHEN 'P2' THEN 2 WHEN 'P3' THEN 3 WHEN 'P4' THEN 4 END, sort_order ASC");
-
-    let mut stmt = db.prepare(&sql).map_err(|e| e.to_string())?;
-    let param_refs: Vec<&dyn rusqlite::types::ToSql> =
-        params.iter().map(|s| s as &dyn rusqlite::types::ToSql).collect();
-
-    let rows = stmt
-        .query_map(param_refs.as_slice(), |row| {
-            Ok(Project {
-                id: row.get(0)?,
-                priority: row.get(1)?,
-                number: row.get(2)?,
-                name: row.get(3)?,
-                category: row.get(4)?,
-                path: row.get(5)?,
-                evaluation: row.get(6)?,
-                sort_order: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-            })
         })
-        .map_err(|e| e.to_string())?;
-
-    Ok(rows.filter_map(|r| r.ok()).collect())
+        .collect();
+    Ok(filtered)
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,65 +58,20 @@ pub fn update_project(
     id: i64,
     fields: UpdateProjectInput,
 ) -> Result<Project, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-
-    let mut sets: Vec<String> = vec![];
-    let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = vec![];
-
-    if let Some(ref v) = fields.name {
-        sets.push("name = ?".into());
-        params.push(Box::new(v.clone()));
-    }
-    if let Some(ref v) = fields.priority {
-        sets.push("priority = ?".into());
-        params.push(Box::new(v.clone()));
-    }
-    if let Some(ref v) = fields.category {
-        sets.push("category = ?".into());
-        params.push(Box::new(v.clone()));
-    }
-    if let Some(ref v) = fields.path {
-        sets.push("path = ?".into());
-        params.push(Box::new(v.clone()));
-    }
-    if let Some(ref v) = fields.evaluation {
-        sets.push("evaluation = ?".into());
-        params.push(Box::new(v.clone()));
-    }
-
-    if sets.is_empty() {
-        return Err("No fields to update".into());
-    }
-
-    sets.push("updated_at = datetime('now')".into());
-    params.push(Box::new(id));
-
-    let sql = format!("UPDATE projects SET {} WHERE id = ?", sets.join(", "));
-    let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-    db.execute(&sql, param_refs.as_slice()).map_err(|e| e.to_string())?;
-
-    let project = db
-        .query_row(
-            "SELECT id, priority, number, name, category, path, evaluation, sort_order, created_at, updated_at FROM projects WHERE id = ?1",
-            [id],
-            |row| {
-                Ok(Project {
-                    id: row.get(0)?,
-                    priority: row.get(1)?,
-                    number: row.get(2)?,
-                    name: row.get(3)?,
-                    category: row.get(4)?,
-                    path: row.get(5)?,
-                    evaluation: row.get(6)?,
-                    sort_order: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
-                })
-            },
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(project)
+    let mut db = state.db.lock().map_err(|e| e.to_string())?;
+    projects::update(
+        &mut db,
+        Source::App,
+        id,
+        &UpdateProject {
+            name: fields.name.as_deref(),
+            priority: fields.priority.as_deref(),
+            category: fields.category.as_deref(),
+            path: fields.path.as_deref(),
+            evaluation: fields.evaluation.as_deref(),
+        },
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -161,68 +82,31 @@ pub fn create_project(
     category: Option<String>,
     path: Option<String>,
 ) -> Result<Project, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-
-    let max_order: i64 = db
-        .query_row(
-            "SELECT COALESCE(MAX(sort_order), 0) FROM projects WHERE priority = ?1",
-            [&priority],
-            |row| row.get(0),
-        )
-        .unwrap_or(0);
-
-    db.execute(
-        "INSERT INTO projects (name, priority, category, path, sort_order) VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![name, priority, category, path, max_order + 1],
+    let mut db = state.db.lock().map_err(|e| e.to_string())?;
+    projects::create(
+        &mut db,
+        Source::App,
+        &NewProject {
+            name: &name,
+            priority: &priority,
+            category: category.as_deref(),
+            path: path.as_deref(),
+            evaluation: None,
+        },
     )
-    .map_err(|e| e.to_string())?;
-
-    let id = db.last_insert_rowid();
-    let project = db
-        .query_row(
-            "SELECT id, priority, number, name, category, path, evaluation, sort_order, created_at, updated_at FROM projects WHERE id = ?1",
-            [id],
-            |row| {
-                Ok(Project {
-                    id: row.get(0)?,
-                    priority: row.get(1)?,
-                    number: row.get(2)?,
-                    name: row.get(3)?,
-                    category: row.get(4)?,
-                    path: row.get(5)?,
-                    evaluation: row.get(6)?,
-                    sort_order: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
-                })
-            },
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(project)
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_project(state: State<'_, AppState>, id: i64) -> Result<(), String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    db.execute("DELETE FROM projects WHERE id = ?1", [id])
-        .map_err(|e| e.to_string())?;
-    Ok(())
+    let mut db = state.db.lock().map_err(|e| e.to_string())?;
+    projects::delete(&mut db, Source::App, id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn reorder_projects(state: State<'_, AppState>, ids: Vec<i64>) -> Result<(), String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
-    let tx = db.unchecked_transaction().map_err(|e| e.to_string())?;
-    for (i, id) in ids.iter().enumerate() {
-        tx.execute(
-            "UPDATE projects SET sort_order = ?1, updated_at = datetime('now') WHERE id = ?2",
-            rusqlite::params![i as i64, id],
-        )
-        .map_err(|e| e.to_string())?;
-    }
-    tx.commit().map_err(|e| e.to_string())?;
-    Ok(())
+    let mut db = state.db.lock().map_err(|e| e.to_string())?;
+    projects::reorder(&mut db, &ids).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -231,32 +115,5 @@ pub fn search_projects(
     query: String,
 ) -> Result<Vec<Project>, String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
-    let pattern = format!("%{}%", query);
-    let mut stmt = db
-        .prepare(
-            "SELECT id, priority, number, name, category, path, evaluation, sort_order, created_at, updated_at
-             FROM projects
-             WHERE name LIKE ?1 OR evaluation LIKE ?1 OR category LIKE ?1
-             ORDER BY sort_order ASC",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let rows = stmt
-        .query_map([&pattern], |row| {
-            Ok(Project {
-                id: row.get(0)?,
-                priority: row.get(1)?,
-                number: row.get(2)?,
-                name: row.get(3)?,
-                category: row.get(4)?,
-                path: row.get(5)?,
-                evaluation: row.get(6)?,
-                sort_order: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    projects::search_like(&db, &query).map_err(|e| e.to_string())
 }

@@ -4,6 +4,7 @@
 pub mod audit;
 pub mod db;
 pub mod models;
+pub mod projects;
 
 #[cfg(test)]
 mod smoke_tests {

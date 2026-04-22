@@ -120,13 +120,11 @@ fn ensure_projects_fts(conn: &Connection) -> Result<()> {
         END;
 
         CREATE TRIGGER IF NOT EXISTS projects_ad AFTER DELETE ON projects BEGIN
-            INSERT INTO projects_fts(projects_fts, rowid, name, category, evaluation)
-            VALUES ('delete', old.id, old.name, COALESCE(old.category,''), COALESCE(old.evaluation,''));
+            DELETE FROM projects_fts WHERE rowid = old.id;
         END;
 
         CREATE TRIGGER IF NOT EXISTS projects_au AFTER UPDATE ON projects BEGIN
-            INSERT INTO projects_fts(projects_fts, rowid, name, category, evaluation)
-            VALUES ('delete', old.id, old.name, COALESCE(old.category,''), COALESCE(old.evaluation,''));
+            DELETE FROM projects_fts WHERE rowid = old.id;
             INSERT INTO projects_fts(rowid, name, category, evaluation)
             VALUES (new.id, new.name, COALESCE(new.category,''), COALESCE(new.evaluation,''));
         END;",
@@ -155,11 +153,11 @@ fn ensure_memos_fts(conn: &Connection) -> Result<()> {
         END;
 
         CREATE TRIGGER IF NOT EXISTS memos_ad AFTER DELETE ON memos BEGIN
-            INSERT INTO memos_fts(memos_fts, rowid, content) VALUES ('delete', old.id, old.content);
+            DELETE FROM memos_fts WHERE rowid = old.id;
         END;
 
         CREATE TRIGGER IF NOT EXISTS memos_au AFTER UPDATE ON memos BEGIN
-            INSERT INTO memos_fts(memos_fts, rowid, content) VALUES ('delete', old.id, old.content);
+            DELETE FROM memos_fts WHERE rowid = old.id;
             INSERT INTO memos_fts(rowid, content) VALUES (new.id, new.content);
         END;",
     )?;
@@ -187,13 +185,11 @@ fn ensure_schedules_fts(conn: &Connection) -> Result<()> {
         END;
 
         CREATE TRIGGER IF NOT EXISTS schedules_ad AFTER DELETE ON schedules BEGIN
-            INSERT INTO schedules_fts(schedules_fts, rowid, description, location, notes)
-            VALUES ('delete', old.id, COALESCE(old.description,''), COALESCE(old.location,''), COALESCE(old.notes,''));
+            DELETE FROM schedules_fts WHERE rowid = old.id;
         END;
 
         CREATE TRIGGER IF NOT EXISTS schedules_au AFTER UPDATE ON schedules BEGIN
-            INSERT INTO schedules_fts(schedules_fts, rowid, description, location, notes)
-            VALUES ('delete', old.id, COALESCE(old.description,''), COALESCE(old.location,''), COALESCE(old.notes,''));
+            DELETE FROM schedules_fts WHERE rowid = old.id;
             INSERT INTO schedules_fts(rowid, description, location, notes)
             VALUES (new.id, COALESCE(new.description,''), COALESCE(new.location,''), COALESCE(new.notes,''));
         END;",
