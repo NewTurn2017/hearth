@@ -5,6 +5,7 @@ pub mod audit;
 pub mod categories;
 pub mod clients;
 pub mod db;
+pub mod export;
 pub mod memos;
 pub mod models;
 pub mod projects;
