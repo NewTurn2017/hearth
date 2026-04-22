@@ -106,6 +106,109 @@ fn ensure_schedule_reminder_columns(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+fn ensure_projects_fts(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS projects_fts USING fts5(
+            name, category, evaluation
+        );
+
+        CREATE TRIGGER IF NOT EXISTS projects_ai AFTER INSERT ON projects BEGIN
+            INSERT INTO projects_fts(rowid, name, category, evaluation)
+            VALUES (new.id, new.name, COALESCE(new.category,''), COALESCE(new.evaluation,''));
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS projects_ad AFTER DELETE ON projects BEGIN
+            INSERT INTO projects_fts(projects_fts, rowid, name, category, evaluation)
+            VALUES ('delete', old.id, old.name, COALESCE(old.category,''), COALESCE(old.evaluation,''));
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS projects_au AFTER UPDATE ON projects BEGIN
+            INSERT INTO projects_fts(projects_fts, rowid, name, category, evaluation)
+            VALUES ('delete', old.id, old.name, COALESCE(old.category,''), COALESCE(old.evaluation,''));
+            INSERT INTO projects_fts(rowid, name, category, evaluation)
+            VALUES (new.id, new.name, COALESCE(new.category,''), COALESCE(new.evaluation,''));
+        END;",
+    )?;
+    let main_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM projects", [], |r| r.get(0))?;
+    let fts_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM projects_fts", [], |r| r.get(0))?;
+    if main_count > 0 && fts_count == 0 {
+        conn.execute_batch(
+            "INSERT INTO projects_fts(rowid, name, category, evaluation)
+             SELECT id, name, COALESCE(category,''), COALESCE(evaluation,'') FROM projects;",
+        )?;
+    }
+    Ok(())
+}
+
+fn ensure_memos_fts(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS memos_fts USING fts5(
+            content
+        );
+
+        CREATE TRIGGER IF NOT EXISTS memos_ai AFTER INSERT ON memos BEGIN
+            INSERT INTO memos_fts(rowid, content) VALUES (new.id, new.content);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS memos_ad AFTER DELETE ON memos BEGIN
+            INSERT INTO memos_fts(memos_fts, rowid, content) VALUES ('delete', old.id, old.content);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS memos_au AFTER UPDATE ON memos BEGIN
+            INSERT INTO memos_fts(memos_fts, rowid, content) VALUES ('delete', old.id, old.content);
+            INSERT INTO memos_fts(rowid, content) VALUES (new.id, new.content);
+        END;",
+    )?;
+    let main_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM memos", [], |r| r.get(0))?;
+    let fts_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM memos_fts", [], |r| r.get(0))?;
+    if main_count > 0 && fts_count == 0 {
+        conn.execute_batch(
+            "INSERT INTO memos_fts(rowid, content) SELECT id, content FROM memos;",
+        )?;
+    }
+    Ok(())
+}
+
+fn ensure_schedules_fts(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "CREATE VIRTUAL TABLE IF NOT EXISTS schedules_fts USING fts5(
+            description, location, notes
+        );
+
+        CREATE TRIGGER IF NOT EXISTS schedules_ai AFTER INSERT ON schedules BEGIN
+            INSERT INTO schedules_fts(rowid, description, location, notes)
+            VALUES (new.id, COALESCE(new.description,''), COALESCE(new.location,''), COALESCE(new.notes,''));
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS schedules_ad AFTER DELETE ON schedules BEGIN
+            INSERT INTO schedules_fts(schedules_fts, rowid, description, location, notes)
+            VALUES ('delete', old.id, COALESCE(old.description,''), COALESCE(old.location,''), COALESCE(old.notes,''));
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS schedules_au AFTER UPDATE ON schedules BEGIN
+            INSERT INTO schedules_fts(schedules_fts, rowid, description, location, notes)
+            VALUES ('delete', old.id, COALESCE(old.description,''), COALESCE(old.location,''), COALESCE(old.notes,''));
+            INSERT INTO schedules_fts(rowid, description, location, notes)
+            VALUES (new.id, COALESCE(new.description,''), COALESCE(new.location,''), COALESCE(new.notes,''));
+        END;",
+    )?;
+    let main_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM schedules", [], |r| r.get(0))?;
+    let fts_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM schedules_fts", [], |r| r.get(0))?;
+    if main_count > 0 && fts_count == 0 {
+        conn.execute_batch(
+            "INSERT INTO schedules_fts(rowid, description, location, notes)
+             SELECT id, COALESCE(description,''), COALESCE(location,''), COALESCE(notes,'') FROM schedules;",
+        )?;
+    }
+    Ok(())
+}
+
 fn run_migrations(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "
@@ -173,10 +276,27 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             created_at TEXT    NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
         );
+
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts          TEXT    NOT NULL DEFAULT (datetime('now')),
+            source      TEXT    NOT NULL,
+            op          TEXT    NOT NULL,
+            table_name  TEXT    NOT NULL,
+            row_id      INTEGER,
+            before_json TEXT,
+            after_json  TEXT,
+            undone      INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_audit_ts     ON audit_log(ts DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_undone ON audit_log(undone, ts DESC);
         ",
     )?;
 
     ensure_schedule_reminder_columns(conn)?;
+    ensure_projects_fts(conn)?;
+    ensure_memos_fts(conn)?;
+    ensure_schedules_fts(conn)?;
     seed_categories_if_empty(conn)?;
     Ok(())
 }
@@ -296,5 +416,132 @@ mod tests {
         let conn = Connection::open(&db_path).unwrap();
         conn.query_row("SELECT COUNT(*) FROM projects", [], |r| r.get::<_, i64>(0))
             .unwrap();
+    }
+
+    #[test]
+    fn creates_audit_log_table() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        let cnt: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='audit_log'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(cnt, 1, "audit_log table must exist after migrations");
+    }
+
+    #[test]
+    fn audit_log_accepts_insert_and_selects_back() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO audit_log (source, op, table_name, row_id, before_json, after_json)
+             VALUES ('cli', 'create', 'memos', 1, NULL, '{\"content\":\"hi\"}')",
+            [],
+        )
+        .unwrap();
+        let (source, op, table, rid): (String, String, String, i64) = conn
+            .query_row(
+                "SELECT source, op, table_name, row_id FROM audit_log WHERE id=1",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(source, "cli");
+        assert_eq!(op, "create");
+        assert_eq!(table, "memos");
+        assert_eq!(rid, 1);
+    }
+
+    #[test]
+    fn creates_projects_fts_and_syncs_on_insert() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO projects (name, priority, category, evaluation) VALUES ('Hearth CLI', 'P1', 'Tools', 'agent interface')",
+            [],
+        )
+        .unwrap();
+        let hits: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM projects_fts WHERE projects_fts MATCH 'agent'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1, "insert trigger must sync to FTS");
+    }
+
+    #[test]
+    fn fts_rebuild_on_existing_rows() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Create projects manually BEFORE run_migrations so no trigger fires.
+        conn.execute_batch(
+            "CREATE TABLE projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                priority TEXT NOT NULL DEFAULT 'P4',
+                number INTEGER,
+                name TEXT NOT NULL,
+                category TEXT,
+                path TEXT,
+                evaluation TEXT,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            INSERT INTO projects (name, priority, evaluation) VALUES ('Legacy', 'P2', 'existing content');
+            ",
+        )
+        .unwrap();
+        run_migrations(&conn).unwrap();
+        let hits: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM projects_fts WHERE projects_fts MATCH 'existing'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1, "FTS rebuild must cover existing rows");
+    }
+
+    #[test]
+    fn creates_memos_fts_and_syncs() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO memos (content, color) VALUES ('buy milk and bread', 'yellow')",
+            [],
+        )
+        .unwrap();
+        let hits: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM memos_fts WHERE memos_fts MATCH 'bread'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1);
+    }
+
+    #[test]
+    fn creates_schedules_fts_and_syncs() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO schedules (date, description, location, notes)
+             VALUES ('2026-05-01', 'dentist', 'Seoul', 'bring insurance')",
+            [],
+        )
+        .unwrap();
+        let hits: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM schedules_fts WHERE schedules_fts MATCH 'dentist'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(hits, 1);
     }
 }
