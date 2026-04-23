@@ -82,17 +82,18 @@ AFTER=$("$HEARTH" project list | jq '.data | length')
 echo "PASS: project count $BEFORE -> $AFTER"
 
 echo "== hearth-memo-organize read + mutation =="
-assert_ok "memo list" "$("$HEARTH" memo list)"
-MID=$("$HEARTH" memo list | jq '.data[] | select(.content == "Alpha Dashboard sprint notes") | .id')
-[[ -n "$MID" ]] || { echo "seeded memo not found" >&2; exit 1; }
+MEMO_LIST=$("$HEARTH" memo list)
+assert_ok "memo list" "$MEMO_LIST"
+MID=$(echo "$MEMO_LIST" | jq -r '.data[] | select(.content == "Alpha Dashboard sprint notes") | .id')
+[[ -n "$MID" && "$MID" != "null" ]] || { echo "seeded memo not found" >&2; exit 1; }
 assert_ok "memo update --project" "$("$HEARTH" memo update "$MID" --project "$P1")"
-LINKED=$("$HEARTH" memo get "$MID" | jq '.data.project_id')
-[[ "$LINKED" -eq "$P1" ]] || { echo "memo project_id expected $P1, got $LINKED" >&2; exit 1; }
+LINKED=$("$HEARTH" memo get "$MID" | jq -r '.data.project_id // "null"')
+[[ "$LINKED" == "$P1" ]] || { echo "memo project_id expected $P1, got $LINKED" >&2; exit 1; }
 echo "PASS: memo #$MID linked to project #$P1"
 
 echo "== undo round-trip =="
 assert_ok "undo" "$("$HEARTH" undo)"
-LINKED2=$("$HEARTH" memo get "$MID" | jq '.data.project_id')
+LINKED2=$("$HEARTH" memo get "$MID" | jq -r '.data.project_id // "null"')
 [[ "$LINKED2" != "$P1" ]] || { echo "undo did not revert memo project_id" >&2; exit 1; }
 echo "PASS: undo reverted memo #$MID link (now project_id=$LINKED2)"
 
