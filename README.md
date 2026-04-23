@@ -188,6 +188,8 @@ OPENAI_API_KEY=sk-... cargo test --test tool_calling_integration \
 
 `hearth` CLI 로 DB 를 직접 조작할 수 있습니다. 실행 중인 앱은 0.5~1 초 내로 변경을 자동 반영합니다 (PRAGMA data_version 폴링 기반).
 
+상세 사용법은 [Hearth CLI 한글 설명서](docs/hearth-cli-ko.md)를 참고하세요.
+
 ### 빌드 & 설치 (개발 모드)
 
 ```bash
@@ -202,7 +204,7 @@ cargo build --release -p hearth-cli
 hearth project list [--priority P0,P1] [--category Active]
 hearth project create "New Proj" --priority P1
 hearth memo create "buy milk" --color yellow
-hearth schedule create --date 2026-05-01 --time 09:00
+hearth schedule create 2026-05-01 --time 09:00
 hearth search "agent"
 hearth today            # 오늘 일정 + P0 프로젝트 + 최근 메모
 hearth overdue          # 지난 일정 · 방치된 프로젝트
@@ -225,6 +227,23 @@ hearth import dump.json --merge
 ### 안전성
 
 모든 mutation 은 `audit_log` 에 기록됩니다. `hearth log undo` / `redo` 로 되돌릴 수 있고, `hearth log show` 로 히스토리 조회 가능. 앱·CLI 변경이 하나의 히스토리를 공유합니다.
+
+### Agent Skills
+
+CLI 은 `SKILL.md` 파일들이 얹히는 기반입니다. v1 에서 세 가지가 `skills/` 에 포함됩니다:
+
+- `hearth-today-brief` — 오늘 브리핑 (read-only)
+- `hearth-project-scan` — 디렉토리 → 프로젝트 등록 (mutation, 승인 필요)
+- `hearth-memo-organize` — 메모 → 프로젝트 재연결 (mutation, 승인 필요)
+
+에이전트 호스트에 설치:
+
+```bash
+./scripts/install-skills.sh --into ~/.claude/skills       # Claude Code
+./scripts/install-skills.sh --into ~/.codex/skills        # Codex
+```
+
+자세한 prereq · install · troubleshooting 은 [`skills/README.md`](skills/README.md) 참고.
 
 ## Building from Source
 

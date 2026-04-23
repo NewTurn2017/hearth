@@ -188,14 +188,14 @@ Explicit `--into` always wins over env. Env presence only changes the suggested 
 
 ## 8. v1 Deliverables Checklist
 
-- [ ] `skills/README.md` — prereq + install + troubleshooting
-- [ ] `skills/hearth-today-brief/SKILL.md`
-- [ ] `skills/hearth-project-scan/SKILL.md`
-- [ ] `skills/hearth-memo-organize/SKILL.md`
-- [ ] `scripts/install-skills.sh` (with `--into`, `--remove`, env hints)
-- [ ] `scripts/smoke-skills.sh` (covers read + one mutation + undo per skill)
-- [ ] This spec committed
-- [ ] Implementation plan (next step, writing-plans skill)
+- [x] `skills/README.md` — prereq + install + troubleshooting
+- [x] `skills/hearth-today-brief/SKILL.md`
+- [x] `skills/hearth-project-scan/SKILL.md`
+- [x] `skills/hearth-memo-organize/SKILL.md`
+- [x] `scripts/install-skills.sh` (with `--into`, `--remove`, env hints)
+- [x] `scripts/smoke-skills.sh` (covers read + one mutation + undo per skill)
+- [x] This spec committed
+- [x] Implementation plan (this file: `docs/superpowers/plans/2026-04-23-hearth-skills.md`)
 
 ## 9. Out-of-Scope Note (explicit)
 

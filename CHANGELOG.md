@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `audit_log` table: tracks all mutations (op, table, row_id, before/after JSON, source, timestamp, undone flag)
   - FTS5 virtual tables: `projects_fts`, `memos_fts`, `schedules_fts` with sync triggers (standalone mode for CLI searches)
 - **Search powered by FTS5**: `hearth search` uses full-text search and returns ranked results with snippet highlighting.
+- **Agent Skills (v1)**: 3 skills callable from Claude Code, Codex, or any host that loads standard `SKILL.md`:
+  - `hearth-today-brief` — read-only 한국어 브리핑 (오늘 일정 + P0 + 최근 메모 + 연체).
+  - `hearth-project-scan` — 디렉토리 → hearth 프로젝트 등록. 사용자 승인 후에만 적용.
+  - `hearth-memo-organize` — 메모 → 프로젝트 보수적 재연결. 승인 후에만 적용.
+- **`scripts/install-skills.sh`**: manual install path — symlinks `skills/*` into a user-specified dir. Requires explicit `--into`; supports `--remove`.
+- **`scripts/smoke-skills.sh`**: seeds a throwaway DB and exercises every CLI recipe each v1 skill depends on.
 
 ### Notes
 - App and CLI mutations share one `audit_log`. Changes made in the app appear in `hearth log show` and vice versa.
