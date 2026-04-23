@@ -59,4 +59,4 @@ Mutating skills always propose a plan and wait for explicit user approval before
 
 - Design spec: `docs/superpowers/specs/2026-04-23-hearth-skills-design.md`
 - Implementation plan: `docs/superpowers/plans/2026-04-23-hearth-skills.md`
-- CLI reference: top-level `README.md` → "Hearth CLI" section
+- CLI reference: top-level `README.md` → "CLI (Hearth 바이너리)" section
