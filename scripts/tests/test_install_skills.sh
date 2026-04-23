@@ -65,5 +65,24 @@ done
 [[ -L "$TARGET/unrelated-link" ]] || fail "--remove deleted an unrelated symlink"
 pass "--remove surgical"
 
+# 6. --into value starting with '--' is rejected with exit 64.
+set +e
+"$INSTALL" --into --remove >/dev/null 2>&1
+code=$?
+set -e
+[[ "$code" == "64" ]] || fail "expected exit 64 when --into value starts with '--', got $code"
+[[ ! -d "$REPO_ROOT/--remove" ]] || { rm -rf "$REPO_ROOT/--remove"; fail "bug: script created a directory literally named '--remove' in repo root"; }
+pass "--into rejects value starting with '--'"
+
+# 7. --into pointing to an existing regular file is rejected with exit 64.
+FILE_TARGET="$TMP/not-a-dir"
+echo "not a directory" > "$FILE_TARGET"
+set +e
+"$INSTALL" --into "$FILE_TARGET" >/dev/null 2>&1
+code=$?
+set -e
+[[ "$code" == "64" ]] || fail "expected exit 64 when --into is a regular file, got $code"
+pass "--into rejects regular-file target"
+
 echo
 echo "ALL GOOD"

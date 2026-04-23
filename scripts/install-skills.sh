@@ -28,6 +28,9 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --into)
       [[ $# -ge 2 ]] || { echo "--into needs a value" >&2; usage >&2; exit 64; }
+      case "$2" in
+        --*) echo "--into value cannot start with '--' (got: $2)" >&2; usage >&2; exit 64 ;;
+      esac
       INTO="$2"; shift 2 ;;
     --remove) REMOVE=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -37,6 +40,11 @@ done
 
 if [[ -z "$INTO" ]]; then
   usage >&2
+  exit 64
+fi
+
+if [[ -e "$INTO" && ! -d "$INTO" ]]; then
+  echo "error: --into path exists and is not a directory: $INTO" >&2
   exit 64
 fi
 
