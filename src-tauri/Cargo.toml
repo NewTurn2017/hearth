@@ -1,43 +1,16 @@
-[package]
-name = "hearth"
-version = "0.7.0"
-description = "Local-first personal workspace for projects, memos, and schedules."
-authors = ["Jaehyun Jang <hyuni2020@gmail.com>"]
-license = "MIT"
-repository = "https://github.com/NewTurn2017/hearth"
-readme = "../README.md"
+[workspace]
+resolver = "2"
+members = ["app", "core", "cli"]
+
+[workspace.package]
 edition = "2021"
 rust-version = "1.75"
+license = "MIT"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "hearth_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
-
-[build-dependencies]
-tauri-build = { version = "2", features = [] }
-
-[dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2"
+[workspace.dependencies]
+rusqlite = { version = "0.34", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rusqlite = { version = "0.34", features = ["bundled"] }
-calamine = "0.26"
 chrono = { version = "0.4", features = ["serde"] }
-reqwest = { version = "0.12", features = ["json"] }
-tokio = { version = "1", features = ["full"] }
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
-tauri-plugin-autostart = "2"
-tauri-plugin-notification = "2"
-tauri-plugin-global-shortcut = "2"
-
-[dev-dependencies]
+thiserror = "1"
 tempfile = "3"
-

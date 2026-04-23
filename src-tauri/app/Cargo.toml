@@ -1,0 +1,38 @@
+[package]
+name = "hearth-app"
+version = "0.7.0"
+description = "Local-first personal workspace for projects, memos, and schedules."
+authors = ["Jaehyun Jang <hyuni2020@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/NewTurn2017/hearth"
+readme = "../../README.md"
+edition = "2021"
+rust-version = "1.75"
+
+[lib]
+name = "hearth_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.34", features = ["bundled"] }
+calamine = "0.26"
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-global-shortcut = "2"
+hearth-core = { path = "../core" }
+
+[dev-dependencies]
+tempfile = "3"
