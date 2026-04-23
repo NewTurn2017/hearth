@@ -8,7 +8,7 @@ description: |
 
 1. 바이너리 경로 결정 (순서대로): `$HEARTH_BIN` 이 실행 가능하면 그 값 → PATH 의 `hearth` → 실패 시 아래 문구로 중단:
    > "hearth 바이너리를 찾을 수 없습니다. 레포의 README CLI 섹션을 참고해 빌드·설치 후 `$HEARTH_BIN` 또는 PATH 에 추가한 뒤 다시 시도하세요."
-2. `"$HEARTH" db path` 로 동작 확인. 실패면 `error`/`hint` 전달 후 중단.
+2. 동작 확인: `"$HEARTH" db path` 를 실행. exit code 0 이 아니거나 `"ok": false` 면 stdout 의 `error`/`hint` 필드를 그대로 사용자에게 전달한 뒤 중단.
 
 # Trigger
 
