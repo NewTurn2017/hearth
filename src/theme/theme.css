@@ -1,0 +1,148 @@
+/* Nine presets as [data-theme="..."] rule blocks. The tenth — "warm-paper" —
+   lives in src/App.css @theme as the no-attribute default, so setting
+   data-theme="warm-paper" falls through to that cascade (and we do set the
+   attribute so the UI's "current theme" highlight works uniformly). */
+
+:root[data-theme="midnight"] {
+  --color-surface-0: #0f1420;
+  --color-surface-1: #141b2c;
+  --color-surface-2: #1b2439;
+  --color-surface-3: #232d46;
+  --color-border: #273352;
+  --color-border-strong: #334063;
+  --color-text-hi: #e6ecff;
+  --color-text: #d8ddef;
+  --color-text-muted: #8d97b5;
+  --color-text-dim: #5e6885;
+  --color-brand: #3b82f6;
+  --color-brand-hi: #60a5fa;
+  --color-brand-soft: rgba(59, 130, 246, 0.18);
+}
+
+:root[data-theme="forest"] {
+  --color-surface-0: #0f1612;
+  --color-surface-1: #141e18;
+  --color-surface-2: #1b2a20;
+  --color-surface-3: #223529;
+  --color-border: #26402f;
+  --color-border-strong: #30503b;
+  --color-text-hi: #e5f3e8;
+  --color-text: #d7e7dc;
+  --color-text-muted: #8ea89a;
+  --color-text-dim: #5f786a;
+  --color-brand: #10b981;
+  --color-brand-hi: #34d399;
+  --color-brand-soft: rgba(16, 185, 129, 0.18);
+}
+
+:root[data-theme="plum"] {
+  --color-surface-0: #1a1320;
+  --color-surface-1: #211828;
+  --color-surface-2: #2b1f35;
+  --color-surface-3: #362843;
+  --color-border: #3a2b49;
+  --color-border-strong: #4a3860;
+  --color-text-hi: #f0e9fa;
+  --color-text: #e1d8ef;
+  --color-text-muted: #a295b8;
+  --color-text-dim: #766888;
+  --color-brand: #a855f7;
+  --color-brand-hi: #c084fc;
+  --color-brand-soft: rgba(168, 85, 247, 0.18);
+}
+
+:root[data-theme="carbon"] {
+  --color-surface-0: #111111;
+  --color-surface-1: #181818;
+  --color-surface-2: #1f1f1f;
+  --color-surface-3: #272727;
+  --color-border: #2c2c2c;
+  --color-border-strong: #3a3a3a;
+  --color-text-hi: #f5f5f5;
+  --color-text: #e5e5e5;
+  --color-text-muted: #a3a3a3;
+  --color-text-dim: #737373;
+  --color-brand: #f97316;
+  --color-brand-hi: #fb923c;
+  --color-brand-soft: rgba(249, 115, 22, 0.18);
+}
+
+:root[data-theme="cream"] {
+  --color-surface-0: #fdf8ef;
+  --color-surface-1: #f6efdf;
+  --color-surface-2: #ede4cc;
+  --color-surface-3: #e2d7b8;
+  --color-border: #d5c79c;
+  --color-border-strong: #b8a775;
+  --color-text-hi: #2a2218;
+  --color-text: #3d3325;
+  --color-text-muted: #6a5c47;
+  --color-text-dim: #94866f;
+  --color-brand: #b45309;
+  --color-brand-hi: #d97706;
+  --color-brand-soft: rgba(180, 83, 9, 0.18);
+}
+
+:root[data-theme="linen"] {
+  --color-surface-0: #fafaf7;
+  --color-surface-1: #f3f3ee;
+  --color-surface-2: #eaeae4;
+  --color-surface-3: #dededa;
+  --color-border: #d0d0cc;
+  --color-border-strong: #b0b0ab;
+  --color-text-hi: #1a1a1a;
+  --color-text: #2e2e2e;
+  --color-text-muted: #5f5f5c;
+  --color-text-dim: #8b8b87;
+  --color-brand: #1d4ed8;
+  --color-brand-hi: #3b82f6;
+  --color-brand-soft: rgba(29, 78, 216, 0.18);
+}
+
+:root[data-theme="mint"] {
+  --color-surface-0: #f4faf6;
+  --color-surface-1: #e9f3ec;
+  --color-surface-2: #ddeae1;
+  --color-surface-3: #ceddd3;
+  --color-border: #b9ccbf;
+  --color-border-strong: #9ab2a2;
+  --color-text-hi: #152419;
+  --color-text: #223024;
+  --color-text-muted: #4e6455;
+  --color-text-dim: #7d9283;
+  --color-brand: #059669;
+  --color-brand-hi: #10b981;
+  --color-brand-soft: rgba(5, 150, 105, 0.18);
+}
+
+:root[data-theme="blush"] {
+  --color-surface-0: #fdf5f6;
+  --color-surface-1: #f8e9ec;
+  --color-surface-2: #efdadd;
+  --color-surface-3: #e3c7cd;
+  --color-border: #d4b2ba;
+  --color-border-strong: #b88f99;
+  --color-text-hi: #2a1619;
+  --color-text: #3c2429;
+  --color-text-muted: #6a4a51;
+  --color-text-dim: #947079;
+  --color-brand: #be185d;
+  --color-brand-hi: #ec4899;
+  --color-brand-soft: rgba(190, 24, 93, 0.18);
+}
+
+:root[data-theme="arctic"] {
+  --color-surface-0: #f4f7fb;
+  --color-surface-1: #e8eef5;
+  --color-surface-2: #dae4ef;
+  --color-surface-3: #c8d6e5;
+  --color-border: #b1c3d8;
+  --color-border-strong: #8ea7c2;
+  --color-text-hi: #0b1a2a;
+  --color-text: #1a2838;
+  --color-text-muted: #4b5f77;
+  --color-text-dim: #7b8ea5;
+  --color-brand: #0ea5e9;
+  --color-brand-hi: #38bdf8;
+  --color-brand-soft: rgba(14, 165, 233, 0.18);
+}

@@ -6,6 +6,7 @@ import { ProjectDetailDialog } from "./components/ProjectDetailDialog";
 import { CalendarView } from "./components/CalendarView";
 import { MemoBoard } from "./components/MemoBoard";
 import { ToastProvider } from "./ui/Toast";
+import { ThemeProvider } from "./theme/ThemeContext";
 import { useProjects } from "./hooks/useProjects";
 import { useMemos } from "./hooks/useMemos";
 import { useUiScale } from "./hooks/useUiScale";
@@ -77,23 +78,25 @@ function ProjectsTab({
 function App() {
   useUiScale();
   return (
-    <ToastProvider>
-      <Layout>
-        {({ activeTab, priorities, category, openNewProject }) => (
-          <>
-            {activeTab === "projects" && (
-              <ProjectsTab
-                priorities={priorities}
-                category={category}
-                onAdd={openNewProject}
-              />
-            )}
-            {activeTab === "calendar" && <CalendarView />}
-            {activeTab === "memos" && <MemoBoard />}
-          </>
-        )}
-      </Layout>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <Layout>
+          {({ activeTab, priorities, category, openNewProject }) => (
+            <>
+              {activeTab === "projects" && (
+                <ProjectsTab
+                  priorities={priorities}
+                  category={category}
+                  onAdd={openNewProject}
+                />
+              )}
+              {activeTab === "calendar" && <CalendarView />}
+              {activeTab === "memos" && <MemoBoard />}
+            </>
+          )}
+        </Layout>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 

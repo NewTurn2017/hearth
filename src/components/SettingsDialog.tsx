@@ -9,14 +9,16 @@ import { Dialog } from "../ui/Dialog";
 import { Button } from "../ui/Button";
 import { cn } from "../lib/cn";
 import { SettingsGeneralSection } from "./SettingsGeneralSection";
+import { SettingsThemeSection } from "./SettingsThemeSection";
 import { SettingsAiSection } from "./SettingsAiSection";
 import { SettingsBackupSection } from "./SettingsBackupSection";
 import { SettingsCategoriesSection } from "./SettingsCategoriesSection";
 
-type TabKey = "general" | "ai" | "backup" | "categories";
+type TabKey = "general" | "theme" | "ai" | "backup" | "categories";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "general", label: "일반" },
+  { key: "theme", label: "테마" },
   { key: "ai", label: "AI" },
   { key: "backup", label: "백업/가져오기" },
   { key: "categories", label: "카테고리" },
@@ -81,6 +83,9 @@ export function SettingsDialog({
           the section it is the one in focus so it can refetch. */}
       <div className={tab === "general" ? "" : "hidden"}>
         <SettingsGeneralSection active={tab === "general"} />
+      </div>
+      <div className={tab === "theme" ? "" : "hidden"}>
+        <SettingsThemeSection />
       </div>
       <div className={tab === "ai" ? "" : "hidden"}>
         <SettingsAiSection active={tab === "ai"} />

@@ -26,6 +26,7 @@ const K_OPENAI_KEY: &str = "ai.openai_api_key";
 const K_UI_SCALE: &str = "ui.scale";
 pub(crate) const K_BACKUP_DIR: &str = "backup.dir";
 pub(crate) const K_AUTOSTART: &str = "autostart.enabled";
+pub(crate) const K_THEME: &str = "ui.theme";
 
 /// Shape safe to expose over IPC — the raw API key never crosses this
 /// boundary. The UI only needs to know whether one is on file.
@@ -140,6 +141,26 @@ pub fn set_ui_scale(state: State<'_, AppState>, scale: f64) -> Result<(), String
     }
     let db = state.db.lock().map_err(|e| e.to_string())?;
     write(&db, K_UI_SCALE, &scale.to_string())
+}
+
+/// Theme is stored as an opaque JSON blob because its shape is a tagged union
+/// — either `{"kind":"preset","id":"midnight"}` or
+/// `{"kind":"custom","baseMode":"dark","brandHex":"#ff8000"}`. We don't parse
+/// it on the Rust side; the frontend owns the schema and we just round-trip
+/// the string. Empty → frontend falls back to DEFAULT_THEME.
+#[tauri::command]
+pub fn get_theme(state: State<'_, AppState>) -> Result<String, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    read(&db, K_THEME)
+}
+
+#[tauri::command]
+pub fn set_theme(state: State<'_, AppState>, theme: String) -> Result<(), String> {
+    // Minimal validation: must be valid JSON so we don't persist garbage.
+    serde_json::from_str::<serde_json::Value>(&theme)
+        .map_err(|e| format!("invalid theme json: {e}"))?;
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    write(&db, K_THEME, &theme)
 }
 
 #[cfg(test)]

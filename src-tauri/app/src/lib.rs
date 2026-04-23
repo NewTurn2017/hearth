@@ -194,6 +194,8 @@ pub fn run() {
             cmd_settings::save_ai_settings,
             cmd_settings::get_ui_scale,
             cmd_settings::set_ui_scale,
+            cmd_settings::get_theme,
+            cmd_settings::set_theme,
             cmd_notify::notifications_permission,
             cmd_notify::notifications_request,
             cmd_autostart::get_autostart,

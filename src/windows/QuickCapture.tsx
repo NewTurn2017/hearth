@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { emit } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import {
   createMemo,
+  getTheme,
   hideQuickCaptureWindow,
   resizeQuickCaptureWindow,
 } from "../api";
+import { applyTheme } from "../theme/applyTheme";
+import { DEFAULT_THEME, type ThemeSetting } from "../theme/types";
+import { THEME_EVENT, THEME_LS_KEY } from "../theme/ThemeContext";
 
 export function QuickCapture() {
   const [value, setValue] = useState("");
@@ -14,6 +18,36 @@ export function QuickCapture() {
 
   useEffect(() => {
     taRef.current?.focus();
+  }, []);
+
+  // Reconcile theme with backend on mount, then listen for live changes from
+  // the main window. Pre-paint already happened in main.tsx from the cache.
+  useEffect(() => {
+    let alive = true;
+    let off: (() => void) | null = null;
+
+    void getTheme().then((fresh: ThemeSetting | null) => {
+      if (!alive) return;
+      const applied = fresh ?? DEFAULT_THEME;
+      applyTheme(applied);
+      localStorage.setItem(THEME_LS_KEY, JSON.stringify(applied));
+    });
+
+    void listen<ThemeSetting>(THEME_EVENT, (e) => {
+      applyTheme(e.payload);
+      localStorage.setItem(THEME_LS_KEY, JSON.stringify(e.payload));
+    }).then((unlisten) => {
+      if (!alive) {
+        unlisten();
+        return;
+      }
+      off = unlisten;
+    });
+
+    return () => {
+      alive = false;
+      off?.();
+    };
   }, []);
 
   useEffect(() => {
