@@ -273,8 +273,19 @@ publish_and_verify() {
 
   # Actions (release-cli.yml) may have already created the release on tag
   # push. Create-or-upload so both pipelines are idempotent and either can
-  # run first. --clobber replaces same-named assets on re-runs.
-  if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+  # run first. --clobber: if release.sh is re-run for the same tag (rare,
+  # e.g. a failed first attempt), replace previously-uploaded assets rather
+  # than erroring. Note: upload --clobber has a sub-second window between
+  # asset delete and re-upload where the updater's latest.json poll could
+  # 404. Acceptable for our release cadence.
+  local gh_view_exit=0
+  gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1 || gh_view_exit=$?
+  case "$gh_view_exit" in
+    0)  release_exists=1 ;;
+    1)  release_exists=0 ;;
+    *)  die "gh release view exited $gh_view_exit (auth/network failure?)" ;;
+  esac
+  if [[ "$release_exists" -eq 1 ]]; then
     log "gh release already exists for $TAG; uploading DMG + updater with --clobber…"
     gh release upload "$TAG" \
       --repo "$GH_REPO" \
