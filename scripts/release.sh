@@ -57,9 +57,17 @@ preflight() {
   export VERSION TAG
 
   # Tag must not exist upstream
+  # In the Actions-first flow (release-cli.yml triggers on tag push), the
+  # tag already exists by the time release.sh runs. Accept that as the
+  # normal case — the publish step below will skip tag creation and upload
+  # DMG/updater assets via `gh release upload --clobber`.
   if git ls-remote --tags origin "refs/tags/$TAG" | grep -q .; then
-    die "tag $TAG already exists on origin."
+    log "tag $TAG already exists on origin (Actions-first flow)."
+    TAG_EXISTS_ON_ORIGIN=1
+  else
+    TAG_EXISTS_ON_ORIGIN=0
   fi
+  export TAG_EXISTS_ON_ORIGIN
 
   # CHANGELOG section exists
   grep -q "^## \[$VERSION\]" CHANGELOG.md \
@@ -260,16 +268,21 @@ publish_and_verify() {
     return 0
   fi
 
-  # Prefer a GPG-signed tag when the user has signing configured; fall back to
-  # an annotated tag otherwise. v0.2.0 was tagged annotated; staying consistent.
-  if [[ -n "$(git config --get user.signingkey 2>/dev/null)" ]]; then
-    log "Creating GPG-signed git tag $TAG…"
-    git tag -s "$TAG" -m "Hearth $VERSION"
+  if [[ "${TAG_EXISTS_ON_ORIGIN:-0}" -eq 1 ]]; then
+    log "tag $TAG already on origin (set by Actions-first flow); skipping tag create + push."
   else
-    log "Creating annotated git tag $TAG (no GPG signingkey configured)…"
-    git tag -a "$TAG" -m "Hearth $VERSION"
+    # Prefer a GPG-signed tag when the user has signing configured; fall back
+    # to an annotated tag otherwise. v0.2.0 was tagged annotated; staying
+    # consistent.
+    if [[ -n "$(git config --get user.signingkey 2>/dev/null)" ]]; then
+      log "Creating GPG-signed git tag $TAG…"
+      git tag -s "$TAG" -m "Hearth $VERSION"
+    else
+      log "Creating annotated git tag $TAG (no GPG signingkey configured)…"
+      git tag -a "$TAG" -m "Hearth $VERSION"
+    fi
+    git push origin "$TAG"
   fi
-  git push origin "$TAG"
 
   # Actions (release-cli.yml) may have already created the release on tag
   # push. Create-or-upload so both pipelines are idempotent and either can
