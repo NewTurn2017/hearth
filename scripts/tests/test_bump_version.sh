@@ -26,13 +26,17 @@ if "$BUMP" "not-a-version" >/dev/null 2>&1; then
 fi
 pass "rejects bad semver"
 
-# 3. Happy path — isolate by running bump in a temporary worktree copy.
+# 3. Happy path — isolate by copying only the 5 version manifests into a
+# tmpdir scratch. Bulk-copying the whole worktree would drag src-tauri/target
+# (multi-GB build artifacts) for no gain.
 TMP="$(mktemp -d -t hearth-bump-test.XXXXXX)"
 trap 'rm -rf "$TMP"' EXIT
-cp -R "$REPO_ROOT"/. "$TMP"/
-# Drop the .git directory — the test only needs the files, not git state,
-# and we don't want to mutate the source repo.
-rm -rf "$TMP/.git"
+mkdir -p "$TMP/src-tauri/app" "$TMP/src-tauri/core" "$TMP/src-tauri/cli"
+cp "$REPO_ROOT/package.json"                  "$TMP/"
+cp "$REPO_ROOT/src-tauri/app/tauri.conf.json" "$TMP/src-tauri/app/"
+cp "$REPO_ROOT/src-tauri/app/Cargo.toml"      "$TMP/src-tauri/app/"
+cp "$REPO_ROOT/src-tauri/core/Cargo.toml"     "$TMP/src-tauri/core/"
+cp "$REPO_ROOT/src-tauri/cli/Cargo.toml"      "$TMP/src-tauri/cli/"
 
 # Record starting versions for comparison.
 BEFORE_PKG=$(jq -r .version "$TMP/package.json")

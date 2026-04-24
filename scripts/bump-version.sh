@@ -33,6 +33,7 @@ cd "$ROOT"
 for f in package.json src-tauri/app/tauri.conf.json; do
   [[ -f "$f" ]] || { echo "missing: $f" >&2; exit 66; }
   tmp="$(mktemp)"
+  chmod 644 "$tmp"
   jq --arg v "$NEW" '.version = $v' "$f" > "$tmp"
   mv "$tmp" "$f"
 done
