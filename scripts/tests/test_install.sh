@@ -70,5 +70,42 @@ echo "$out" | grep -qi 'sha\|checksum' || fail "sha-mismatch error did not menti
 rm -rf "$BIN_DIR2" "$SKILLS_DIR2" "$STAGING_DIR2"
 pass "sha mismatch aborts before install"
 
+# 5. Happy-path install: binary lands, each skill symlink resolves into staging.
+BIN_DIR3="$(mktemp -d -t hearth-install-bin3.XXXXXX)"
+SKILLS_DIR3="$(mktemp -d -t hearth-install-skills3.XXXXXX)"
+STAGING_DIR3="$(mktemp -d -t hearth-install-stage3.XXXXXX)"
+HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
+  HEARTH_RELEASES_URL="file://$FIXTURES/release" \
+  HEARTH_VERSION="v0.0.0" \
+  HEARTH_BIN_DIR="$BIN_DIR3" \
+  HEARTH_SKILLS_DIR="$SKILLS_DIR3" \
+  HEARTH_STAGING_DIR="$STAGING_DIR3" \
+  "$INSTALL" >/dev/null 2>&1 || fail "happy-path install errored"
+
+[[ -x "$BIN_DIR3/hearth" ]] || fail "binary not installed at $BIN_DIR3/hearth"
+hearth_out=$("$BIN_DIR3/hearth" db path)
+echo "$hearth_out" | grep -q '"ok":true' || fail "installed binary did not run: $hearth_out"
+for skill in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+  link="$SKILLS_DIR3/$skill"
+  [[ -L "$link" ]] || fail "$link not a symlink"
+  resolved="$(readlink "$link")"
+  [[ "$resolved" == "$STAGING_DIR3/skills-v0.0.0/$skill" ]] \
+    || fail "$link -> $resolved (expected staging v0.0.0)"
+  [[ -f "$resolved/SKILL.md" ]] || fail "resolved skill dir missing SKILL.md: $resolved"
+done
+pass "happy-path install landed binary + 3 skill symlinks"
+
+# 6. Re-running install is idempotent.
+HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
+  HEARTH_RELEASES_URL="file://$FIXTURES/release" \
+  HEARTH_VERSION="v0.0.0" \
+  HEARTH_BIN_DIR="$BIN_DIR3" \
+  HEARTH_SKILLS_DIR="$SKILLS_DIR3" \
+  HEARTH_STAGING_DIR="$STAGING_DIR3" \
+  "$INSTALL" >/dev/null 2>&1 || fail "second install errored"
+pass "idempotent re-install"
+
+rm -rf "$BIN_DIR3" "$SKILLS_DIR3" "$STAGING_DIR3"
+
 echo
 echo "ALL GOOD"

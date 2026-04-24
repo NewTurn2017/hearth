@@ -193,8 +193,70 @@ log "Verifying SHA256 …"
 (cd "$TMP" && $SHA_CHECK SHA256SUMS.filtered >/dev/null) || die "SHA256 checksum verification failed"
 log "  OK"
 
-if [[ "$MODE" == "uninstall" ]]; then
-  die "uninstall path not yet implemented (see Task 7)"
-fi
+# ---- mode dispatch ----
+install_mode() {
+  # 1. Install binary.
+  mkdir -p "$BIN_DIR"
+  tar xzf "$TMP/$CLI_TARBALL" -C "$TMP"
+  mv "$TMP/hearth" "$BIN_DIR/hearth"
+  chmod +x "$BIN_DIR/hearth"
+  log "Installed binary: $BIN_DIR/hearth"
 
-die "install extraction not yet implemented (see Task 6)"
+  # 2. Extract skills into versioned staging dir.
+  local stage="$STAGING_DIR/skills-$VERSION"
+  mkdir -p "$stage"
+  # The tarball contains skills/<name>/SKILL.md at its root. We want each
+  # <name> directly under stage so paths are ~/.local/share/hearth/skills-vX/<name>.
+  local tmp_extract="$TMP/skills-extract"
+  mkdir -p "$tmp_extract"
+  tar xzf "$TMP/$SKILLS_TARBALL" -C "$tmp_extract"
+  # tmp_extract now contains skills/. Move each <name> into stage (refresh if exists).
+  local entry
+  for entry in "$tmp_extract"/skills/*/; do
+    [[ -d "$entry" ]] || continue
+    local name; name="$(basename "$entry")"
+    rm -rf "$stage/$name"
+    mv "$entry" "$stage/$name"
+  done
+  rm -rf "$tmp_extract"
+  log "Staged skills: $stage"
+
+  # 3. Symlink each skill into every resolved skills dir.
+  local dir name link
+  for dir in "${SKILLS_DIRS[@]}"; do
+    mkdir -p "$dir"
+    for name in $(ls "$stage"); do
+      [[ -d "$stage/$name" ]] || continue
+      link="$dir/$name"
+      if [[ -e "$link" && ! -L "$link" ]]; then
+        warn "refusing to overwrite non-symlink: $link"
+        continue
+      fi
+      ln -snf "$stage/$name" "$link"
+      log "  linked $link -> $stage/$name"
+    done
+  done
+
+  # 4. Post-install sanity.
+  if "$BIN_DIR/hearth" db path >/dev/null 2>&1; then
+    log "✓ hearth $VERSION installed at $BIN_DIR/hearth"
+  else
+    warn "hearth installed but 'db path' invocation failed — check permissions / PATH"
+  fi
+
+  log ""
+  log "Next:"
+  log "  * Add $BIN_DIR to PATH (echo 'export PATH=\"$BIN_DIR:\$PATH\"' >> ~/.zshrc)"
+  log "  * macOS Gatekeeper first-run: xattr -d com.apple.quarantine $BIN_DIR/hearth"
+  log "  * Docs: https://github.com/$REPO_SLUG/blob/main/docs/install-ko.md"
+}
+
+uninstall_mode() {
+  die "uninstall path not yet implemented (see Task 7)"
+}
+
+case "$MODE" in
+  install)   install_mode ;;
+  uninstall) uninstall_mode ;;
+  *) die "unknown mode: $MODE" ;;
+esac
