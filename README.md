@@ -45,6 +45,14 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 
 ## Installation
 
+### 한 줄 설치 (CLI + Skills, macOS aarch64 · Linux x86_64)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/install.sh | bash
+```
+
+`hearth` 바이너리가 `~/.local/bin/hearth` 에, 스킬 3종이 감지된 에이전트 호스트 디렉토리 (`~/.claude/skills`, `~/.codex/skills`) 에 심링크됩니다. 자세한 내용·환경변수·삭제 방법은 [`docs/install-ko.md`](docs/install-ko.md) 참고.
+
 ### macOS (공식 릴리즈)
 
 1. [최신 릴리즈 페이지](https://github.com/NewTurn2017/hearth/releases/latest)에서 `Hearth_<버전>_aarch64.dmg` 다운로드 **(현재 Apple Silicon 전용. Intel Mac 지원은 후속 릴리즈.)**
