@@ -254,7 +254,38 @@ install_mode() {
 }
 
 uninstall_mode() {
-  die "uninstall path not yet implemented (see Task 7)"
+  local removed=0 link target dir name stage
+
+  # 1. Remove the binary if it exists.
+  if [[ -e "$BIN_DIR/hearth" ]]; then
+    rm -f "$BIN_DIR/hearth"
+    log "Removed binary: $BIN_DIR/hearth"
+    removed=$((removed+1))
+  fi
+
+  # 2. Remove only symlinks pointing into our staging tree.
+  for dir in "${SKILLS_DIRS[@]}"; do
+    [[ -d "$dir" ]] || continue
+    for link in "$dir"/*; do
+      [[ -L "$link" ]] || continue
+      target="$(readlink "$link")"
+      # Match links whose target resolves inside STAGING_DIR.
+      case "$target" in
+        "$STAGING_DIR"/skills-v*/*)
+          rm -f "$link"
+          log "Removed symlink: $link"
+          removed=$((removed+1))
+          ;;
+      esac
+    done
+  done
+
+  if [[ "$removed" -eq 0 ]]; then
+    log "No hearth artifacts found to remove."
+  else
+    log "✓ Uninstalled $removed entr$([[ "$removed" -eq 1 ]] && echo y || echo ies)."
+    log "  Staging preserved at $STAGING_DIR (rm -rf to fully purge)."
+  fi
 }
 
 case "$MODE" in

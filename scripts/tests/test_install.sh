@@ -105,7 +105,40 @@ HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
   "$INSTALL" >/dev/null 2>&1 || fail "second install errored"
 pass "idempotent re-install"
 
-rm -rf "$BIN_DIR3" "$SKILLS_DIR3" "$STAGING_DIR3"
+# 7. --uninstall is surgical: removes binary + our symlinks, preserves others.
+# Install into a fresh scratch, add an unrelated symlink, then uninstall.
+BIN_DIR4="$(mktemp -d -t hearth-uninstall-bin.XXXXXX)"
+SKILLS_DIR4="$(mktemp -d -t hearth-uninstall-skills.XXXXXX)"
+STAGING_DIR4="$(mktemp -d -t hearth-uninstall-stage.XXXXXX)"
+HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
+  HEARTH_RELEASES_URL="file://$FIXTURES/release" \
+  HEARTH_VERSION="v0.0.0" \
+  HEARTH_BIN_DIR="$BIN_DIR4" \
+  HEARTH_SKILLS_DIR="$SKILLS_DIR4" \
+  HEARTH_STAGING_DIR="$STAGING_DIR4" \
+  "$INSTALL" >/dev/null 2>&1 || fail "uninstall-setup install errored"
+ln -s /tmp "$SKILLS_DIR4/unrelated-link"
+echo "plain file" > "$SKILLS_DIR4/unrelated-file"
+
+HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
+  HEARTH_RELEASES_URL="file://$FIXTURES/release" \
+  HEARTH_VERSION="v0.0.0" \
+  HEARTH_BIN_DIR="$BIN_DIR4" \
+  HEARTH_SKILLS_DIR="$SKILLS_DIR4" \
+  HEARTH_STAGING_DIR="$STAGING_DIR4" \
+  "$INSTALL" --uninstall >/dev/null 2>&1 || fail "--uninstall errored"
+
+[[ ! -e "$BIN_DIR4/hearth" ]] || fail "--uninstall did not remove binary"
+for skill in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+  [[ ! -e "$SKILLS_DIR4/$skill" ]] || fail "--uninstall left skill symlink: $skill"
+done
+[[ -L "$SKILLS_DIR4/unrelated-link" ]] || fail "--uninstall removed unrelated symlink"
+[[ -f "$SKILLS_DIR4/unrelated-file" ]] || fail "--uninstall removed unrelated file"
+# Staging dir preserved (rollback-friendly).
+[[ -d "$STAGING_DIR4/skills-v0.0.0" ]] || fail "--uninstall wiped staging"
+pass "--uninstall surgical"
+
+rm -rf "$BIN_DIR3" "$SKILLS_DIR3" "$STAGING_DIR3" "$BIN_DIR4" "$SKILLS_DIR4" "$STAGING_DIR4"
 
 echo
 echo "ALL GOOD"
