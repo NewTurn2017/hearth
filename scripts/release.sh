@@ -271,15 +271,34 @@ publish_and_verify() {
   fi
   git push origin "$TAG"
 
-  log "gh release create…"
-  gh release create "$TAG" \
-    --repo "$GH_REPO" \
-    --title "Hearth $VERSION" \
-    --notes-file dist/release/notes.md \
-    "$DMG" \
-    "$TARBALL" \
-    "$SIG_FILE" \
-    "dist/release/latest.json"
+  # Actions (release-cli.yml) may have already created the release on tag
+  # push. Create-or-upload so both pipelines are idempotent and either can
+  # run first. --clobber replaces same-named assets on re-runs.
+  if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+    log "gh release already exists for $TAG; uploading DMG + updater with --clobber…"
+    gh release upload "$TAG" \
+      --repo "$GH_REPO" \
+      --clobber \
+      "$DMG" \
+      "$TARBALL" \
+      "$SIG_FILE" \
+      "dist/release/latest.json"
+    log "gh release edit (notes)…"
+    gh release edit "$TAG" \
+      --repo "$GH_REPO" \
+      --title "Hearth $VERSION" \
+      --notes-file dist/release/notes.md
+  else
+    log "gh release create…"
+    gh release create "$TAG" \
+      --repo "$GH_REPO" \
+      --title "Hearth $VERSION" \
+      --notes-file dist/release/notes.md \
+      "$DMG" \
+      "$TARBALL" \
+      "$SIG_FILE" \
+      "dist/release/latest.json"
+  fi
 
   log "Post-verify: latest.json version round-trip…"
   REMOTE_VER="$(curl -sL "https://github.com/$GH_REPO/releases/latest/download/latest.json" | jq -r .version)"
