@@ -160,9 +160,11 @@ resolve_version() {
   if [[ -n "${HEARTH_VERSION:-}" ]]; then echo "$HEARTH_VERSION"; return; fi
   # Query GitHub API for latest release (unauthenticated = 60 req/hr/IP).
   local json tag
-  json="$(curl -fsSL "$API_LATEST")" || die "could not query GitHub API for latest release"
-  tag="$(echo "$json" | sed -n 's/^  "tag_name": "\(.*\)",*$/\1/p' | head -1)"
-  [[ -n "$tag" ]] || die "could not parse tag_name from GitHub API"
+  json="$(curl -fsSL --connect-timeout 15 --max-time 30 "$API_LATEST")" \
+    || die "could not query GitHub API for latest release"
+  # Whitespace-agnostic tag_name parse (tolerates pretty + compact JSON).
+  tag="$(echo "$json" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+  [[ -n "$tag" ]] || die "could not parse tag_name from GitHub API response (first 120 chars: ${json:0:120})"
   echo "$tag"
 }
 
@@ -181,11 +183,13 @@ log "Downloading $VERSION assets for $TARGET …"
 for f in "$CLI_TARBALL" "$SKILLS_TARBALL" "$SUMS"; do
   url="$RELEASES_BASE/$VERSION/$f"
   log "  $url"
-  curl -fsSL -o "$TMP/$f" "$url" || die "download failed: $url"
+  curl -fsSL --connect-timeout 15 --max-time 120 -o "$TMP/$f" "$url" \
+    || die "download failed: $url"
 done
 
 log "Verifying SHA256 …"
-(cd "$TMP" && grep -E "  ($(printf '%s|%s' "$CLI_TARBALL" "$SKILLS_TARBALL"))$" "$SUMS" > SHA256SUMS.filtered)
+(cd "$TMP" && grep -E "  ($(printf '%s|%s' "$CLI_TARBALL" "$SKILLS_TARBALL"))$" "$SUMS" > SHA256SUMS.filtered) \
+  || die "SHA256SUMS does not contain entries for $CLI_TARBALL or $SKILLS_TARBALL"
 (cd "$TMP" && $SHA_CHECK SHA256SUMS.filtered >/dev/null) || die "SHA256 checksum verification failed"
 log "  OK"
 
