@@ -198,6 +198,7 @@ install_mode() {
   # 1. Install binary.
   mkdir -p "$BIN_DIR"
   tar xzf "$TMP/$CLI_TARBALL" -C "$TMP"
+  [[ -f "$TMP/hearth" ]] || die "CLI tarball did not produce \$TMP/hearth — unexpected layout"
   mv "$TMP/hearth" "$BIN_DIR/hearth"
   chmod +x "$BIN_DIR/hearth"
   log "Installed binary: $BIN_DIR/hearth"
@@ -222,11 +223,12 @@ install_mode() {
   log "Staged skills: $stage"
 
   # 3. Symlink each skill into every resolved skills dir.
-  local dir name link
+  local dir entry name link
   for dir in "${SKILLS_DIRS[@]}"; do
     mkdir -p "$dir"
-    for name in $(ls "$stage"); do
-      [[ -d "$stage/$name" ]] || continue
+    for entry in "$stage"/*/; do
+      [[ -d "$entry" ]] || continue
+      name="$(basename "$entry")"
       link="$dir/$name"
       if [[ -e "$link" && ! -L "$link" ]]; then
         warn "refusing to overwrite non-symlink: $link"
