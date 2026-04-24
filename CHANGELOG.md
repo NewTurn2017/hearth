@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - (unreleased)
+## [0.8.0] - 2026-04-24
 
 ### Added
 - **한 줄 설치 (`scripts/install.sh`)**: `curl -sSL .../install.sh | bash` 로 `hearth` CLI + v1 skills 설치. macOS aarch64 + Linux x86_64. 환경변수 `HEARTH_VERSION`/`HEARTH_BIN_DIR`/`HEARTH_SKILLS_DIR` 로 override. `--uninstall` / `--dry-run` / `--version` / `--prefix` / `--skills-dir` 플래그 지원.
