@@ -15,7 +15,7 @@ pass() { echo "PASS: $*"; }
 
 # 1. Missing-flags help / usage. --help must exit 0 and mention "curl".
 out=$("$INSTALL" --help 2>&1)
-echo "$out" | grep -q 'curl' || fail "--help missing the curl one-liner: $out"
+echo "$out" | grep -q 'curl -sSL' || fail "--help missing the curl one-liner: $out"
 pass "--help shows the one-liner"
 
 # 2. Unsupported-platform probe: force FreeBSD via env, expect exit 1.
@@ -47,6 +47,7 @@ echo "$DRY" | grep -q "$SKILLS_DIR" || fail "dry-run missing skills-dir: $DRY"
 # No writes.
 [[ -z "$(ls "$BIN_DIR")" ]] || fail "dry-run wrote to bin dir"
 [[ -z "$(ls "$SKILLS_DIR")" ]] || fail "dry-run wrote to skills dir"
+[[ -z "$(ls "$STAGING_DIR")" ]] || fail "dry-run wrote to staging dir"
 pass "dry-run prints plan, no writes"
 
 echo

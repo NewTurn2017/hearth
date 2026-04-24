@@ -53,13 +53,13 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --version)
-      [[ $# -ge 2 ]] || { echo "--version needs a value" >&2; exit 64; }
+      [[ $# -ge 2 && "$2" != --* ]] || { echo "--version needs a non-flag value" >&2; exit 64; }
       ARG_VERSION="$2"; shift 2 ;;
     --prefix)
-      [[ $# -ge 2 ]] || { echo "--prefix needs a value" >&2; exit 64; }
+      [[ $# -ge 2 && "$2" != --* ]] || { echo "--prefix needs a non-flag value" >&2; exit 64; }
       ARG_PREFIX="$2"; shift 2 ;;
     --skills-dir)
-      [[ $# -ge 2 ]] || { echo "--skills-dir needs a value" >&2; exit 64; }
+      [[ $# -ge 2 && "$2" != --* ]] || { echo "--skills-dir needs a non-flag value" >&2; exit 64; }
       ARG_SKILLS_DIR="$2"; shift 2 ;;
     --uninstall) MODE="uninstall"; shift ;;
     --dry-run)   DRY_RUN=1; shift ;;
@@ -69,15 +69,24 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ---- logging helpers ----
-log()  { printf '\033[1;36m[hearth-install]\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[hearth-install]\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[1;31m[hearth-install]\033[0m %s\n' "$*" >&2; exit 1; }
+# Color only when stdout is a TTY. curl|bash pipe is NOT a TTY so users
+# should see clean ASCII instead of raw \033 escape sequences.
+if [[ -t 1 ]]; then
+  _C_CYAN='\033[1;36m'; _C_YELLOW='\033[1;33m'; _C_RED='\033[1;31m'; _C_RESET='\033[0m'
+else
+  _C_CYAN=''; _C_YELLOW=''; _C_RED=''; _C_RESET=''
+fi
+log()  { printf '%b[hearth-install]%b %s\n' "$_C_CYAN"   "$_C_RESET" "$*"; }
+warn() { printf '%b[hearth-install]%b %s\n' "$_C_YELLOW" "$_C_RESET" "$*" >&2; }
+die()  { printf '%b[hearth-install]%b %s\n' "$_C_RED"    "$_C_RESET" "$*" >&2; exit 1; }
 
 # ---- platform detection ----
 detect_platform() {
   local os arch
   if [[ -n "${HEARTH_PLATFORM_OVERRIDE:-}" ]]; then
-    IFS='-' read -r os arch <<< "$HEARTH_PLATFORM_OVERRIDE"
+    local rest
+    IFS='-' read -r os arch rest <<< "$HEARTH_PLATFORM_OVERRIDE"
+    [[ -z "$rest" ]] || die "HEARTH_PLATFORM_OVERRIDE must be 'OS-ARCH' (got '$HEARTH_PLATFORM_OVERRIDE')"
   else
     os="$(uname -s)"
     arch="$(uname -m)"
@@ -116,10 +125,11 @@ while IFS= read -r line; do SKILLS_DIRS+=("$line"); done < <(resolve_skills_dirs
 
 # ---- dry-run plan printer ----
 print_plan() {
+  local _v="${ARG_VERSION:-${HEARTH_VERSION:-<latest>}}"
   log "platform: $TARGET"
-  log "version:  ${ARG_VERSION:-${HEARTH_VERSION:-<latest>}}"
+  log "version:  $_v"
   log "binary:   $BIN_DIR/hearth"
-  log "staging:  $STAGING_DIR/skills-<version>/"
+  log "staging:  $STAGING_DIR/skills-$_v/"
   for d in "${SKILLS_DIRS[@]}"; do log "skills:   $d"; done
   log "releases: $RELEASES_BASE"
 }
