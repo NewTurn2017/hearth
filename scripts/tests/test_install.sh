@@ -50,5 +50,25 @@ echo "$DRY" | grep -q "$SKILLS_DIR" || fail "dry-run missing skills-dir: $DRY"
 [[ -z "$(ls "$STAGING_DIR")" ]] || fail "dry-run wrote to staging dir"
 pass "dry-run prints plan, no writes"
 
+# 4. SHA256 mismatch aborts before any install side effect.
+BIN_DIR2="$(mktemp -d -t hearth-install-bin2.XXXXXX)"
+SKILLS_DIR2="$(mktemp -d -t hearth-install-skills2.XXXXXX)"
+STAGING_DIR2="$(mktemp -d -t hearth-install-stage2.XXXXXX)"
+set +e
+out=$(HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
+      HEARTH_RELEASES_URL="file://$FIXTURES/release-bad" \
+      HEARTH_VERSION="v0.0.0" \
+      HEARTH_BIN_DIR="$BIN_DIR2" \
+      HEARTH_SKILLS_DIR="$SKILLS_DIR2" \
+      HEARTH_STAGING_DIR="$STAGING_DIR2" \
+      "$INSTALL" 2>&1)
+code=$?
+set -e
+[[ "$code" != "0" ]] || { echo "$out"; fail "expected non-zero exit on SHA mismatch"; }
+echo "$out" | grep -qi 'sha\|checksum' || fail "sha-mismatch error did not mention sha/checksum: $out"
+[[ -z "$(ls "$BIN_DIR2")" ]] || fail "sha mismatch wrote to bin dir"
+rm -rf "$BIN_DIR2" "$SKILLS_DIR2" "$STAGING_DIR2"
+pass "sha mismatch aborts before install"
+
 echo
 echo "ALL GOOD"

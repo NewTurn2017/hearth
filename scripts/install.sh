@@ -141,4 +141,56 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
   exit 0
 fi
 
-die "install/uninstall path not yet implemented (see Task 5+)"
+# ---- required tools ----
+for tool in curl tar; do
+  command -v "$tool" >/dev/null 2>&1 || die "required tool missing: $tool"
+done
+
+# shasum vs sha256sum portability
+if command -v shasum >/dev/null 2>&1; then
+  SHA_CHECK="shasum -a 256 -c"
+else
+  command -v sha256sum >/dev/null 2>&1 || die "neither shasum nor sha256sum is installed"
+  SHA_CHECK="sha256sum -c"
+fi
+
+# ---- version resolution ----
+resolve_version() {
+  if [[ -n "$ARG_VERSION" ]]; then echo "$ARG_VERSION"; return; fi
+  if [[ -n "${HEARTH_VERSION:-}" ]]; then echo "$HEARTH_VERSION"; return; fi
+  # Query GitHub API for latest release (unauthenticated = 60 req/hr/IP).
+  local json tag
+  json="$(curl -fsSL "$API_LATEST")" || die "could not query GitHub API for latest release"
+  tag="$(echo "$json" | sed -n 's/^  "tag_name": "\(.*\)",*$/\1/p' | head -1)"
+  [[ -n "$tag" ]] || die "could not parse tag_name from GitHub API"
+  echo "$tag"
+}
+
+VERSION="$(resolve_version)"
+[[ "$VERSION" == v* ]] || VERSION="v$VERSION"   # tolerate both "0.8.0" and "v0.8.0"
+
+# ---- download + verify ----
+TMP="$(mktemp -d -t hearth-install.XXXXXX)"
+trap 'rm -rf "$TMP"' EXIT
+
+CLI_TARBALL="hearth-${VERSION}-${TARGET}.tar.gz"
+SKILLS_TARBALL="hearth-skills-${VERSION}.tar.gz"
+SUMS="SHA256SUMS"
+
+log "Downloading $VERSION assets for $TARGET …"
+for f in "$CLI_TARBALL" "$SKILLS_TARBALL" "$SUMS"; do
+  url="$RELEASES_BASE/$VERSION/$f"
+  log "  $url"
+  curl -fsSL -o "$TMP/$f" "$url" || die "download failed: $url"
+done
+
+log "Verifying SHA256 …"
+(cd "$TMP" && grep -E "  ($(printf '%s|%s' "$CLI_TARBALL" "$SKILLS_TARBALL"))$" "$SUMS" > SHA256SUMS.filtered)
+(cd "$TMP" && $SHA_CHECK SHA256SUMS.filtered >/dev/null) || die "SHA256 checksum verification failed"
+log "  OK"
+
+if [[ "$MODE" == "uninstall" ]]; then
+  die "uninstall path not yet implemented (see Task 7)"
+fi
+
+die "install extraction not yet implemented (see Task 6)"
