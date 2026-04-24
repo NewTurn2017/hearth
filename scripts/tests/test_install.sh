@@ -138,6 +138,16 @@ done
 [[ -d "$STAGING_DIR4/skills-v0.0.0" ]] || fail "--uninstall wiped staging"
 pass "--uninstall surgical"
 
+# 7b. Re-running --uninstall on an already-clean state should exit 0.
+HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
+  HEARTH_RELEASES_URL="file://$FIXTURES/release" \
+  HEARTH_VERSION="v0.0.0" \
+  HEARTH_BIN_DIR="$BIN_DIR4" \
+  HEARTH_SKILLS_DIR="$SKILLS_DIR4" \
+  HEARTH_STAGING_DIR="$STAGING_DIR4" \
+  "$INSTALL" --uninstall >/dev/null 2>&1 || fail "--uninstall on clean state errored"
+pass "--uninstall on clean state is a no-op"
+
 rm -rf "$BIN_DIR3" "$SKILLS_DIR3" "$STAGING_DIR3" "$BIN_DIR4" "$SKILLS_DIR4" "$STAGING_DIR4"
 
 echo

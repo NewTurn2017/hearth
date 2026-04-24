@@ -171,7 +171,9 @@ resolve_version() {
 VERSION="$(resolve_version)"
 [[ "$VERSION" == v* ]] || VERSION="v$VERSION"   # tolerate both "0.8.0" and "v0.8.0"
 
-# ---- download + verify ----
+# ---- download + verify (install-mode only) ----
+# Uninstall doesn't need release artifacts — gate this block to keep
+# `install.sh --uninstall` fully offline-capable.
 TMP="$(mktemp -d -t hearth-install.XXXXXX)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -179,19 +181,21 @@ CLI_TARBALL="hearth-${VERSION}-${TARGET}.tar.gz"
 SKILLS_TARBALL="hearth-skills-${VERSION}.tar.gz"
 SUMS="SHA256SUMS"
 
-log "Downloading $VERSION assets for $TARGET …"
-for f in "$CLI_TARBALL" "$SKILLS_TARBALL" "$SUMS"; do
-  url="$RELEASES_BASE/$VERSION/$f"
-  log "  $url"
-  curl -fsSL --connect-timeout 15 --max-time 120 -o "$TMP/$f" "$url" \
-    || die "download failed: $url"
-done
+if [[ "$MODE" == "install" ]]; then
+  log "Downloading $VERSION assets for $TARGET …"
+  for f in "$CLI_TARBALL" "$SKILLS_TARBALL" "$SUMS"; do
+    url="$RELEASES_BASE/$VERSION/$f"
+    log "  $url"
+    curl -fsSL --connect-timeout 15 --max-time 120 -o "$TMP/$f" "$url" \
+      || die "download failed: $url"
+  done
 
-log "Verifying SHA256 …"
-(cd "$TMP" && grep -E "  ($(printf '%s|%s' "$CLI_TARBALL" "$SKILLS_TARBALL"))$" "$SUMS" > SHA256SUMS.filtered) \
-  || die "SHA256SUMS does not contain entries for $CLI_TARBALL or $SKILLS_TARBALL"
-(cd "$TMP" && $SHA_CHECK SHA256SUMS.filtered >/dev/null) || die "SHA256 checksum verification failed"
-log "  OK"
+  log "Verifying SHA256 …"
+  (cd "$TMP" && grep -E "  ($(printf '%s|%s' "$CLI_TARBALL" "$SKILLS_TARBALL"))$" "$SUMS" > SHA256SUMS.filtered) \
+    || die "SHA256SUMS does not contain entries for $CLI_TARBALL or $SKILLS_TARBALL"
+  (cd "$TMP" && $SHA_CHECK SHA256SUMS.filtered >/dev/null) || die "SHA256 checksum verification failed"
+  log "  OK"
+fi
 
 # ---- mode dispatch ----
 install_mode() {
@@ -254,7 +258,11 @@ install_mode() {
 }
 
 uninstall_mode() {
-  local removed=0 link target dir name stage
+  local removed=0 link target dir
+
+  # Invariant: never uninstall with an empty staging root — the case pattern
+  # below would degrade to "/skills-v*/*" and could match unrelated symlinks.
+  [[ -n "$STAGING_DIR" ]] || die "STAGING_DIR is empty; refusing to uninstall"
 
   # 1. Remove the binary if it exists.
   if [[ -e "$BIN_DIR/hearth" ]]; then
