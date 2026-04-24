@@ -19,15 +19,18 @@ jobs:
           - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu,   strip: strip }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
+      # dtolnay/rust-toolchain@stable intentionally tracks Rust's latest
+      # stable release — SHA-pinning would defeat the purpose. The action
+      # is a small, widely-used, trusted wrapper over rustup.
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae  # v2
         with:
           workspaces: src-tauri -> src-tauri/target
           key: ${{ matrix.target }}
@@ -48,7 +51,7 @@ jobs:
           echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: hearth-${{ matrix.target }}
           path: ${{ env.TARBALL }}
@@ -58,7 +61,7 @@ jobs:
     name: bundle skills
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Tar skills
         run: |
@@ -69,7 +72,7 @@ jobs:
           echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: skills-bundle
           path: ${{ env.TARBALL }}
@@ -80,10 +83,10 @@ jobs:
     needs: [build-cli, bundle-skills]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
         with:
           path: dist
 
@@ -94,7 +97,9 @@ jobs:
           # Artifacts land in subdirs named after the upload; flatten them.
           mv hearth-*/hearth-*.tar.gz .
           mv skills-bundle/hearth-skills-*.tar.gz .
-          rmdir hearth-aarch64-apple-darwin hearth-x86_64-unknown-linux-gnu skills-bundle
+          # rm -rf (not rmdir) so the cleanup tolerates matrix changes — e.g.
+          # adding a third build target won't require editing this step.
+          rm -rf hearth-* skills-bundle
           ls -la
           sha256sum *.tar.gz > SHA256SUMS
           cat SHA256SUMS
