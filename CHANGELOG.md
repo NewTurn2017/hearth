@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-04-24
+
+### Added
+- **한 줄 설치 (`scripts/install.sh`)**: `curl -sSL .../install.sh | bash` 로 `hearth` CLI + v1 skills 설치. macOS aarch64 + Linux x86_64. 환경변수 `HEARTH_VERSION`/`HEARTH_BIN_DIR`/`HEARTH_SKILLS_DIR` 로 override. `--uninstall` / `--dry-run` / `--version` / `--prefix` / `--skills-dir` 플래그 지원.
+- **GitHub Actions release pipeline (`.github/workflows/release-cli.yml`)**: `vX.Y.Z` 태그 push 시 macOS aarch64 + Linux x86_64 바이너리와 version-pinned skills tarball, `SHA256SUMS` 를 자동 빌드해 Release 에 업로드.
+- **한글 설치 가이드 (`docs/install-ko.md`)**: 한 줄 설치 · 환경변수 · PATH · Gatekeeper · 업그레이드 · 삭제 · 문제 해결.
+
+### Fixed
+- **`scripts/bump-version.sh`**: 워크스페이스 분할 이후 깨진 상태 복구. 이제 `package.json` + `src-tauri/app/tauri.conf.json` + 3개 crate `Cargo.toml` 전부 bump. TDD 회귀 테스트 (`scripts/tests/test_bump_version.sh`) 포함.
+- **`scripts/release.sh`**: Actions 가 먼저 Release 를 만든 경우에도 실패하지 않게 `gh release upload --clobber` 로 하드닝.
+
 ## [0.7.0] - (unreleased)
 
 ### Added
