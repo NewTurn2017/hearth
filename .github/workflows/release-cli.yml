@@ -1,0 +1,128 @@
+name: release-cli
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-cli:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14,     target: aarch64-apple-darwin,       strip: strip }
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu,   strip: strip }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> src-tauri/target
+          key: ${{ matrix.target }}
+
+      - name: Build hearth-cli
+        working-directory: src-tauri
+        run: cargo build --release --target ${{ matrix.target }} -p hearth-cli
+
+      - name: Strip binary
+        run: ${{ matrix.strip }} src-tauri/target/${{ matrix.target }}/release/hearth
+
+      - name: Tar
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          TARBALL="hearth-${VERSION}-${{ matrix.target }}.tar.gz"
+          tar czf "$TARBALL" -C src-tauri/target/${{ matrix.target }}/release hearth
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hearth-${{ matrix.target }}
+          path: ${{ env.TARBALL }}
+          if-no-files-found: error
+
+  bundle-skills:
+    name: bundle skills
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tar skills
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          TARBALL="hearth-skills-${VERSION}.tar.gz"
+          tar czf "$TARBALL" skills/
+          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-bundle
+          path: ${{ env.TARBALL }}
+          if-no-files-found: error
+
+  publish:
+    name: publish release
+    needs: [build-cli, bundle-skills]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Flatten + compute SHA256SUMS
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          # Artifacts land in subdirs named after the upload; flatten them.
+          mv hearth-*/hearth-*.tar.gz .
+          mv skills-bundle/hearth-skills-*.tar.gz .
+          rmdir hearth-aarch64-apple-darwin hearth-x86_64-unknown-linux-gnu skills-bundle
+          ls -la
+          sha256sum *.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Extract release notes
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          ./scripts/extract-release-notes.sh "$VERSION" > RELEASE_NOTES.md
+          echo "---"
+          cat RELEASE_NOTES.md
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          cd dist
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists; uploading CLI+skills assets with --clobber."
+            gh release upload "$TAG" --clobber *.tar.gz SHA256SUMS
+            gh release edit "$TAG" --notes-file ../RELEASE_NOTES.md --title "Hearth $VERSION"
+          else
+            echo "Creating release $TAG."
+            gh release create "$TAG" \
+              --title "Hearth $VERSION" \
+              --notes-file ../RELEASE_NOTES.md \
+              *.tar.gz SHA256SUMS
+          fi
