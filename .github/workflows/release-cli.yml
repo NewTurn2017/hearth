@@ -97,9 +97,10 @@ jobs:
           # Artifacts land in subdirs named after the upload; flatten them.
           mv hearth-*/hearth-*.tar.gz .
           mv skills-bundle/hearth-skills-*.tar.gz .
-          # rm -rf (not rmdir) so the cleanup tolerates matrix changes — e.g.
-          # adding a third build target won't require editing this step.
-          rm -rf hearth-* skills-bundle
+          # Remove the now-empty artifact subdirs. Trailing slashes anchor
+          # the glob to directories only — critical because the files we just
+          # moved (hearth-v*.tar.gz) would otherwise match `hearth-*`.
+          rm -rf hearth-*/ skills-bundle/
           ls -la
           sha256sum *.tar.gz > SHA256SUMS
           cat SHA256SUMS
