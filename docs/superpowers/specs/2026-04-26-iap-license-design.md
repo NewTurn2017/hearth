@@ -5,6 +5,7 @@
 - **선행**: A (MAS 적합성, commit 6b023ab)
 - **일정**: Sprint Day 8-12 (5일)
 - **출시 목표**: 2026-05-17 (1.0 MAS 단일 채널)
+- **개정 (2026-04-26)**: §6.4 — A 스펙의 `entitlements.plist`가 IAP capability를 포함한다는 잘못된 cross-reference를 정정 (StoreKit 2는 entitlement key가 필요 없음).
 
 ## 1. Scope
 
@@ -281,7 +282,7 @@ Read commands(`list_projects`, `get_memo`, `search_*`)는 절대 게이트하지
   - 모든 mutation UI 진입점 (~20개) — `gate(fn, label)` 래핑
   - `App.tsx` — TrialBanner / ReadOnlyBanner mount
   - `src-tauri/build.rs` — Swift 컴파일 단계 추가
-  - `tauri.conf.json` — macOS sandbox entitlements (이미 A 스펙에서 IAP capability 포함)
+  - `tauri.conf.json` — macOS sandbox entitlements (StoreKit 2는 별도 entitlement key를 요구하지 않음. IAP capability는 Apple Developer 포털에서 App ID의 In-App Purchase 토글을 켤 때 생성되는 provisioning profile에 실리며, A 스펙의 `entitlements.plist`는 IAP 관련 키를 포함하지 않는 것이 정상이다.)
   - `Settings.tsx` — Restore Purchase 버튼 + 외부 통합 read-only 처리
 
 ## 7. 테스트 매트릭스 (T1-T12)

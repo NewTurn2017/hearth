@@ -5,6 +5,7 @@
 - **선행**: A (MAS 적합성), B (IAP + 라이선스), E (랜딩 lite)
 - **일정**: Sprint Day 14-15 압축 실행 (메타 입력 + 빌드 업로드 + Submit) → Day 17-20 심사 → Day 21 (2026-05-17) Manual Release
 - **출시 채널**: Mac App Store 단독
+- **개정 (2026-04-26)**: §7에 R9 — External CLI architecture defense 하위 블록 추가 (외부 CLI가 sandbox DB 경로를 쓰는 구조에 대한 reviewer 챌린지 대응 문구). 다른 절은 변경 없음.
 
 ## 1. Scope
 
@@ -501,6 +502,42 @@ Thank you for reviewing Hearth.
 
 **주의:**
 - "Force trial expiry" 디버그 메뉴는 sandbox 빌드 한정 (production에는 비표시). B의 D11/D12 작업 중 추가 권장 — 미구현 시 Review Notes에서 해당 줄 제거하고 "trial naturally expires after 14 days, please advance system clock or use the test transaction simulator" 안내로 대체
+
+### R9 — External CLI architecture defense (reviewer 챌린지 대비 추가 문구)
+
+**예상 reviewer 챌린지**: "외부 CLI 프로세스가 sandboxed 앱의 데이터베이스에 직접 쓰는 것은 sandbox를 우회하는 것 아닌가?"
+
+**대응 원칙**: 방어적이지 않게, 사실 그대로. 이 구조는 표준 user-consent 패턴이며 어떤 third-party SQLite 브라우저로 사용자가 자기 DB 파일을 여는 것과 동일하다.
+
+App Store Connect의 "App Review Notes" 자유 입력란에 위 §7 본문 끝(7. CONTACT 위)에 다음 항목을 추가로 붙여넣는다 — 영문 우선, 필요 시 한국어 병기는 §7 본문이 영문 단일이므로 영문만 사용:
+
+```
+8. EXTERNAL CLI ARCHITECTURE (clarification)
+   Hearth.app is fully sandboxed. Its database lives at
+   ~/Library/Application Support/com.newturn2017.hearth/data.db.
+   On first launch, the app asks the user to grant access to this
+   path through a standard NSOpenPanel; the app then holds a
+   security-scoped bookmark for that user-selected location and
+   calls startAccessingSecurityScopedResource() during its lifetime.
+
+   The companion `hearth-cli` tool is distributed separately as
+   open-source software (https://github.com/newturn2017/hearth-cli).
+   It is NOT bundled inside this Mac App Store package. The CLI
+   runs unsandboxed under the user's normal HOME permissions and
+   reads/writes the same SQLite file the user has authorized.
+
+   This is identical to a user opening the same DB file in any
+   third-party SQLite browser: it is the user's data, on the user's
+   disk, accessed under the user's filesystem permissions, with the
+   user's explicit consent. The Mac App Store binary itself never
+   escapes the sandbox.
+
+   Auto-refresh inside the app is implemented with FSEvents scoped
+   to the user-granted bookmark — no privileged helpers, no XPC to
+   external processes, no shared containers.
+```
+
+이 문구는 §7 본문 코드블록 안에 7번과 CONTACT 사이로 들어가며, 기존 7. CONTACT는 8 → 9로 자연스럽게 밀어넣지 않고 위 항목을 "8. EXTERNAL CLI ARCHITECTURE"로 추가하면서 기존 7. CONTACT 번호는 9. CONTACT로 재번호한다 — Day 15 메타 입력 시 복붙 단계에서 적용.
 
 ## 8. Day-by-day 워크플로
 
