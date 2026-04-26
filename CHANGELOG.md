@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-04-26
+
+### Fixed
+
+- **프로젝트 카드 메모 미리보기 2줄 표시 보정**: 프로젝트 보드 카드의 평가/메모 영역을 최대 2줄로 클램프하고, 짧은 메모도 2줄 높이를 확보하도록 조정했습니다.
+
 ## [0.9.2] - 2026-04-26
 
 ### Fixed

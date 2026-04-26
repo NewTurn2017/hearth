@@ -1,7 +1,15 @@
 import { useState, type MouseEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Play, FolderOpen, X, Settings2, StickyNote, Trash2 } from "lucide-react";
+import {
+  GripVertical,
+  Play,
+  FolderOpen,
+  X,
+  Settings2,
+  StickyNote,
+  Trash2,
+} from "lucide-react";
 import type { Project, Priority } from "../types";
 import {
   CATEGORY_COLORS,
@@ -38,8 +46,14 @@ export function ProjectCard({
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: project.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: project.id });
   const { categories } = useCategories();
   const { menu, open: openMenu, close: closeMenu } = useContextMenu();
 
@@ -50,7 +64,9 @@ export function ProjectCard({
       icon: StickyNote,
       onSelect: () =>
         window.dispatchEvent(
-          new CustomEvent("memo:new-dialog", { detail: { projectId: project.id } })
+          new CustomEvent("memo:new-dialog", {
+            detail: { projectId: project.id },
+          }),
         ),
     },
     {
@@ -89,8 +105,9 @@ export function ProjectCard({
   const catColor =
     catRow?.color ??
     (project.category
-      ? (CATEGORY_COLORS as Record<string, string | undefined>)[project.category] ??
-        "#6b7280"
+      ? ((CATEGORY_COLORS as Record<string, string | undefined>)[
+          project.category
+        ] ?? "#6b7280")
       : "#6b7280");
 
   const style = {
@@ -127,7 +144,7 @@ export function ProjectCard({
         "bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)]",
         "border border-transparent hover:border-[var(--color-border)]",
         "transition-colors duration-[120ms] cursor-default select-none",
-        highlighted && "find-highlight"
+        highlighted && "find-highlight",
       )}
     >
       <div
@@ -179,13 +196,16 @@ export function ProjectCard({
         >
           <Icon icon={GripVertical} size={16} />
         </button>
-        <div className="flex-1 min-w-0" onDoubleClick={(e) => {
-          // Name area should still let users double-click elsewhere on the
-          // card to open details, but single clicks here go to inline edit.
-          // The root's onDoubleClick will handle it — this guard only stops
-          // the event when the user is mid-edit.
-          if (editing) e.stopPropagation();
-        }}>
+        <div
+          className="flex-1 min-w-0"
+          onDoubleClick={(e) => {
+            // Name area should still let users double-click elsewhere on the
+            // card to open details, but single clicks here go to inline edit.
+            // The root's onDoubleClick will handle it — this guard only stops
+            // the event when the user is mid-edit.
+            if (editing) e.stopPropagation();
+          }}
+        >
           {editing === "name" ? (
             <input
               autoFocus
@@ -227,7 +247,11 @@ export function ProjectCard({
               aria-label={`우선순위 변경 — 현재 ${project.priority}`}
               className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)] rounded-full"
             >
-              <Badge tone={PRIORITY_COLORS[project.priority as Priority] ?? "#6b7280"}>
+              <Badge
+                tone={
+                  PRIORITY_COLORS[project.priority as Priority] ?? "#6b7280"
+                }
+              >
                 {project.priority}
               </Badge>
             </button>
@@ -240,20 +264,23 @@ export function ProjectCard({
                   key={p}
                   type="button"
                   onClick={() => {
-                    if (p !== project.priority) onUpdate(project.id, { priority: p });
+                    if (p !== project.priority)
+                      onUpdate(project.id, { priority: p });
                     close();
                   }}
                   className={cn(
                     "flex items-center gap-2 px-2 h-7 text-[12px] text-left rounded",
                     "hover:bg-[var(--color-surface-3)]",
-                    p === project.priority && "bg-[var(--color-surface-3)]"
+                    p === project.priority && "bg-[var(--color-surface-3)]",
                   )}
                 >
                   <span
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: PRIORITY_COLORS[p] }}
                   />
-                  <span className="font-medium text-[var(--color-text)]">{p}</span>
+                  <span className="font-medium text-[var(--color-text)]">
+                    {p}
+                  </span>
                   <span className="text-[var(--color-text-dim)]">
                     {PRIORITY_LABELS[p]}
                   </span>
@@ -294,7 +321,8 @@ export function ProjectCard({
                   className={cn(
                     "flex items-center gap-2 px-2 h-7 text-[12px] text-left rounded",
                     "hover:bg-[var(--color-surface-3)]",
-                    c.name === project.category && "bg-[var(--color-surface-3)]"
+                    c.name === project.category &&
+                      "bg-[var(--color-surface-3)]",
                   )}
                 >
                   <span
@@ -326,7 +354,7 @@ export function ProjectCard({
           <button
             type="button"
             onClick={() => startEdit("evaluation", project.evaluation ?? "")}
-            className="block w-full text-left text-[12px] text-[var(--color-text-muted)] cursor-text line-clamp-3 leading-snug"
+            className="block w-full min-h-[2.6em] overflow-hidden text-left text-[12px] leading-snug text-[var(--color-text-muted)] cursor-text line-clamp-2 whitespace-normal break-words"
           >
             {project.evaluation || (
               <span className="text-[var(--color-text-dim)]">메모 없음</span>
