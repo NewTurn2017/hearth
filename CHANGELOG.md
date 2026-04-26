@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-04-26
+
+### Fixed
+
+- **스킬/CLI DB 변경 현재 탭 즉시 반영**: 앱이 이미 감지하던 SQLite `PRAGMA data_version` 변경 신호를 React 데이터 훅 이벤트로 연결해, 메모보드·캘린더·프로젝트 화면이 탭 이동 없이 자동 갱신되도록 수정했습니다.
+
 ## [0.9.4] - 2026-04-26
 
 ### Fixed

@@ -10,6 +10,7 @@ import { ThemeProvider } from "./theme/ThemeContext";
 import { useProjects } from "./hooks/useProjects";
 import { useMemos } from "./hooks/useMemos";
 import { useUiScale } from "./hooks/useUiScale";
+import { useTauriDbChangeBridge } from "./lib/dbChangeBridge";
 import type { Priority } from "./types";
 
 function ProjectsTab({
@@ -77,6 +78,7 @@ function ProjectsTab({
 
 function App() {
   useUiScale();
+  useTauriDbChangeBridge();
   return (
     <ThemeProvider>
       <ToastProvider>
