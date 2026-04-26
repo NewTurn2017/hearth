@@ -19,7 +19,7 @@ jobs:
           - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu,   strip: strip }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@v6.0.2
 
       # dtolnay/rust-toolchain@stable intentionally tracks Rust's latest
       # stable release — SHA-pinning would defeat the purpose. The action
@@ -51,7 +51,7 @@ jobs:
           echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: hearth-${{ matrix.target }}
           path: ${{ env.TARBALL }}
@@ -61,7 +61,7 @@ jobs:
     name: bundle skills
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@v6.0.2
 
       - name: Tar skills
         run: |
@@ -72,7 +72,7 @@ jobs:
           echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: skills-bundle
           path: ${{ env.TARBALL }}
@@ -83,10 +83,10 @@ jobs:
     needs: [build-cli, bundle-skills]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+      - uses: actions/checkout@v6.0.2
 
       - name: Download artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        uses: actions/download-artifact@v8.0.1
         with:
           path: dist
 
