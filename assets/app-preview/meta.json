@@ -1,0 +1,9 @@
+{
+  "id": "hearth-app-preview",
+  "name": "Hearth — App Store App Preview (1.0)",
+  "duration": 30,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "notes": "6-cut composition for Mac App Store App Preview video. See docs/superpowers/specs/2026-04-26-app-store-submission-design.md §5.2."
+}

@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Pretendard:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #1a1614;
+        font-family: "Inter", "Pretendard", sans-serif;
+        color: #f5e6c8;
+      }
+
+      /* Persistent ambient bg */
+      #bg-glow {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse 1200px 800px at 50% 110%, rgba(217, 119, 6, 0.30) 0%, rgba(217, 119, 6, 0) 60%),
+          radial-gradient(ellipse 600px 400px at 10% 90%, rgba(251, 191, 36, 0.06) 0%, rgba(251, 191, 36, 0) 70%),
+          #1a1614;
+        z-index: 0;
+      }
+      #bg-vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%);
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+      .scene-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        width: 100%;
+        height: 100%;
+        padding: 100px 140px;
+        box-sizing: border-box;
+      }
+
+      /* Caption styling shared */
+      .eyebrow {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: 0.32em;
+        color: #d97706;
+        text-transform: uppercase;
+      }
+      .headline {
+        font-family: "Fraunces", serif;
+        font-weight: 500;
+        font-size: 86px;
+        line-height: 1.05;
+        color: #f5e6c8;
+        letter-spacing: -0.01em;
+        text-align: center;
+      }
+      .subline {
+        font-size: 28px;
+        line-height: 1.5;
+        color: #a7a496;
+        text-align: center;
+        max-width: 1100px;
+      }
+
+      /* ============ CUT 1 — Cold open (0 - 2s) ============ */
+      #c1 .logo {
+        width: 200px; height: 200px;
+        border-radius: 44px;
+        background:
+          radial-gradient(circle at 50% 60%, rgba(251,191,36,0.9) 0%, rgba(217,119,6,0.5) 45%, rgba(217,119,6,0) 75%),
+          #1a1917;
+        box-shadow:
+          0 0 120px 16px rgba(217,119,6,0.45),
+          0 20px 60px rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: center;
+      }
+      #c1 .flame {
+        font-family: "Fraunces", serif;
+        font-size: 130px;
+        line-height: 1;
+        color: #fbbf24;
+        text-shadow: 0 0 36px rgba(251,191,36,0.7);
+      }
+      #c1 .wordmark {
+        font-family: "Fraunces", serif;
+        font-size: 168px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+      }
+      #c1 .tagline {
+        font-size: 34px;
+        color: #a7a496;
+        letter-spacing: 0.02em;
+      }
+
+      /* ============ Generic screenshot frame for cuts 2-4 ============ */
+      .shot-frame {
+        position: absolute;
+        left: 240px; top: 200px;
+        width: 1440px; height: 720px;
+        border-radius: 22px;
+        overflow: hidden;
+        background: #0f0d0b;
+        box-shadow:
+          0 0 0 2px rgba(217,119,6,0.30),
+          0 0 80px 8px rgba(217,119,6,0.20),
+          0 30px 80px rgba(0,0,0,0.55);
+        z-index: 5;
+      }
+      .shot-frame img {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .caption-row {
+        position: absolute;
+        left: 0; right: 0; bottom: 80px;
+        display: flex; flex-direction: column;
+        align-items: center; gap: 14px;
+        z-index: 12;
+      }
+
+      /* ============ CUT 5 — Hero split-screen (CC ↔ Hearth) ============ */
+      #c5 .split {
+        position: absolute;
+        left: 80px; top: 140px;
+        width: 1760px; height: 760px;
+        display: grid;
+        grid-template-columns: 1fr 80px 1fr;
+        gap: 0;
+        z-index: 5;
+      }
+      #c5 .pane {
+        border-radius: 20px;
+        overflow: hidden;
+        background: #0f0d0b;
+        box-shadow:
+          0 0 0 2px rgba(217,119,6,0.30),
+          0 24px 60px rgba(0,0,0,0.55);
+        position: relative;
+      }
+      #c5 .pane.terminal {
+        background: #0c0a09;
+        font-family: "JetBrains Mono", "SF Mono", monospace;
+        padding: 28px 32px;
+        font-size: 20px;
+        line-height: 1.55;
+        color: #cfc6a8;
+      }
+      #c5 .terminal .prompt-line { color: #fbbf24; }
+      #c5 .terminal .user-cmd { color: #f5e6c8; font-weight: 600; }
+      #c5 .terminal .tool-call { color: #a3e635; }
+      #c5 .terminal .tool-out { color: #6b9e6b; }
+      #c5 .terminal .skill-tag { color: #d97706; font-weight: 600; }
+      #c5 .terminal .cursor {
+        display: inline-block;
+        width: 10px; height: 22px;
+        background: #fbbf24;
+        vertical-align: middle;
+        margin-left: 2px;
+      }
+      #c5 .terminal .label-chip {
+        position: absolute;
+        top: 14px; right: 16px;
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        color: #d97706;
+        background: rgba(217,119,6,0.12);
+        border: 1px solid rgba(217,119,6,0.4);
+        padding: 6px 12px;
+        border-radius: 999px;
+      }
+      #c5 .pane.app img {
+        width: 100%; height: 100%;
+        object-fit: cover; display: block;
+      }
+      #c5 .pane.app .label-chip {
+        position: absolute;
+        top: 14px; right: 16px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        color: #f5e6c8;
+        background: rgba(15,13,11,0.78);
+        border: 1px solid rgba(245,230,200,0.25);
+        padding: 6px 12px;
+        border-radius: 999px;
+        z-index: 3;
+      }
+      #c5 .pane.app .new-row-glow {
+        position: absolute;
+        left: 4%; right: 4%;
+        height: 64px;
+        top: 38%;
+        border-radius: 12px;
+        background: linear-gradient(90deg, rgba(217,119,6,0) 0%, rgba(217,119,6,0.55) 50%, rgba(217,119,6,0) 100%);
+        box-shadow: 0 0 40px 6px rgba(251,191,36,0.45);
+        opacity: 0;
+        z-index: 2;
+      }
+      #c5 .arrow-bridge {
+        display: flex; align-items: center; justify-content: center;
+        position: relative;
+      }
+      #c5 .arrow-bridge .pulse {
+        font-family: "Fraunces", serif;
+        font-size: 64px;
+        color: #fbbf24;
+        text-shadow: 0 0 24px rgba(251,191,36,0.7);
+      }
+      #c5 .arrow-bridge .arrow-label {
+        position: absolute;
+        bottom: -42px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.24em;
+        color: #d97706;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      #c5 .hero-caption {
+        position: absolute;
+        left: 0; right: 0; top: 36px;
+        display: flex; flex-direction: column;
+        align-items: center; gap: 8px;
+        z-index: 12;
+      }
+      #c5 .hero-caption .eyebrow { color: #d97706; }
+      #c5 .hero-caption .headline { font-size: 56px; }
+      #c5 .hero-bottom {
+        position: absolute;
+        left: 0; right: 0; bottom: 48px;
+        text-align: center;
+        z-index: 12;
+        font-size: 24px;
+        color: #a7a496;
+        letter-spacing: 0.04em;
+      }
+      #c5 .hero-bottom strong {
+        color: #fbbf24;
+        font-weight: 600;
+      }
+
+      /* ============ CUT 6 — Outro CTA ============ */
+      #c6 .outro-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 36px;
+        width: 100%;
+        max-width: 1500px;
+        align-items: center;
+        justify-items: center;
+      }
+      #c6 .terminal-pane {
+        width: 1200px;
+        background: #0c0a09;
+        border-radius: 20px;
+        box-shadow:
+          0 0 0 2px rgba(217,119,6,0.30),
+          0 30px 80px rgba(0,0,0,0.55);
+        padding: 32px 40px;
+        font-family: "JetBrains Mono", "SF Mono", monospace;
+        font-size: 24px;
+        color: #cfc6a8;
+        line-height: 1.5;
+        position: relative;
+      }
+      #c6 .terminal-pane .prompt-line { color: #fbbf24; }
+      #c6 .terminal-pane .out { color: #a3e635; }
+      #c6 .terminal-pane .dim { color: #6b6660; }
+      #c6 .cta-row {
+        display: flex; flex-direction: column;
+        align-items: center; gap: 16px;
+      }
+      #c6 .cta-headline {
+        font-family: "Fraunces", serif;
+        font-size: 84px;
+        font-weight: 500;
+        color: #f5e6c8;
+        letter-spacing: 0.01em;
+        text-align: center;
+      }
+      #c6 .cta-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 32px;
+        background: #221f19;
+        border: 1px solid rgba(217,119,6,0.5);
+        border-radius: 16px;
+        color: #fbbf24;
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+      #c6 .wordmark-small {
+        font-family: "Fraunces", serif;
+        font-size: 56px;
+        color: #f5e6c8;
+        letter-spacing: 0.06em;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Persistent background -->
+      <div id="bg-glow"></div>
+      <div id="bg-vignette"></div>
+
+      <!-- ============ CUT 1 — Cold open (0 - 2s) ============ -->
+      <div id="c1" class="scene clip" data-start="0" data-duration="2" data-track-index="1">
+        <div class="scene-content">
+          <div class="logo"><div class="flame">✦</div></div>
+          <div class="wordmark">HEARTH</div>
+          <div class="tagline">Local-first AI agent workspace</div>
+        </div>
+      </div>
+
+      <!-- ============ CUT 2 — Project view (2 - 6s) ============ -->
+      <div id="c2-frame" class="shot-frame clip" data-start="2" data-duration="4" data-track-index="2">
+        <img src="placeholders/cut-2.png" alt="Hearth Projects view with seeded demo data" />
+      </div>
+      <div id="c2" class="scene clip" data-start="2" data-duration="4" data-track-index="3">
+        <div class="caption-row">
+          <div class="eyebrow">PROJECTS</div>
+          <div class="headline">Projects, memos, schedules — one place</div>
+        </div>
+      </div>
+
+      <!-- ============ CUT 3 — Memo view (6 - 10s) ============ -->
+      <div id="c3-frame" class="shot-frame clip" data-start="6" data-duration="4" data-track-index="4">
+        <img src="placeholders/cut-3.png" alt="Hearth Memo view rendering markdown" />
+      </div>
+      <div id="c3" class="scene clip" data-start="6" data-duration="4" data-track-index="5">
+        <div class="caption-row">
+          <div class="eyebrow">MEMOS</div>
+          <div class="headline">Markdown memos that stay on your Mac</div>
+        </div>
+      </div>
+
+      <!-- ============ CUT 4 — Schedule view (10 - 14s) ============ -->
+      <div id="c4-frame" class="shot-frame clip" data-start="10" data-duration="4" data-track-index="6">
+        <img src="placeholders/cut-4.png" alt="Hearth Schedule / calendar view" />
+      </div>
+      <div id="c4" class="scene clip" data-start="10" data-duration="4" data-track-index="7">
+        <div class="caption-row">
+          <div class="eyebrow">SCHEDULE</div>
+          <div class="headline">Plan the week without leaving the app</div>
+        </div>
+      </div>
+
+      <!-- ============ CUT 5 — HERO split-screen (14 - 24s, 10s dwell) ============ -->
+      <div id="c5" class="scene clip" data-start="14" data-duration="10" data-track-index="8">
+        <div class="hero-caption">
+          <div class="eyebrow">CC ↔ HEARTH · LIVE</div>
+          <div class="headline">Your AI agent drives your workspace</div>
+        </div>
+
+        <div class="split">
+          <!-- Left: Claude Code terminal -->
+          <div class="pane terminal">
+            <div class="label-chip">CLAUDE CODE</div>
+            <div><span class="prompt-line">›</span> <span class="user-cmd" id="c5-typed"></span><span class="cursor" id="c5-cursor"></span></div>
+            <div style="height: 14px"></div>
+            <div id="c5-tool-1" style="opacity:0">
+              <span class="skill-tag">[skills/hearth]</span> dispatching intent…
+            </div>
+            <div id="c5-tool-2" style="opacity:0; margin-top:6px">
+              <span class="tool-call">$ hearth-cli project add "Q2 launch sprint" \</span>
+            </div>
+            <div id="c5-tool-3" style="opacity:0; margin-left:24px">
+              <span class="tool-call">--memo "kickoff notes" --schedule "tue 3pm review"</span>
+            </div>
+            <div id="c5-tool-4" style="opacity:0; margin-top:10px">
+              <span class="tool-out">✓ project created · memo attached · event scheduled</span>
+            </div>
+            <div id="c5-tool-5" style="opacity:0; margin-top:6px">
+              <span class="tool-out">✓ broadcast: hearth.refresh → 3 tabs</span>
+            </div>
+          </div>
+
+          <!-- Center: arrow bridge -->
+          <div class="arrow-bridge">
+            <div class="pulse" id="c5-arrow">→</div>
+            <div class="arrow-label">live refresh</div>
+          </div>
+
+          <!-- Right: Hearth app -->
+          <div class="pane app">
+            <div class="label-chip">HEARTH · OPEN TAB</div>
+            <img src="placeholders/cut-5-hearth.png" alt="Hearth app showing live refresh after agent write" />
+            <div class="new-row-glow" id="c5-glow"></div>
+          </div>
+        </div>
+
+        <div class="hero-bottom">
+          External DB write → <strong>auto-refresh</strong> in every open Hearth tab
+        </div>
+      </div>
+
+      <!-- ============ CUT 6 — Outro CTA (24 - 30s) ============ -->
+      <div id="c6" class="scene clip" data-start="24" data-duration="6" data-track-index="9">
+        <div class="scene-content" style="gap:48px">
+          <div class="terminal-pane" id="c6-term">
+            <div><span class="dim"># install once, drive Hearth from any AI agent</span></div>
+            <div style="margin-top:8px"><span class="prompt-line">$</span> hearth-cli memo add "tomorrow standup notes"</div>
+            <div style="margin-top:6px"><span class="out">✓ memo created · open tabs refreshed</span></div>
+          </div>
+          <div class="cta-row">
+            <div class="cta-headline">Available on the Mac App Store</div>
+            <div class="cta-badge">HEARTH · 1.0 · Productivity</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // -------- Persistent bg pulse --------
+      tl.to("#bg-glow", {
+        filter: "brightness(1.06)",
+        duration: 3.0,
+        ease: "sine.inOut",
+        repeat: Math.floor(30 / 6.0) - 1,
+        yoyo: true,
+      }, 0);
+
+      // -------- CUT 1 (0 - 2s) --------
+      tl.from("#c1 .logo", { scale: 0.7, opacity: 0, duration: 0.7, ease: "power3.out" }, 0.05);
+      tl.from("#c1 .flame", { opacity: 0, scale: 0.4, y: 16, duration: 0.55, ease: "back.out(1.6)" }, 0.3);
+      tl.from("#c1 .wordmark", { y: 40, opacity: 0, duration: 0.7, ease: "power4.out" }, 0.45);
+      tl.from("#c1 .tagline", { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" }, 0.85);
+
+      // -------- CUT 2 (2 - 6s) --------
+      tl.from("#c2-frame", { scale: 0.95, opacity: 0, y: 24, duration: 0.7, ease: "power3.out" }, 2.05);
+      tl.from("#c2 .eyebrow", { y: 14, opacity: 0, duration: 0.45, ease: "power2.out" }, 2.35);
+      tl.from("#c2 .headline", { y: 26, opacity: 0, duration: 0.7, ease: "power4.out" }, 2.5);
+      tl.to("#c2-frame", { scale: 1.03, duration: 3.4, ease: "sine.inOut" }, 2.6);
+
+      // -------- CUT 3 (6 - 10s) --------
+      tl.from("#c3-frame", { scale: 0.95, opacity: 0, y: 24, duration: 0.7, ease: "power3.out" }, 6.05);
+      tl.from("#c3 .eyebrow", { y: 14, opacity: 0, duration: 0.45, ease: "power2.out" }, 6.35);
+      tl.from("#c3 .headline", { y: 26, opacity: 0, duration: 0.7, ease: "power4.out" }, 6.5);
+      tl.to("#c3-frame", { scale: 1.03, duration: 3.4, ease: "sine.inOut" }, 6.6);
+
+      // -------- CUT 4 (10 - 14s) --------
+      tl.from("#c4-frame", { scale: 0.95, opacity: 0, y: 24, duration: 0.7, ease: "power3.out" }, 10.05);
+      tl.from("#c4 .eyebrow", { y: 14, opacity: 0, duration: 0.45, ease: "power2.out" }, 10.35);
+      tl.from("#c4 .headline", { y: 26, opacity: 0, duration: 0.7, ease: "power4.out" }, 10.5);
+      tl.to("#c4-frame", { scale: 1.03, duration: 3.4, ease: "sine.inOut" }, 10.6);
+
+      // -------- CUT 5 — HERO (14 - 24s, dwell 10s) --------
+      tl.from("#c5 .hero-caption .eyebrow", { y: 12, opacity: 0, duration: 0.45, ease: "power2.out" }, 14.1);
+      tl.from("#c5 .hero-caption .headline", { y: 24, opacity: 0, duration: 0.65, ease: "power4.out" }, 14.25);
+      tl.from("#c5 .pane.terminal", { x: -60, opacity: 0, duration: 0.7, ease: "power3.out" }, 14.4);
+      tl.from("#c5 .pane.app", { x: 60, opacity: 0, duration: 0.7, ease: "power3.out" }, 14.4);
+      tl.from("#c5 .arrow-bridge", { scale: 0.6, opacity: 0, duration: 0.55, ease: "back.out(1.8)" }, 14.7);
+
+      // Type the user prompt (deterministic char reveal via text)
+      const userText = 'add a project for Q2 launch with kickoff memo and a Tue 3pm review';
+      // Build a tween that animates a string by setting innerText at intervals.
+      // Use a plain object proxy to drive the substring length deterministically.
+      const typer = { i: 0 };
+      tl.to(typer, {
+        i: userText.length,
+        duration: 2.2,
+        ease: "none",
+        onUpdate: () => {
+          const el = document.getElementById("c5-typed");
+          if (el) el.textContent = userText.slice(0, Math.round(typer.i));
+        },
+      }, 15.0);
+
+      // Cursor blink (finite repeats covering the dwell)
+      tl.to("#c5-cursor", {
+        opacity: 0,
+        duration: 0.5,
+        ease: "steps(1)",
+        repeat: 14,
+        yoyo: true,
+      }, 14.5);
+
+      // Tool-call cascade after typing finishes (~17.4s)
+      tl.to("#c5-tool-1", { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, 17.5);
+      tl.from("#c5-tool-1", { y: 8, duration: 0.35, ease: "power2.out" }, 17.5);
+      tl.to("#c5-tool-2", { opacity: 1, duration: 0.3 }, 18.0);
+      tl.from("#c5-tool-2", { y: 8, duration: 0.3, ease: "power2.out" }, 18.0);
+      tl.to("#c5-tool-3", { opacity: 1, duration: 0.3 }, 18.4);
+      tl.from("#c5-tool-3", { y: 8, duration: 0.3, ease: "power2.out" }, 18.4);
+      tl.to("#c5-tool-4", { opacity: 1, duration: 0.35 }, 19.4);
+      tl.from("#c5-tool-4", { y: 8, duration: 0.35, ease: "power2.out" }, 19.4);
+      tl.to("#c5-tool-5", { opacity: 1, duration: 0.35 }, 19.95);
+      tl.from("#c5-tool-5", { y: 8, duration: 0.35, ease: "power2.out" }, 19.95);
+
+      // Arrow pulse synced to the broadcast moment
+      tl.to("#c5-arrow", {
+        scale: 1.35,
+        textShadow: "0 0 48px rgba(251,191,36,1)",
+        duration: 0.45,
+        ease: "power2.out",
+      }, 19.85);
+      tl.to("#c5-arrow", {
+        scale: 1.0,
+        textShadow: "0 0 24px rgba(251,191,36,0.7)",
+        duration: 0.6,
+        ease: "power2.inOut",
+      }, 20.3);
+
+      // Hearth side: glow sweep on new row, mimicking auto-refresh
+      tl.fromTo("#c5-glow",
+        { opacity: 0, scaleX: 0.5 },
+        { opacity: 1, scaleX: 1, duration: 0.5, ease: "power2.out" },
+        20.0
+      );
+      tl.to("#c5-glow", { opacity: 0, duration: 0.8, ease: "power2.inOut" }, 21.2);
+
+      // Subtle dwell drift on app pane image
+      tl.to("#c5 .pane.app img", { scale: 1.04, duration: 8.0, ease: "sine.inOut" }, 14.8);
+
+      // Bottom caption pop
+      tl.from("#c5 .hero-bottom", { y: 16, opacity: 0, duration: 0.6, ease: "power2.out" }, 21.6);
+
+      // -------- CUT 6 — Outro (24 - 30s) --------
+      tl.from("#c6 .terminal-pane", { y: 30, opacity: 0, duration: 0.7, ease: "power3.out" }, 24.1);
+      tl.from("#c6 .cta-headline", { y: 30, opacity: 0, duration: 0.8, ease: "power4.out" }, 24.6);
+      tl.from("#c6 .cta-badge", { scale: 0.85, opacity: 0, duration: 0.55, ease: "back.out(1.8)" }, 25.1);
+      // Final fade — final scene exit allowed
+      tl.to("#bg-glow", { opacity: 0.6, duration: 1.6, ease: "power2.inOut" }, 28.2);
+      tl.to("#c6 .scene-content", { opacity: 0.9, duration: 1.2, ease: "power2.in" }, 28.6);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
