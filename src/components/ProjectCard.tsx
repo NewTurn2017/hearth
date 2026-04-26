@@ -354,7 +354,7 @@ export function ProjectCard({
           <button
             type="button"
             onClick={() => startEdit("evaluation", project.evaluation ?? "")}
-            className="block w-full min-h-[2.6em] overflow-hidden text-left text-[12px] leading-snug text-[var(--color-text-muted)] cursor-text line-clamp-2 whitespace-normal break-words"
+            className="block w-full min-h-[2.6em] overflow-hidden text-left text-[12px] leading-snug text-[var(--color-text-muted)] cursor-text line-clamp-2 whitespace-pre-wrap break-words"
           >
             {project.evaluation || (
               <span className="text-[var(--color-text-dim)]">메모 없음</span>

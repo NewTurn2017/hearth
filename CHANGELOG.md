@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-04-26
+
+### Fixed
+
+- **프로젝트 카드 메모 줄바꿈 유지**: 편집 textarea에서 입력한 줄바꿈이 프로젝트 카드 preview에서도 그대로 보이도록 수정했습니다.
+
 ## [0.9.3] - 2026-04-26
 
 ### Fixed
