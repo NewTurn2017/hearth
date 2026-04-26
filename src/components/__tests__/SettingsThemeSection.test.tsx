@@ -1,7 +1,13 @@
 // src/components/__tests__/SettingsThemeSection.test.tsx
 import "@testing-library/jest-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SettingsThemeSection } from "../SettingsThemeSection";
 import { ThemeProvider } from "../../theme/ThemeContext";
@@ -31,8 +37,12 @@ beforeEach(() => {
 describe("SettingsThemeSection", () => {
   it("renders all 10 preset cards grouped into dark + light", () => {
     wrap(<SettingsThemeSection />);
-    expect(screen.getByRole("button", { name: /Warm Paper/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Midnight/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Warm Paper/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Midnight/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Forest/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Plum/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Carbon/ })).toBeInTheDocument();
@@ -47,9 +57,14 @@ describe("SettingsThemeSection", () => {
     wrap(<SettingsThemeSection />);
     fireEvent.click(screen.getByRole("button", { name: /Midnight/ }));
     await waitFor(() => {
-      expect(api.setTheme).toHaveBeenCalledWith({ kind: "preset", id: "midnight" });
+      expect(api.setTheme).toHaveBeenCalledWith({
+        kind: "preset",
+        id: "midnight",
+      });
     });
-    expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
+    expect(document.documentElement.getAttribute("data-theme")).toBe(
+      "midnight",
+    );
   });
 
   it("marks the active preset card with aria-pressed", async () => {
@@ -63,13 +78,27 @@ describe("SettingsThemeSection", () => {
     );
   });
 
+  it("does not apply the custom preview just by opening settings", async () => {
+    vi.useFakeTimers();
+    wrap(<SettingsThemeSection />);
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(document.documentElement.getAttribute("data-theme")).not.toBe(
+      "custom",
+    );
+    vi.useRealTimers();
+  });
+
   it("debounces custom color input and previews live before save", async () => {
     vi.useFakeTimers();
     wrap(<SettingsThemeSection />);
     const hexInput = screen.getByLabelText("강조색 HEX") as HTMLInputElement;
     fireEvent.change(hexInput, { target: { value: "#ff8000" } });
     // Before 300ms: still on previous theme
-    expect(document.documentElement.getAttribute("data-theme")).not.toBe("custom");
+    expect(document.documentElement.getAttribute("data-theme")).not.toBe(
+      "custom",
+    );
     await act(async () => {
       vi.advanceTimersByTime(300);
     });
@@ -116,7 +145,9 @@ describe("SettingsThemeSection", () => {
       vi.advanceTimersByTime(300);
     });
     vi.useRealTimers();
-    fireEvent.click(screen.getByRole("button", { name: /프리셋으로 되돌리기/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /프리셋으로 되돌리기/ }),
+    );
     await waitFor(() => {
       expect(api.setTheme).toHaveBeenLastCalledWith({
         kind: "preset",

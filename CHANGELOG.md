@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-04-26
+
+### Fixed
+
+- **설정 열 때 테마가 커스텀 기본값으로 바뀌는 문제 수정**: 설정 모달이 숨겨진 테마 탭까지 mount하면서 커스텀 테마 프리뷰가 자동 실행되던 회귀를 막았습니다. 이제 커스텀 프리뷰는 사용자가 색상/모드를 실제로 변경한 뒤에만 적용됩니다.
+
 ## [0.9.1] - 2026-04-26
 
 ### Added

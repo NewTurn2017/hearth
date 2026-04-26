@@ -38,13 +38,28 @@ function PresetCard({
       style={{ background: p["--color-surface-1"] }}
     >
       <div className="flex gap-1">
-        <span className="h-5 w-5 rounded" style={{ background: p["--color-surface-0"] }} />
-        <span className="h-5 w-5 rounded" style={{ background: p["--color-surface-2"] }} />
-        <span className="h-5 w-5 rounded" style={{ background: p["--color-brand"] }} />
-        <span className="h-5 w-5 rounded" style={{ background: p["--color-text-hi"] }} />
+        <span
+          className="h-5 w-5 rounded"
+          style={{ background: p["--color-surface-0"] }}
+        />
+        <span
+          className="h-5 w-5 rounded"
+          style={{ background: p["--color-surface-2"] }}
+        />
+        <span
+          className="h-5 w-5 rounded"
+          style={{ background: p["--color-brand"] }}
+        />
+        <span
+          className="h-5 w-5 rounded"
+          style={{ background: p["--color-text-hi"] }}
+        />
       </div>
       <div className="flex items-center justify-between">
-        <span className="text-[13px] font-medium" style={{ color: p["--color-text-hi"] }}>
+        <span
+          className="text-[13px] font-medium"
+          style={{ color: p["--color-text-hi"] }}
+        >
           {meta.label}
         </span>
         {active && (
@@ -78,6 +93,7 @@ export function SettingsThemeSection() {
   const [hexInput, setHexInput] = useState<string>(
     theme.kind === "custom" ? theme.brandHex : "#d97706",
   );
+  const [customPreviewDirty, setCustomPreviewDirty] = useState(false);
 
   const normalizedHex = useMemo(() => {
     const v = hexInput.trim();
@@ -89,23 +105,27 @@ export function SettingsThemeSection() {
   // Apply visually only — the context's setTheme would persist, which we
   // only want on explicit save.
   useEffect(() => {
+    if (!customPreviewDirty) return;
     if (!normalizedHex) return;
     const t = setTimeout(() => {
       applyTheme({ kind: "custom", baseMode, brandHex: normalizedHex });
     }, 300);
     return () => clearTimeout(t);
-  }, [normalizedHex, baseMode]);
+  }, [customPreviewDirty, normalizedHex, baseMode]);
 
   const onSavePreset = async (id: PresetId) => {
+    setCustomPreviewDirty(false);
     await setTheme({ kind: "preset", id });
   };
 
   const onSaveCustom = async () => {
     if (!normalizedHex) return;
+    setCustomPreviewDirty(false);
     await setTheme({ kind: "custom", baseMode, brandHex: normalizedHex });
   };
 
   const onRevert = async () => {
+    setCustomPreviewDirty(false);
     await setTheme({ kind: "preset", id: lastPresetRef.current });
   };
 
@@ -155,7 +175,10 @@ export function SettingsThemeSection() {
               type="radio"
               name="theme-base-mode"
               checked={baseMode === "dark"}
-              onChange={() => setBaseMode("dark")}
+              onChange={() => {
+                setCustomPreviewDirty(true);
+                setBaseMode("dark");
+              }}
             />
             다크
           </label>
@@ -164,7 +187,10 @@ export function SettingsThemeSection() {
               type="radio"
               name="theme-base-mode"
               checked={baseMode === "light"}
-              onChange={() => setBaseMode("light")}
+              onChange={() => {
+                setCustomPreviewDirty(true);
+                setBaseMode("light");
+              }}
             />
             라이트
           </label>
@@ -175,18 +201,28 @@ export function SettingsThemeSection() {
             type="color"
             aria-label="강조색 색상 선택"
             value={normalizedHex ?? "#d97706"}
-            onChange={(e) => setHexInput(e.target.value)}
+            onChange={(e) => {
+              setCustomPreviewDirty(true);
+              setHexInput(e.target.value);
+            }}
             className="h-8 w-10 cursor-pointer rounded border border-[var(--color-border)]"
           />
           <input
             type="text"
             aria-label="강조색 HEX"
             value={hexInput}
-            onChange={(e) => setHexInput(e.target.value)}
+            onChange={(e) => {
+              setCustomPreviewDirty(true);
+              setHexInput(e.target.value);
+            }}
             placeholder="#rrggbb"
             className="font-mono rounded border border-[var(--color-border)] bg-[var(--color-surface-2)] px-2 py-1 text-[12px]"
           />
-          <Button size="sm" onClick={() => void onSaveCustom()} disabled={!normalizedHex}>
+          <Button
+            size="sm"
+            onClick={() => void onSaveCustom()}
+            disabled={!normalizedHex}
+          >
             저장
           </Button>
         </div>
