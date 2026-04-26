@@ -8,36 +8,78 @@ vi.mock("../../api", () => ({
   setAutostart: vi.fn().mockResolvedValue(undefined),
   notificationsPermission: vi.fn().mockResolvedValue("unknown"),
   notificationsRequest: vi.fn().mockResolvedValue("granted"),
-  getQuickCaptureShortcut: vi.fn().mockResolvedValue("CommandOrControl+Shift+H"),
+  getQuickCaptureShortcut: vi
+    .fn()
+    .mockResolvedValue("CommandOrControl+Shift+H"),
   getQuickCaptureShortcutError: vi.fn().mockResolvedValue(""),
-  rebindQuickCaptureShortcut: vi.fn().mockResolvedValue("CommandOrControl+Shift+H"),
+  rebindQuickCaptureShortcut: vi
+    .fn()
+    .mockResolvedValue("CommandOrControl+Shift+H"),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn().mockResolvedValue(() => {}),
 }));
 
+vi.mock("../../ui/Toast", () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  }),
+}));
+
 import * as api from "../../api";
 
 describe("SettingsGeneralSection", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("reads initial autostart state and toggles via set_autostart", async () => {
     render(<SettingsGeneralSection active />);
     const toggle = await screen.findByLabelText("로그인 시 Hearth 자동 실행");
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);
-    await waitFor(() =>
-      expect(api.setAutostart).toHaveBeenCalledWith(true)
-    );
+    await waitFor(() => expect(api.setAutostart).toHaveBeenCalledWith(true));
   });
 
   it("fires notifications_request when the permission button is clicked", async () => {
     render(<SettingsGeneralSection active />);
     const btn = await screen.findByRole("button", { name: "권한 요청" });
     fireEvent.click(btn);
-    await waitFor(() =>
-      expect(api.notificationsRequest).toHaveBeenCalled()
+    await waitFor(() => expect(api.notificationsRequest).toHaveBeenCalled());
+  });
+
+  it("calls manual update check from the general settings section", async () => {
+    const onCheckForUpdates = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsGeneralSection
+        active
+        onCheckForUpdates={onCheckForUpdates}
+        updateChecking={false}
+        pendingUpdate={null}
+      />,
     );
+    const btn = await screen.findByRole("button", { name: "업데이트 확인" });
+    fireEvent.click(btn);
+    expect(onCheckForUpdates).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an install button when an update is pending", async () => {
+    const install = vi.fn().mockResolvedValue(undefined);
+    render(
+      <SettingsGeneralSection
+        active
+        pendingUpdate={{
+          version: "0.10.0",
+          install,
+          dismiss: vi.fn(),
+        }}
+      />,
+    );
+    const btn = await screen.findByRole("button", { name: "v0.10.0 설치" });
+    fireEvent.click(btn);
+    await waitFor(() => expect(install).toHaveBeenCalledTimes(1));
   });
 });

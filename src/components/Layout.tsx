@@ -27,7 +27,7 @@ export function Layout({
     openNewProject: () => void;
   }) => React.ReactNode;
 }) {
-  const pendingUpdate = useAppUpdater();
+  const appUpdater = useAppUpdater();
   useDbRecoveryNotice();
   const toast = useToast();
   const [version, setVersion] = useState<string>("");
@@ -45,14 +45,18 @@ export function Layout({
     };
   }, []);
   const [activeTab, setActiveTab] = useState<Tab>("projects");
-  const [priorities, setPriorities] = useState<Set<Priority>>(new Set(PRIORITIES));
+  const [priorities, setPriorities] = useState<Set<Priority>>(
+    new Set(PRIORITIES),
+  );
   // null = 전체 보기 (no filter, shows NULL-category rows too). A single
   // category selection deselects all others — category is exclusive, unlike
   // priority which remains multi-select.
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsInitialTab, setSettingsInitialTab] = useState<"general" | "ai" | "backup" | "categories">("general");
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    "general" | "ai" | "backup" | "categories"
+  >("general");
 
   const togglePriority = (p: Priority) => {
     setPriorities((prev) => {
@@ -84,7 +88,9 @@ export function Layout({
 
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const detail = (e as CustomEvent<{ tab?: "general" | "ai" | "backup" | "categories" }>).detail;
+      const detail = (
+        e as CustomEvent<{ tab?: "general" | "ai" | "backup" | "categories" }>
+      ).detail;
       setSettingsOpen(true);
       if (detail?.tab) setSettingsInitialTab(detail.tab);
     };
@@ -101,7 +107,9 @@ export function Layout({
     listen<{ memoId: number }>("memo:quick-captured", (e) => {
       const { memoId } = e.payload;
       toast.success("메모 추가됨");
-      window.dispatchEvent(new CustomEvent("memo:focus", { detail: { memoId } }));
+      window.dispatchEvent(
+        new CustomEvent("memo:focus", { detail: { memoId } }),
+      );
       window.dispatchEvent(new Event("memos:changed"));
     }).then((f) => {
       if (cancelled) f();
@@ -146,13 +154,13 @@ export function Layout({
         const cats = args.categories;
         if (Array.isArray(pris)) {
           const valid = pris.filter((p): p is Priority =>
-            (PRIORITIES as readonly string[]).includes(p as string)
+            (PRIORITIES as readonly string[]).includes(p as string),
           );
           if (valid.length > 0) setPriorities(new Set(valid));
         }
         if (Array.isArray(cats)) {
           const firstValid = (cats as unknown[]).find(
-            (c): c is string => typeof c === "string" && c.length > 0
+            (c): c is string => typeof c === "string" && c.length > 0,
           );
           setActiveCategory(firstValid ?? null);
         }
@@ -177,9 +185,12 @@ export function Layout({
       <TopBar
         active={activeTab}
         onChange={setActiveTab}
-        onOpenSettings={() => { setSettingsInitialTab("general"); setSettingsOpen(true); }}
+        onOpenSettings={() => {
+          setSettingsInitialTab("general");
+          setSettingsOpen(true);
+        }}
         version={version}
-        pendingUpdate={pendingUpdate}
+        pendingUpdate={appUpdater.pending}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -224,6 +235,9 @@ export function Layout({
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         initialTab={settingsInitialTab}
+        pendingUpdate={appUpdater.pending}
+        updateChecking={appUpdater.checking}
+        onCheckForUpdates={appUpdater.checkNow}
       />
     </div>
   );

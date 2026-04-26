@@ -1,15 +1,35 @@
 import { useEffect, useState } from "react";
+import { Download, RefreshCw } from "lucide-react";
 import { Button } from "../ui/Button";
 import * as api from "../api";
 import type { NotificationPermission } from "../api";
+import type { PendingUpdate } from "../hooks/useAppUpdater";
 import { useQuickCaptureShortcut } from "../hooks/useQuickCaptureShortcut";
 import { ShortcutRecorder } from "./settings/ShortcutRecorder";
+import { useToast } from "../ui/Toast";
 
-export function SettingsGeneralSection({ active }: { active: boolean }) {
+export function SettingsGeneralSection({
+  active,
+  pendingUpdate,
+  updateChecking = false,
+  onCheckForUpdates,
+}: {
+  active: boolean;
+  pendingUpdate?: PendingUpdate | null;
+  updateChecking?: boolean;
+  onCheckForUpdates?: () => Promise<void>;
+}) {
+  const toast = useToast();
   const [autostart, setAutostartState] = useState<boolean>(false);
   const [perm, setPerm] = useState<NotificationPermission>("unknown");
   const [busy, setBusy] = useState(false);
-  const { combo, display, error: shortcutError, rebind } = useQuickCaptureShortcut();
+  const [installing, setInstalling] = useState(false);
+  const {
+    combo,
+    display,
+    error: shortcutError,
+    rebind,
+  } = useQuickCaptureShortcut();
   const [recording, setRecording] = useState(false);
   const [rebindError, setRebindError] = useState<string | null>(null);
 
@@ -54,6 +74,17 @@ export function SettingsGeneralSection({ active }: { active: boolean }) {
     }
   }
 
+  async function installUpdate() {
+    if (!pendingUpdate) return;
+    setInstalling(true);
+    try {
+      await pendingUpdate.install();
+    } catch (e) {
+      toast.error(`업데이트 실패: ${e}`);
+      setInstalling(false);
+    }
+  }
+
   const permLabel = {
     granted: "허용됨",
     denied: "차단됨",
@@ -63,7 +94,9 @@ export function SettingsGeneralSection({ active }: { active: boolean }) {
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">자동 시작</h3>
+        <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">
+          자동 시작
+        </h3>
         <label className="flex items-center gap-2 text-[13px]">
           <input
             type="checkbox"
@@ -99,13 +132,48 @@ export function SettingsGeneralSection({ active }: { active: boolean }) {
       </section>
 
       <section>
-        <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">Quick Capture</h3>
+        <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">
+          업데이트
+        </h3>
+        <div className="flex items-center gap-2 text-[13px]">
+          <Button
+            size="sm"
+            variant="secondary"
+            leftIcon={RefreshCw}
+            onClick={() => void onCheckForUpdates?.()}
+            disabled={updateChecking || !onCheckForUpdates}
+          >
+            {updateChecking ? "확인 중…" : "업데이트 확인"}
+          </Button>
+          {pendingUpdate && (
+            <Button
+              size="sm"
+              variant="primary"
+              leftIcon={Download}
+              onClick={installUpdate}
+              disabled={installing}
+            >
+              {installing ? "설치 중…" : `v${pendingUpdate.version} 설치`}
+            </Button>
+          )}
+        </div>
+        <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+          새 버전이 있으면 다운로드 후 Hearth를 다시 시작합니다.
+        </p>
+      </section>
+
+      <section>
+        <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">
+          Quick Capture
+        </h3>
         <div className="flex items-center gap-3 text-[13px]">
           <span className="font-mono rounded bg-black/40 px-2 py-1">
             {display || "—"}
           </span>
           {!recording && (
-            <Button size="sm" onClick={() => setRecording(true)}>변경</Button>
+            <Button size="sm" onClick={() => setRecording(true)}>
+              변경
+            </Button>
           )}
         </div>
         {recording && (
@@ -133,9 +201,10 @@ export function SettingsGeneralSection({ active }: { active: boolean }) {
           </p>
         )}
         <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
-          어느 앱에서든 이 단축키로 한 줄 메모를 남길 수 있어요.
-          Hearth가 완전히 종료되면 작동하지 않으니 "로그인 시 자동 실행"을 켜두는 걸 추천합니다.
-          저장된 메모는 기본 노란색으로 메모 탭 상단에 쌓입니다. (combo: <code>{combo}</code>)
+          어느 앱에서든 이 단축키로 한 줄 메모를 남길 수 있어요. Hearth가 완전히
+          종료되면 작동하지 않으니 "로그인 시 자동 실행"을 켜두는 걸 추천합니다.
+          저장된 메모는 기본 노란색으로 메모 탭 상단에 쌓입니다. (combo:{" "}
+          <code>{combo}</code>)
         </p>
       </section>
     </div>

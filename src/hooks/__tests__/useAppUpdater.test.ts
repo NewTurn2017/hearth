@@ -15,11 +15,13 @@ let capturedInfoArgs: unknown[] = [];
 const infoMock = vi.fn((...args: unknown[]) => {
   capturedInfoArgs = args;
 });
+const successMock = vi.fn();
+const errorMock = vi.fn();
 
 vi.mock("../../ui/Toast", () => ({
   useToast: () => ({
-    success: vi.fn(),
-    error: vi.fn(),
+    success: successMock,
+    error: errorMock,
     info: infoMock,
   }),
 }));
@@ -31,6 +33,8 @@ beforeEach(() => {
   checkMock.mockReset();
   relaunchMock.mockReset();
   infoMock.mockReset();
+  successMock.mockReset();
+  errorMock.mockReset();
   capturedInfoArgs = [];
   localStorage.clear();
 });
@@ -52,7 +56,10 @@ describe("useAppUpdater", () => {
     });
     expect(checkMock).toHaveBeenCalledTimes(1);
     expect(infoMock).toHaveBeenCalledTimes(1);
-    const [message, opts] = capturedInfoArgs as [string, { sticky: boolean; actions: { label: string }[] }];
+    const [message, opts] = capturedInfoArgs as [
+      string,
+      { sticky: boolean; actions: { label: string }[] },
+    ];
     expect(message).toContain("0.3.0");
     expect(opts.sticky).toBe(true);
     expect(opts.actions.map((a) => a.label)).toEqual(["지금 재시작", "나중에"]);
@@ -102,6 +109,43 @@ describe("useAppUpdater", () => {
     expect(infoMock).not.toHaveBeenCalled();
   });
 
+  it("manual check reports when already up to date", async () => {
+    checkMock.mockResolvedValue(null);
+    const { result } = renderHook(() => useAppUpdater());
+    await act(async () => {
+      await result.current.checkNow();
+    });
+    expect(checkMock).toHaveBeenCalledTimes(1);
+    expect(successMock).toHaveBeenCalledWith("현재 최신 버전입니다.");
+  });
+
+  it("manual check reports failures", async () => {
+    checkMock.mockRejectedValue(new Error("offline"));
+    const { result } = renderHook(() => useAppUpdater());
+    await act(async () => {
+      await result.current.checkNow();
+    });
+    expect(errorMock).toHaveBeenCalledWith(
+      "업데이트 확인 실패: Error: offline",
+    );
+  });
+
+  it("manual check ignores a dismissed version and makes it pending again", async () => {
+    localStorage.setItem("updater.dismissedVersion", "0.3.0");
+    checkMock.mockResolvedValue({
+      version: "0.3.0",
+      downloadAndInstall: vi.fn(),
+      close: vi.fn().mockResolvedValue(undefined),
+    });
+    const { result } = renderHook(() => useAppUpdater());
+    await act(async () => {
+      await result.current.checkNow();
+    });
+    expect(result.current.pending?.version).toBe("0.3.0");
+    expect(localStorage.getItem("updater.dismissedVersion")).toBeNull();
+    expect(infoMock).toHaveBeenCalledTimes(1);
+  });
+
   it("confirm action downloads + relaunches", async () => {
     const downloadAndInstall = vi.fn().mockResolvedValue(undefined);
     checkMock.mockResolvedValue({
@@ -113,7 +157,10 @@ describe("useAppUpdater", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30_001);
     });
-    const [, opts] = capturedInfoArgs as [string, { actions: { label: string; run: () => Promise<void> }[] }];
+    const [, opts] = capturedInfoArgs as [
+      string,
+      { actions: { label: string; run: () => Promise<void> }[] },
+    ];
     const confirm = opts.actions.find((a) => a.label === "지금 재시작")!;
     await act(async () => {
       await confirm.run();
@@ -133,7 +180,10 @@ describe("useAppUpdater", () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(30_001);
     });
-    const [, opts] = capturedInfoArgs as [string, { actions: { label: string; run: () => Promise<void> }[] }];
+    const [, opts] = capturedInfoArgs as [
+      string,
+      { actions: { label: string; run: () => Promise<void> }[] },
+    ];
     const dismiss = opts.actions.find((a) => a.label === "나중에")!;
     await act(async () => {
       await dismiss.run();

@@ -35,7 +35,8 @@ Hearth는 개인 프로젝트 · 스티키 메모 · 일정을 한 곳에서 관
 - **일정 캘린더** — `react-big-calendar` 기반 월/주/일 뷰, 드래그로 이동
 - **일정 알림** — 각 일정에 "알림 받기" 토글. "5분 전" / "정각" 오프셋 독립 선택. 알림이 켜진 일정은 캘린더에서 🔔 아이콘으로 표시
 - **로그인 시 자동실행** — 설정 → 일반에서 켜면 로그인 직후 백그라운드로 시작. Dock 클릭 시 창 복원. 자동실행 ON이면 알림이 로그인 이후 안정적으로 발송
-- **통합 설정 모달** — 일반(자동실행·알림) · AI · 백업 · 카테고리 탭. 백업 위치를 사용자가 직접 지정 가능
+- **업데이트** — 앱 시작 후 자동 확인 + 설정 → 일반의 수동 **업데이트 확인**. 새 버전이 있으면 토스트/설정 화면에서 바로 설치 후 재시작
+- **통합 설정 모달** — 일반(자동실행·알림·업데이트·Quick Capture) · 테마 · AI · 백업/가져오기 · 카테고리 탭. 백업 위치를 사용자가 직접 지정 가능
 - **AI 명령 팔레트 (선택)** — OpenAI 를 키로 연결하면 ⌘K 에서 자연어 명령 사용. 키 없으면 AI 만 비활성, 나머지는 그대로 동작
 - **로컬 저장** — 모든 데이터는 SQLite 한 파일(`~/Library/Application Support/com.newturn2017.hearth/`)에
 
@@ -65,6 +66,8 @@ curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/inst
 ### 업데이트
 
 앱을 켜 두면 30초 뒤부터, 그리고 이후 24시간마다 새 버전을 자동으로 확인합니다. 새 버전이 있으면 우측 하단에 토스트가 뜨고, **지금 재시작** 을 누르면 2-3초 안에 새 버전으로 교체됩니다. **나중에** 를 누르면 해당 버전은 다음 릴리즈가 나오기 전까지 다시 조르지 않습니다.
+
+수동으로 확인하려면 상단 바 **설정 → 일반 → 업데이트 확인** 을 누르세요. 최신 버전이면 안내 토스트가 뜨고, 새 버전이 있으면 같은 화면에 `vX.Y.Z 설치` 버튼이 나타납니다.
 
 ### Windows / Linux
 
@@ -175,7 +178,7 @@ cd src-tauri && cargo test
 npm test
 ```
 
-백엔드 21개 단위/통합 테스트, 프론트엔드 19개 테스트가 모두 로컬에서 API 호출 없이 동작합니다.
+백엔드 33개 단위/통합 테스트, 프론트엔드 79개 테스트가 모두 로컬에서 API 호출 없이 동작합니다.
 
 ### OpenAI tool-calling 정확도 (유료 · 선택)
 
@@ -278,8 +281,9 @@ npm run tauri build
 ┌────────────────────────────────────────────────────────┐
 │  React 19 · Tailwind 4 · cmdk command palette          │
 │  ├── ContextMenu primitive + useContextMenu hook       │
-│  ├── SettingsDialog (일반 · AI · 백업 · 카테고리 tabs)     │
+│  ├── SettingsDialog (일반 · 테마 · AI · 백업 · 카테고리 tabs) │
 │  ├── NewMemoDialog + MemoProjectPickerDialog           │
+│  ├── useAppUpdater (auto + manual update checks)       │
 │  └── useCategories (reactive store, event-driven)      │
 └──────────────┬─────────────────────────────────────────┘
                │ Tauri IPC (invoke)

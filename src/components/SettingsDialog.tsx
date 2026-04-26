@@ -13,6 +13,7 @@ import { SettingsThemeSection } from "./SettingsThemeSection";
 import { SettingsAiSection } from "./SettingsAiSection";
 import { SettingsBackupSection } from "./SettingsBackupSection";
 import { SettingsCategoriesSection } from "./SettingsCategoriesSection";
+import type { PendingUpdate } from "../hooks/useAppUpdater";
 
 type TabKey = "general" | "theme" | "ai" | "backup" | "categories";
 
@@ -28,10 +29,16 @@ export function SettingsDialog({
   open,
   onClose,
   initialTab = "general",
+  pendingUpdate,
+  updateChecking = false,
+  onCheckForUpdates,
 }: {
   open: boolean;
   onClose: () => void;
   initialTab?: TabKey;
+  pendingUpdate?: PendingUpdate | null;
+  updateChecking?: boolean;
+  onCheckForUpdates?: () => Promise<void>;
 }) {
   const [tab, setTab] = useState<TabKey>(initialTab);
 
@@ -71,7 +78,7 @@ export function SettingsDialog({
               "px-3 h-9 text-[13px] -mb-px border-b-2 transition-colors",
               tab === t.key
                 ? "border-[var(--color-brand-hi)] text-[var(--color-text-hi)]"
-                : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]",
             )}
           >
             {t.label}
@@ -82,7 +89,12 @@ export function SettingsDialog({
       {/* Each section stays mounted; only visibility flips. `active` tells
           the section it is the one in focus so it can refetch. */}
       <div className={tab === "general" ? "" : "hidden"}>
-        <SettingsGeneralSection active={tab === "general"} />
+        <SettingsGeneralSection
+          active={tab === "general"}
+          pendingUpdate={pendingUpdate ?? null}
+          updateChecking={updateChecking}
+          onCheckForUpdates={onCheckForUpdates}
+        />
       </div>
       <div className={tab === "theme" ? "" : "hidden"}>
         <SettingsThemeSection />
