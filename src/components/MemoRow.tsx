@@ -64,7 +64,7 @@ export function MemoRow({
                 "w-5 h-5 rounded-full border",
                 c.name === memo.color
                   ? "border-[var(--color-brand-hi)]"
-                  : "border-[var(--color-border)]"
+                  : "border-[var(--color-border)]",
               )}
               style={{ backgroundColor: c.bg }}
             />
@@ -88,7 +88,7 @@ export function MemoRow({
     },
   ];
 
-  const firstLine = (memo.content || "").split("\n")[0] || "(비어 있음)";
+  const preview = memo.content || "(비어 있음)";
 
   return (
     <div
@@ -96,7 +96,7 @@ export function MemoRow({
       onContextMenu={openMenu}
       className={cn(
         "group flex items-start gap-2 rounded-md px-2 py-1.5 text-[12.5px] cursor-pointer hover:bg-[var(--color-surface-2)]",
-        highlighted && "find-highlight"
+        highlighted && "find-highlight",
       )}
     >
       <span
@@ -127,7 +127,9 @@ export function MemoRow({
             className="w-full bg-[var(--color-surface-1)] border border-[var(--color-border)] rounded px-2 py-1 outline-none text-[12.5px] resize-y min-h-[60px] text-[var(--color-text-hi)]"
           />
         ) : (
-          <p className="truncate text-[var(--color-text)]">{firstLine}</p>
+          <p className="line-clamp-2 whitespace-pre-wrap break-words leading-snug text-[var(--color-text)]">
+            {preview}
+          </p>
         )}
       </div>
       <ContextMenu

@@ -62,11 +62,26 @@ P2=$("$HEARTH" project create "Side Experiment" --priority P2 | jq '.data.id')
 "$HEARTH" schedule create "$YESTERDAY"              --description "overdue cleanup" >/dev/null
 echo "   seeded projects #$P1 (P0), #$P2 (P2), 3 memos, 2 schedules"
 
-echo "== hearth-today-brief read recipes =="
+echo "== hearth integrated router recipes =="
+assert_ok "project list" "$("$HEARTH" project list)"
+assert_ok "search project" "$("$HEARTH" search "Alpha" --scope project --limit 5)"
+ROUTER_PROJECT=$("$HEARTH" project create "Router Skill Project" --priority P2 --evaluation "created by integrated skill smoke" | jq '.data.id')
+[[ -n "$ROUTER_PROJECT" && "$ROUTER_PROJECT" != "null" ]] || { echo "router project id missing" >&2; exit 1; }
+assert_ok "project update" "$("$HEARTH" project update "$ROUTER_PROJECT" --priority P1)"
+ROUTER_MEMO=$("$HEARTH" memo create "Router Skill Project follow-up memo" --color yellow --project "$ROUTER_PROJECT" | jq '.data.id')
+[[ -n "$ROUTER_MEMO" && "$ROUTER_MEMO" != "null" ]] || { echo "router memo id missing" >&2; exit 1; }
+assert_ok "memo update" "$("$HEARTH" memo update "$ROUTER_MEMO" --color blue)"
+ROUTER_SCHEDULE=$("$HEARTH" schedule create "$TODAY" --time 15:00 --description "router skill smoke" --notes "integrated skill recipe" | jq '.data.id')
+[[ -n "$ROUTER_SCHEDULE" && "$ROUTER_SCHEDULE" != "null" ]] || { echo "router schedule id missing" >&2; exit 1; }
+assert_ok "schedule list day" "$("$HEARTH" schedule list --from "$TODAY" --to "$TODAY")"
+assert_ok "schedule update" "$("$HEARTH" schedule update "$ROUTER_SCHEDULE" --time 15:30 --remind-start true)"
+echo "PASS: integrated router create/update recipes"
+
+echo "== hearth today/overdue read recipes =="
 assert_ok "today"   "$("$HEARTH" today)"
 assert_ok "overdue" "$("$HEARTH" overdue)"
 
-echo "== hearth-project-scan read + mutation =="
+echo "== hearth project scan read + mutation recipes =="
 SCAN=$("$HEARTH" project scan "$SCANDIR")
 assert_ok "project scan" "$SCAN"
 UNREG=$(echo "$SCAN" | jq '[.data[] | select(.already_registered == false)] | length')
@@ -81,7 +96,7 @@ AFTER=$("$HEARTH" project list | jq '.data | length')
 [[ $((BEFORE + 2)) -eq "$AFTER" ]] || { echo "expected +2 projects ($BEFORE -> $AFTER)" >&2; exit 1; }
 echo "PASS: project count $BEFORE -> $AFTER"
 
-echo "== hearth-memo-organize read + mutation =="
+echo "== hearth memo organize read + mutation recipes =="
 MEMO_LIST=$("$HEARTH" memo list)
 assert_ok "memo list" "$MEMO_LIST"
 MID=$(echo "$MEMO_LIST" | jq -r '.data[] | select(.content == "Alpha Dashboard sprint notes") | .id')

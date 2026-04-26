@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bump the Hearth version in every manifest atomically.
-# Handles the post-workspace-split layout: 1 npm manifest + 1 Tauri config
+# Handles the post-workspace-split layout: npm manifests + 1 Tauri config
 # + 3 Cargo crate manifests.
 #
 # Usage: ./scripts/bump-version.sh 0.8.0
@@ -38,6 +38,13 @@ for f in package.json src-tauri/app/tauri.conf.json; do
   mv "$tmp" "$f"
 done
 
+if [[ -f package-lock.json ]]; then
+  tmp="$(mktemp)"
+  chmod 644 "$tmp"
+  jq --arg v "$NEW" '.version = $v | .packages[""].version = $v' package-lock.json > "$tmp"
+  mv "$tmp" package-lock.json
+fi
+
 # --- Cargo manifests (each crate has a [package] block with version) ---
 
 bump_cargo() {
@@ -66,6 +73,7 @@ done
 
 echo "Bumped to $NEW in:"
 echo "  package.json"
+echo "  package-lock.json"
 echo "  src-tauri/app/tauri.conf.json"
 echo "  src-tauri/app/Cargo.toml"
 echo "  src-tauri/core/Cargo.toml"

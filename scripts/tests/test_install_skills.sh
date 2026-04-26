@@ -22,8 +22,12 @@ code=$("$INSTALL" >/dev/null 2>&1; echo $?)
 [[ "$code" == "64" ]] || fail "expected exit 64 when --into omitted, got $code"
 pass "missing --into exits 64"
 
-# 2. Happy path: install links each skills/* as symlink into target.
+# 2. Happy path: install links only active skills and removes legacy links.
 TARGET="$TMP/target"
+mkdir -p "$TARGET"
+for legacy in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+  ln -s /tmp "$TARGET/$legacy"
+done
 "$INSTALL" --into "$TARGET" >"$TMP/install.log" 2>&1 \
   || { cat "$TMP/install.log" >&2; fail "install failed"; }
 
@@ -35,7 +39,10 @@ for skill in "$REPO_ROOT/skills"/*/; do
   expected="$(cd "$skill" && pwd)"
   [[ "$resolved" == "$expected" ]] || fail "$link -> $resolved (expected $expected)"
 done
-pass "symlinks created for all skills"
+for legacy in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+  [[ ! -e "$TARGET/$legacy" ]] || fail "legacy skill link still present: $legacy"
+done
+pass "active skill symlinks created and legacy links removed"
 
 # 3. Re-running install is idempotent (replaces symlinks, no error).
 "$INSTALL" --into "$TARGET" >/dev/null 2>&1 || fail "second install errored"

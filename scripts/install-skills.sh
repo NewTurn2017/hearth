@@ -6,6 +6,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 SKILLS_DIR="$REPO_ROOT/skills"
+LEGACY_SKILLS=(
+  hearth-today-brief
+  hearth-project-scan
+  hearth-memo-organize
+)
 
 INTO=""
 REMOVE=0
@@ -51,8 +56,28 @@ fi
 mkdir -p "$INTO"
 
 count=0
+legacy_removed=0
+cleanup_legacy_links() {
+  local name target
+  for name in "${LEGACY_SKILLS[@]}"; do
+    target="$INTO/$name"
+    if [[ -L "$target" ]]; then
+      rm "$target"
+      echo "removed legacy: $target"
+      if [[ $REMOVE -eq 1 ]]; then
+        count=$((count+1))
+      else
+        legacy_removed=$((legacy_removed+1))
+      fi
+    fi
+  done
+}
+
+cleanup_legacy_links
+
 for skill_path in "$SKILLS_DIR"/*/; do
   [[ -d "$skill_path" ]] || continue
+  [[ -f "$skill_path/SKILL.md" ]] || continue
   name="$(basename "$skill_path")"
   target="$INTO/$name"
 
@@ -81,5 +106,8 @@ if [[ $REMOVE -eq 1 ]]; then
   echo "Done. Removed $count symlink(s) from $INTO"
 else
   echo "Done. Installed $count skill(s) into $INTO"
-  echo "Verify: ls -l \"$INTO\" | grep hearth-"
+  if [[ "$legacy_removed" -gt 0 ]]; then
+    echo "Also removed $legacy_removed legacy skill symlink(s)."
+  fi
+  echo "Verify: ls -l \"$INTO\" | grep hearth"
 fi

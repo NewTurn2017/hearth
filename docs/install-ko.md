@@ -9,21 +9,22 @@ curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/inst
 ```
 
 이 명령이 하는 일:
+
 1. 플랫폼 감지 (`Darwin-arm64` → macOS Apple Silicon, `Linux-x86_64` → 리눅스).
 2. 최신 GitHub Release 버전을 조회.
 3. `hearth` 바이너리를 `~/.local/bin/hearth` 로 설치.
-4. 스킬 3종 (`hearth-today-brief`, `hearth-project-scan`, `hearth-memo-organize`) 을 `~/.local/share/hearth/skills-<version>/` 로 압축 해제.
+4. 통합 `hearth` 스킬을 `~/.local/share/hearth/skills-<version>/` 로 압축 해제하고, 이전 버전의 개별 Hearth 스킬 심링크가 남아 있으면 정리합니다.
 5. 감지된 에이전트 호스트 디렉토리 (`~/.claude/skills`, `~/.codex/skills`) 로 심링크 생성.
 6. `hearth db path` 로 동작 확인.
 
 ## 환경 변수
 
-| 변수 | 기본값 | 용도 |
-|---|---|---|
-| `HEARTH_VERSION` | `<latest>` | 특정 태그 고정 (예: `v0.8.0`) |
-| `HEARTH_BIN_DIR` | `~/.local/bin` | 바이너리 설치 경로 |
-| `HEARTH_SKILLS_DIR` | 자동 감지 | 스킬 심링크 경로. 하나만 지원; 여러 곳 필요하면 스크립트 여러 번 실행 |
-| `HEARTH_STAGING_DIR` | `~/.local/share/hearth` | 스킬 버전별 staging 경로 |
+| 변수                 | 기본값                  | 용도                                                                  |
+| -------------------- | ----------------------- | --------------------------------------------------------------------- |
+| `HEARTH_VERSION`     | `<latest>`              | 특정 태그 고정 (예: `v0.8.0`)                                         |
+| `HEARTH_BIN_DIR`     | `~/.local/bin`          | 바이너리 설치 경로                                                    |
+| `HEARTH_SKILLS_DIR`  | 자동 감지               | 스킬 심링크 경로. 하나만 지원; 여러 곳 필요하면 스크립트 여러 번 실행 |
+| `HEARTH_STAGING_DIR` | `~/.local/share/hearth` | 스킬 버전별 staging 경로                                              |
 
 예시:
 

@@ -33,15 +33,13 @@ Symlink the skill folders into your agent host's skills directory:
 
 The script requires `--into` explicitly (no silent default) and refuses to overwrite non-symlink files that already exist at the target.
 
-## Skills shipped in v1
+## Skills shipped
 
-| Name | Kind | What it does |
-|---|---|---|
-| `hearth-today-brief` | read-only | 3–5문장 한국어 브리핑 (오늘 일정 + P0 + 최근 메모 + 연체 항목) |
-| `hearth-project-scan` | read + mutate-on-approval | 디렉토리 스캔 → 미등록 폴더를 프로젝트로 등록 제안 |
-| `hearth-memo-organize` | read + mutate-on-approval | 메모를 프로젝트로 보수적 재연결 제안 |
+| Name     | Kind                      | What it does                                                                   |
+| -------- | ------------------------- | ------------------------------------------------------------------------------ |
+| `hearth` | read + mutate-on-approval | 프로젝트·일정·메모·검색·브리핑·폴더 스캔·메모 정리를 자연어 의도에 따라 라우팅 |
 
-Mutating skills always propose a plan and wait for explicit user approval before running any `hearth ... create|update|delete`.
+`hearth` is the only exposed agent skill. Mutating workflows always propose a plan and wait for explicit user approval before running any `hearth ... create|update|delete`.
 
 ## Smoke test
 

@@ -85,7 +85,7 @@ HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
 [[ -x "$BIN_DIR3/hearth" ]] || fail "binary not installed at $BIN_DIR3/hearth"
 hearth_out=$("$BIN_DIR3/hearth" db path)
 echo "$hearth_out" | grep -q '"ok":true' || fail "installed binary did not run: $hearth_out"
-for skill in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+for skill in hearth; do
   link="$SKILLS_DIR3/$skill"
   [[ -L "$link" ]] || fail "$link not a symlink"
   resolved="$(readlink "$link")"
@@ -93,7 +93,10 @@ for skill in hearth-today-brief hearth-project-scan hearth-memo-organize; do
     || fail "$link -> $resolved (expected staging v0.0.0)"
   [[ -f "$resolved/SKILL.md" ]] || fail "resolved skill dir missing SKILL.md: $resolved"
 done
-pass "happy-path install landed binary + 3 skill symlinks"
+for legacy in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+  [[ ! -e "$SKILLS_DIR3/$legacy" ]] || fail "legacy skill should not be installed: $legacy"
+done
+pass "happy-path install landed binary + single hearth skill symlink"
 
 # 6. Re-running install is idempotent.
 HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
@@ -117,6 +120,9 @@ HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
   HEARTH_SKILLS_DIR="$SKILLS_DIR4" \
   HEARTH_STAGING_DIR="$STAGING_DIR4" \
   "$INSTALL" >/dev/null 2>&1 || fail "uninstall-setup install errored"
+for legacy in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+  ln -s "$STAGING_DIR4/skills-v0.0.0/$legacy" "$SKILLS_DIR4/$legacy"
+done
 ln -s /tmp "$SKILLS_DIR4/unrelated-link"
 echo "plain file" > "$SKILLS_DIR4/unrelated-file"
 
@@ -129,7 +135,7 @@ HEARTH_PLATFORM_OVERRIDE="Darwin-arm64" \
   "$INSTALL" --uninstall >/dev/null 2>&1 || fail "--uninstall errored"
 
 [[ ! -e "$BIN_DIR4/hearth" ]] || fail "--uninstall did not remove binary"
-for skill in hearth-today-brief hearth-project-scan hearth-memo-organize; do
+for skill in hearth hearth-today-brief hearth-project-scan hearth-memo-organize; do
   [[ ! -e "$SKILLS_DIR4/$skill" ]] || fail "--uninstall left skill symlink: $skill"
 done
 [[ -L "$SKILLS_DIR4/unrelated-link" ]] || fail "--uninstall removed unrelated symlink"

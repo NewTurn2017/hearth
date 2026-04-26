@@ -23,6 +23,11 @@ API_LATEST="https://api.github.com/repos/$REPO_SLUG/releases/latest"
 
 DEFAULT_BIN_DIR="$HOME/.local/bin"
 DEFAULT_STAGING_DIR="$HOME/.local/share/hearth"
+LEGACY_SKILLS=(
+  hearth-today-brief
+  hearth-project-scan
+  hearth-memo-organize
+)
 
 # ---- parsed args ----
 MODE="install"     # install | uninstall
@@ -230,8 +235,16 @@ install_mode() {
   local dir entry name link
   for dir in "${SKILLS_DIRS[@]}"; do
     mkdir -p "$dir"
+    for name in "${LEGACY_SKILLS[@]}"; do
+      link="$dir/$name"
+      if [[ -L "$link" ]]; then
+        rm -f "$link"
+        log "  removed legacy skill link $link"
+      fi
+    done
     for entry in "$stage"/*/; do
       [[ -d "$entry" ]] || continue
+      [[ -f "$entry/SKILL.md" ]] || continue
       name="$(basename "$entry")"
       link="$dir/$name"
       if [[ -e "$link" && ! -L "$link" ]]; then
@@ -258,7 +271,7 @@ install_mode() {
 }
 
 uninstall_mode() {
-  local removed=0 link target dir
+  local removed=0 link target dir name
 
   # Invariant: never uninstall with an empty staging root — the case pattern
   # below would degrade to "/skills-v*/*" and could match unrelated symlinks.
@@ -274,6 +287,14 @@ uninstall_mode() {
   # 2. Remove only symlinks pointing into our staging tree.
   for dir in "${SKILLS_DIRS[@]}"; do
     [[ -d "$dir" ]] || continue
+    for name in "${LEGACY_SKILLS[@]}"; do
+      link="$dir/$name"
+      if [[ -L "$link" ]]; then
+        rm -f "$link"
+        log "Removed legacy symlink: $link"
+        removed=$((removed+1))
+      fi
+    done
     for link in "$dir"/*; do
       [[ -L "$link" ]] || continue
       target="$(readlink "$link")"
