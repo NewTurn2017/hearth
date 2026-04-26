@@ -1,0 +1,72 @@
+{
+  "locale": "en",
+  "today": "2026-04-26",
+  "categories": [
+    { "name": "Active",  "color": "#22c55e" },
+    { "name": "Side",    "color": "#f97316" },
+    { "name": "Lab",     "color": "#a855f7" },
+    { "name": "Tools",   "color": "#6b7280" },
+    { "name": "Lecture", "color": "#3b82f6" }
+  ],
+  "projects": [
+    {
+      "priority": "P1",
+      "number": 1,
+      "name": "Hearth 1.0 — Mac App Store launch",
+      "category": "Active",
+      "evaluation": "Sprint Day 0 of 21. Submit Day 14-15, manual release Day 21 (May 17)."
+    },
+    {
+      "priority": "P2",
+      "number": 2,
+      "name": "Driven by Claude Code via skills/hearth",
+      "category": "Lab",
+      "evaluation": "Auto-created by an AI agent from the CC terminal. Refreshes Hearth tabs in real time."
+    },
+    {
+      "priority": "P2",
+      "number": 3,
+      "name": "Landing site — hearth.codewithgenie.com",
+      "category": "Side",
+      "evaluation": "Privacy + Support pages must return 200 before Day 14 metadata input."
+    },
+    {
+      "priority": "P3",
+      "number": 4,
+      "name": "Weekly review & inbox triage",
+      "category": "Tools",
+      "evaluation": "Friday 4pm cadence. Skim memos, archive done projects, replan next week."
+    },
+    {
+      "priority": "P3",
+      "number": 5,
+      "name": "Reading list — local-first software",
+      "category": "Lecture",
+      "evaluation": "Ink & Switch essay, Martin Kleppmann talks, CRDT primers."
+    }
+  ],
+  "memos": [
+    { "project": 1, "color": "amber",  "content": "App Store screenshots — 5 cuts, 2880x1800, dark theme, amber accent #d97706." },
+    { "project": 1, "color": "yellow", "content": "Subtitle locked: 'Local-first AI agent workspace' (30 chars)." },
+    { "project": 1, "color": "pink",   "content": "Review Notes: keep 'evaluation period' wording, never 'free trial'." },
+    { "project": 2, "color": "amber",  "content": "Created by Claude Code via skills/hearth — DB write auto-refreshed every open tab." },
+    { "project": 2, "color": "blue",   "content": "Try: 'Summarize today's PR work into a new project with a review meeting tomorrow at 3pm.'" },
+    { "project": 3, "color": "green",  "content": "Privacy policy: Data Not Collected. SQLite stays on the user's Mac, no remote server." },
+    { "project": 3, "color": "yellow", "content": "Marketing URL hearth.codewithgenie.com — single-page, dark theme, amber CTA." },
+    { "project": 4, "color": "pink",   "content": "Inbox zero ritual: Cmd+F 'todo', batch into projects, archive everything older than 14 days." },
+    { "project": 4, "color": "blue",   "content": "Quick Capture (Ctrl+Shift+H) is the single source of truth for fleeting thoughts." },
+    { "project": 5, "color": "purple", "content": "Read 'Local-first software' (Ink & Switch, 2019) — seven ideals checklist." },
+    { "project": 5, "color": "purple", "content": "Watch Martin Kleppmann's CRDT talk before Tuesday's reading group." },
+    { "project": null, "color": "amber", "content": "Inbox: hero shot for App Preview should hold the CC -> Hearth split for ~7s." }
+  ],
+  "schedules": [
+    { "date": "2026-04-26", "time": "10:00", "description": "Sprint Day 0 — finalize submission spec",   "location": "Home office",      "notes": "Lock subtitle, keywords, screenshot copy." },
+    { "date": "2026-04-26", "time": "15:00", "description": "Capture App Store screenshots (en + ko)", "location": "Studio",           "notes": "Dummy DB only. Live DB is backed up at ~/.hearth-backup-pre-screenshots-20260426/." },
+    { "date": "2026-04-26", "time": "20:00", "description": "Reading group — local-first software",   "location": "Discord #hearth",  "notes": "Bring CRDT primer notes." },
+    { "date": "2026-04-27", "time": "09:30", "description": "Pair with Claude Code on skills/hearth",  "location": "Terminal",         "notes": "Try the 'summarize today's PRs' demo end-to-end." },
+    { "date": "2026-04-27", "time": "14:00", "description": "Landing page review — hearth.codewithgenie.com", "location": "Browser",   "notes": "/privacy and /support must respond 200." },
+    { "date": "2026-04-28", "time": "11:00", "description": "App Preview render in HyperFrames",       "location": "Studio",           "notes": "30s, 1920x1080, hero moment 0:18-0:25." },
+    { "date": "2026-04-29", "time": "16:00", "description": "Weekly review",                           "location": "Cafe",             "notes": "Skim memos, plan Day 5-7." },
+    { "date": "2026-05-17", "time": "09:00", "description": "Hearth 1.0 — Manual Release on App Store", "location": "Worldwide",       "notes": "Click 'Release this version' on App Store Connect." }
+  ]
+}

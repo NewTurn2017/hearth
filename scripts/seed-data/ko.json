@@ -1,0 +1,72 @@
+{
+  "locale": "ko",
+  "today": "2026-04-26",
+  "categories": [
+    { "name": "Active",  "color": "#22c55e" },
+    { "name": "Side",    "color": "#f97316" },
+    { "name": "Lab",     "color": "#a855f7" },
+    { "name": "Tools",   "color": "#6b7280" },
+    { "name": "Lecture", "color": "#3b82f6" }
+  ],
+  "projects": [
+    {
+      "priority": "P1",
+      "number": 1,
+      "name": "Hearth 1.0 — Mac App Store 출시",
+      "category": "Active",
+      "evaluation": "Sprint Day 0/21. Day 14-15 제출, Day 21(5월 17일) 수동 릴리스."
+    },
+    {
+      "priority": "P2",
+      "number": 2,
+      "name": "Claude Code가 skills/hearth로 만든 프로젝트",
+      "category": "Lab",
+      "evaluation": "AI 에이전트가 터미널에서 자동 생성. 열려 있는 Hearth 탭이 실시간 새로고침."
+    },
+    {
+      "priority": "P2",
+      "number": 3,
+      "name": "랜딩 페이지 — hearth.codewithgenie.com",
+      "category": "Side",
+      "evaluation": "Day 14 메타데이터 입력 전까지 Privacy/Support 200 OK 필수."
+    },
+    {
+      "priority": "P3",
+      "number": 4,
+      "name": "주간 리뷰 & 인박스 정리",
+      "category": "Tools",
+      "evaluation": "매주 금요일 오후 4시. 메모 정리, 완료 프로젝트 아카이브, 다음 주 계획."
+    },
+    {
+      "priority": "P3",
+      "number": 5,
+      "name": "리딩 리스트 — 로컬 퍼스트 소프트웨어",
+      "category": "Lecture",
+      "evaluation": "Ink & Switch 에세이, Martin Kleppmann 강연, CRDT 입문서."
+    }
+  ],
+  "memos": [
+    { "project": 1, "color": "amber",  "content": "스크린샷 5컷: 2880x1800, 다크 테마, 액센트 컬러 #d97706." },
+    { "project": 1, "color": "yellow", "content": "Subtitle 확정: '로컬 AI 에이전트 워크스페이스' (14자)." },
+    { "project": 1, "color": "pink",   "content": "Review Notes: 'free trial' 대신 '14일 사용 기간' 문구 유지." },
+    { "project": 2, "color": "amber",  "content": "skills/hearth 통해 Claude Code가 생성 — DB 변경 시 모든 탭 자동 새로고침." },
+    { "project": 2, "color": "blue",   "content": "예시: '오늘 작업한 PR 새 프로젝트로 정리하고 내일 오후 3시 리뷰 회의 잡아줘'." },
+    { "project": 3, "color": "green",  "content": "개인정보처리방침: 수집 항목 없음. SQLite는 사용자 Mac에만 저장." },
+    { "project": 3, "color": "yellow", "content": "Marketing URL hearth.codewithgenie.com — 다크 테마 단일 페이지, 앰버 CTA." },
+    { "project": 4, "color": "pink",   "content": "인박스 제로 의식: Cmd+F로 'todo' 검색 → 프로젝트로 묶기 → 14일 지난 항목 아카이브." },
+    { "project": 4, "color": "blue",   "content": "Quick Capture (Ctrl+Shift+H)가 떠오른 생각의 단일 진입점." },
+    { "project": 5, "color": "purple", "content": "'Local-first software' (Ink & Switch, 2019) — 7개 이상 체크리스트 정독." },
+    { "project": 5, "color": "purple", "content": "화요일 리딩 그룹 전 Martin Kleppmann CRDT 강연 시청." },
+    { "project": null, "color": "amber", "content": "인박스: App Preview 히어로 컷에서 CC ↔ Hearth 분할을 7초 정도 유지." }
+  ],
+  "schedules": [
+    { "date": "2026-04-26", "time": "10:00", "description": "Sprint Day 0 — 제출 스펙 확정",         "location": "홈 오피스",       "notes": "Subtitle, 키워드, 스크린샷 카피 락인." },
+    { "date": "2026-04-26", "time": "15:00", "description": "App Store 스크린샷 캡처 (en + ko)",     "location": "스튜디오",        "notes": "더미 DB만 사용. 실 DB는 ~/.hearth-backup-pre-screenshots-20260426/ 에 백업됨." },
+    { "date": "2026-04-26", "time": "20:00", "description": "리딩 그룹 — 로컬 퍼스트 소프트웨어",   "location": "Discord #hearth", "notes": "CRDT 입문 노트 챙기기." },
+    { "date": "2026-04-27", "time": "09:30", "description": "Claude Code와 skills/hearth 페어 작업", "location": "터미널",          "notes": "'오늘 PR 정리' 데모 end-to-end 확인." },
+    { "date": "2026-04-27", "time": "14:00", "description": "랜딩 페이지 점검 — hearth.codewithgenie.com", "location": "브라우저",  "notes": "/privacy, /support 200 OK 필수." },
+    { "date": "2026-04-28", "time": "11:00", "description": "HyperFrames로 App Preview 렌더",        "location": "스튜디오",        "notes": "30초, 1920x1080, 히어로 컷 0:18~0:25." },
+    { "date": "2026-04-29", "time": "16:00", "description": "주간 리뷰",                              "location": "카페",            "notes": "메모 정리하고 Day 5-7 계획." },
+    { "date": "2026-05-17", "time": "09:00", "description": "Hearth 1.0 — App Store 수동 릴리스",     "location": "전 세계",         "notes": "App Store Connect에서 'Release this version' 클릭." }
+  ]
+}
