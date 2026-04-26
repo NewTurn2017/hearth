@@ -13,9 +13,20 @@ import { SettingsThemeSection } from "./SettingsThemeSection";
 import { SettingsAiSection } from "./SettingsAiSection";
 import { SettingsBackupSection } from "./SettingsBackupSection";
 import { SettingsCategoriesSection } from "./SettingsCategoriesSection";
+import { SettingsIntegrationsSection } from "./SettingsIntegrationsSection";
+import { SettingsLicenseSection } from "./SettingsLicenseSection";
+import { SettingsAboutSection } from "./SettingsAboutSection";
 import type { PendingUpdate } from "../hooks/useAppUpdater";
 
-type TabKey = "general" | "theme" | "ai" | "backup" | "categories";
+type TabKey =
+  | "general"
+  | "theme"
+  | "ai"
+  | "backup"
+  | "categories"
+  | "integrations"
+  | "license"
+  | "about";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "general", label: "일반" },
@@ -23,6 +34,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "ai", label: "AI" },
   { key: "backup", label: "백업/가져오기" },
   { key: "categories", label: "카테고리" },
+  { key: "integrations", label: "통합" },
+  { key: "license", label: "라이선스" },
+  { key: "about", label: "정보" },
 ];
 
 export function SettingsDialog({
@@ -107,6 +121,15 @@ export function SettingsDialog({
       </div>
       <div className={tab === "categories" ? "" : "hidden"}>
         <SettingsCategoriesSection />
+      </div>
+      <div className={tab === "integrations" ? "" : "hidden"}>
+        <SettingsIntegrationsSection />
+      </div>
+      <div className={tab === "license" ? "" : "hidden"}>
+        <SettingsLicenseSection />
+      </div>
+      <div className={tab === "about" ? "" : "hidden"}>
+        <SettingsAboutSection active={tab === "about"} />
       </div>
 
       <div className="flex justify-end mt-6">
