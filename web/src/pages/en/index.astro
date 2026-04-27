@@ -7,28 +7,43 @@ import Base from '../../layouts/Base.astro';
   locale="en"
   path="/"
 >
-  <section data-section="hero">
-    <h1>A local-first workspace your AI agent can drive.</h1>
-    <p>Projects · Memos · Schedule, in one calm place.</p>
-    <p>
-      <a href="https://apps.apple.com/app/hearth/id0000000000">Get it on the Mac App Store</a>
-      <a href="/en/install/cli">Install CLI</a>
-    </p>
+  <section class="mx-auto max-w-3xl px-6 py-24 text-center">
+    <h1 class="text-5xl font-semibold tracking-tight md:text-6xl">A local-first workspace<br/>your AI agent can drive.</h1>
+    <p class="mt-6 text-lg text-ink/70">Projects · Memos · Schedule, in one calm place.</p>
+    <div class="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
+      <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-full bg-ink px-6 py-3 text-paper">Get it on the Mac App Store</a>
+      <a href="/en/install/cli" class="inline-block rounded-full border border-ink/20 px-6 py-3">Install CLI</a>
+    </div>
   </section>
-  <section data-section="differentiator">
-    <h2>Drive it from Claude Code.</h2>
-    <p>Hearth ships with a real interface for agents. Say what you want; the <code>skills/hearth</code> skill dispatches <code>hearth-cli</code>; the open Hearth window refreshes in real time.</p>
+
+  <section class="bg-ink text-paper">
+    <div class="mx-auto max-w-4xl px-6 py-24">
+      <h2 class="text-3xl font-semibold md:text-4xl">Drive it from Claude Code.</h2>
+      <p class="mt-4 text-paper/80">Hearth ships with a real interface for agents. Say what you want; the <code class="rounded bg-paper/10 px-1">skills/hearth</code> skill dispatches <code class="rounded bg-paper/10 px-1">hearth-cli</code>; the open Hearth window refreshes in real time.</p>
+      <div class="mt-8 aspect-video w-full rounded-lg bg-paper/5">
+        <!-- Phase 6 video embed -->
+      </div>
+    </div>
   </section>
-  <section data-section="features">
-    <h2>Everything in one calm place.</h2>
-    <ul>
+
+  <section class="mx-auto max-w-3xl px-6 py-20">
+    <h2 class="text-3xl font-semibold md:text-4xl">Everything in one calm place.</h2>
+    <ul class="mt-8 space-y-4">
       <li><strong>Projects</strong> — group everything by project</li>
       <li><strong>Memos</strong> — short thoughts, long notes, same place</li>
       <li><strong>Schedule</strong> — today and next week, one view</li>
     </ul>
   </section>
-  <section data-section="local-first">
-    <h2>Local-first, all the way.</h2>
-    <p>Your data lives on your Mac at <code>~/Library/Application Support/com.newturn2017.hearth/data.db</code>. Hearth never transmits to any server. Time Machine backs it up; the CLI reads and writes it directly.</p>
+
+  <section class="mx-auto max-w-3xl px-6 py-20">
+    <h2 class="text-3xl font-semibold md:text-4xl">Local-first, all the way.</h2>
+    <p class="mt-4 text-ink/80">Your data lives on your Mac at <code class="rounded bg-ink/5 px-1">~/Library/Application Support/com.newturn2017.hearth/data.db</code>. Hearth never transmits to any server. Time Machine backs it up; the CLI reads and writes it directly.</p>
+  </section>
+
+  <section class="mx-auto max-w-3xl px-6 py-20 text-center">
+    <div class="flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
+      <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-full bg-ink px-6 py-3 text-paper">Get it on the Mac App Store</a>
+      <a href="/en/install/cli" class="inline-block rounded-full border border-ink/20 px-6 py-3">Install CLI</a>
+    </div>
   </section>
 </Base>
