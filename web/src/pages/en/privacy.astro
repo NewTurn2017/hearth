@@ -1,7 +1,68 @@
 ---
+// Body is 1:1 sync with docs/superpowers/app-store/privacy-policy.md (en). Update both when changing.
 import Base from '../../layouts/Base.astro';
 ---
-<Base title="Privacy · Hearth" description="Hearth privacy policy." locale="en" path="/privacy">
+<Base
+  title="Privacy Policy · Hearth"
+  description="Hearth privacy policy. Hearth does not collect any personal data."
+  locale="en"
+  path="/privacy"
+>
   <h1>Privacy Policy</h1>
-  <p>Content will be filled in Phase 4.</p>
+  <p><small>Last updated: 2026-05-17</small></p>
+
+  <h2>1. Summary</h2>
+  <p>Hearth does not collect any personal data. All your data — projects, memos,
+schedules, settings — is stored in a SQLite database on your Mac. Nothing
+is sent to a Hearth server, because there is no Hearth server.</p>
+
+  <h2>2. Data we DO NOT collect</h2>
+  <ul>
+    <li>We do not collect analytics, telemetry, or usage statistics.</li>
+    <li>We do not collect crash reports.</li>
+    <li>We do not collect your IP address, device ID, or any identifier.</li>
+    <li>We do not have user accounts. There is no sign-up.</li>
+  </ul>
+
+  <h2>3. Data that stays on your Mac</h2>
+  <p>All app data is stored at:
+<code>~/Library/Application Support/com.newturn2017.hearth/data.db</code></p>
+  <p>You can inspect, back up, copy, or delete this file at any time.</p>
+
+  <h2>4. Optional integrations</h2>
+  <p>If you choose to enable optional integrations, those services receive data
+according to their own privacy policies. Hearth never reads or stores the
+data exchanged with these services beyond what is required to display the
+result back to you.</p>
+  <ul>
+    <li><strong>OpenAI</strong> (when you provide your own API key in Settings):
+  Hearth sends your command palette prompts to OpenAI's API.
+  See <a href="https://openai.com/policies/privacy-policy">https://openai.com/policies/privacy-policy</a></li>
+    <li><strong>External calendar providers</strong> (Google Calendar, etc., if you connect):
+  Hearth reads/writes events via OAuth. Tokens are stored in macOS Keychain.</li>
+  </ul>
+  <p>You can disconnect these integrations at any time in Settings → Integrations.
+Disconnecting works even after your trial period ends.</p>
+
+  <h2>5. Payments</h2>
+  <p>Purchases are processed by Apple via the Mac App Store. Hearth never sees
+your payment information. License verification happens entirely on your
+device using Apple StoreKit 2; no purchase data is transmitted to a Hearth
+server.</p>
+
+  <h2>6. Family Sharing</h2>
+  <p>If you purchase Hearth Pro, your purchase is shared with members of your
+Family Sharing group, per Apple's standard policy. Hearth does not see who
+those members are.</p>
+
+  <h2>7. Children</h2>
+  <p>Hearth is rated 4+. We do not knowingly collect data from anyone, including
+children, because we do not collect data at all.</p>
+
+  <h2>8. Changes to this policy</h2>
+  <p>If we ever change this policy, we will update the date at the top and post
+a notice in the app's release notes.</p>
+
+  <h2>9. Contact</h2>
+  <p>Questions about this policy: <a href="mailto:genie@codewithgenie.com">genie@codewithgenie.com</a></p>
 </Base>
