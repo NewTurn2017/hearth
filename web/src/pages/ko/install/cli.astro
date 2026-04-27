@@ -1,0 +1,34 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="hearth-cli 설치 · Hearth"
+  description="Homebrew로 hearth-cli를 설치하세요."
+  locale="ko"
+  path="/install/cli"
+>
+  <h1>hearth-cli 설치</h1>
+  <p>Hearth 앱이 먼저 <a href="https://apps.apple.com/app/hearth/id0000000000">Mac App Store</a>에 설치되어 있어야 합니다.</p>
+
+  <h2>1단계 — tap 추가 + 설치</h2>
+  <pre><code>brew tap codewithgenie/hearth
+brew install hearth-cli</code></pre>
+
+  <h2>2단계 — 검증</h2>
+  <pre><code>hearth-cli --version</code></pre>
+  <p>Hearth 1.0과 호환되는 버전이 출력되면 성공입니다.</p>
+
+  <h2>시스템 요구사항</h2>
+  <ul>
+    <li>macOS 11 이상</li>
+    <li>Apple Silicon 또는 Intel 모두 지원</li>
+    <li>바이너리는 Developer ID로 서명되고 Apple notarization을 통과합니다 — Gatekeeper 경고 없이 자동 실행됩니다.</li>
+  </ul>
+
+  <h2>제거</h2>
+  <pre><code>brew uninstall hearth-cli
+brew untap codewithgenie/hearth</code></pre>
+
+  <h2>다음 단계</h2>
+  <p>Claude Code에서 자연어로 호출하려면 <a href="/ko/install/skill">Hearth skill 설치</a>를 이어가세요.</p>
+</Base>
