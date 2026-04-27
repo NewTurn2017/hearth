@@ -1,0 +1,15 @@
+---
+import LocaleSwitcher from './LocaleSwitcher.astro';
+interface Props { locale: 'ko' | 'en'; path: string; }
+const { locale, path } = Astro.props;
+const nav = locale === 'ko'
+  ? [{ href: '/install/cli', label: 'CLI 설치' }, { href: '/install/skill', label: 'Skill 설치' }, { href: '/support', label: '지원' }]
+  : [{ href: '/install/cli', label: 'Install CLI' }, { href: '/install/skill', label: 'Install Skill' }, { href: '/support', label: 'Support' }];
+---
+<header>
+  <a href={`/${locale}/`} aria-label="Hearth home">Hearth</a>
+  <nav>
+    {nav.map((n) => <a href={`/${locale}${n.href}`}>{n.label}</a>)}
+    <LocaleSwitcher locale={locale} path={path} />
+  </nav>
+</header>

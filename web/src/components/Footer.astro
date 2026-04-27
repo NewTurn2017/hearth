@@ -1,0 +1,12 @@
+---
+interface Props { locale: 'ko' | 'en'; }
+const { locale } = Astro.props;
+const labels = locale === 'ko'
+  ? { privacy: '개인정보처리방침', support: '지원', copyright: '© 2026 Hearth' }
+  : { privacy: 'Privacy', support: 'Support', copyright: '© 2026 Hearth' };
+---
+<footer>
+  <a href={`/${locale}/privacy`}>{labels.privacy}</a>
+  <a href={`/${locale}/support`}>{labels.support}</a>
+  <span>{labels.copyright}</span>
+</footer>
