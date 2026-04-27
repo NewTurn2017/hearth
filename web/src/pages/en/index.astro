@@ -2,48 +2,119 @@
 import Base from '../../layouts/Base.astro';
 ---
 <Base
-  title="Hearth · A local-first workspace your AI agent can drive"
-  description="Projects · Memos · Schedule, in one calm place."
+  title="Hearth · A quiet workspace"
+  description="Projects, memos, schedule — all in one place. A local workspace your AI agent can drive."
   locale="en"
   path="/"
 >
-  <section class="mx-auto max-w-3xl px-6 py-24 text-center">
-    <h1 class="text-5xl font-semibold tracking-tight md:text-6xl">A local-first workspace<br/>your AI agent can drive.</h1>
-    <p class="mt-6 text-lg text-ink/70">Projects · Memos · Schedule, in one calm place.</p>
-    <div class="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
-      <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-full bg-ink px-6 py-3 text-paper">Get it on the Mac App Store</a>
-      <a href="/en/install/cli" class="inline-block rounded-full border border-ink/20 px-6 py-3">Install CLI</a>
-    </div>
-  </section>
-
-  <section class="bg-ink text-paper">
-    <div class="mx-auto max-w-4xl px-6 py-24">
-      <h2 class="text-3xl font-semibold md:text-4xl">Drive it from Claude Code.</h2>
-      <p class="mt-4 text-paper/80">Hearth ships with a real interface for agents. Say what you want; the <code class="rounded bg-paper/10 px-1">skills/hearth</code> skill dispatches <code class="rounded bg-paper/10 px-1">hearth-cli</code>; the open Hearth window refreshes in real time.</p>
-      <div class="mt-8 aspect-video w-full rounded-lg bg-paper/5">
-        <!-- Phase 6 video embed -->
+  <!-- HERO -->
+  <section data-home class="bg-ink text-paper">
+    <div class="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-40">
+      <p class="text-paper/60 text-sm font-medium tracking-wider uppercase mb-8">Hearth · macOS</p>
+      <h1 class="text-[clamp(3.5rem,12vw,9rem)] font-extralight leading-[0.95] tracking-[-0.04em]">
+        A quiet<br/>workspace.
+      </h1>
+      <div class="mt-12 grid gap-8 md:grid-cols-2 md:gap-16 md:mt-16">
+        <p class="text-xl text-paper md:text-2xl leading-snug">
+          Projects, memos, schedule — all in one place.<br/>
+          A local workspace your AI agent can drive.
+        </p>
+        <p class="text-base text-paper/70 leading-relaxed md:text-lg">
+          Your data lives only on your Mac. Tell Claude Code what you want; hearth-cli writes it down; the open Hearth window refreshes instantly. Use it like an extension of your hand.
+        </p>
+      </div>
+      <div class="mt-12 flex flex-col gap-3 md:flex-row md:gap-4 md:mt-16">
+        <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-xl bg-paper px-6 py-3.5 text-ink font-medium hover:bg-bone transition-colors">Get it on the Mac App Store</a>
+        <a href="/en/install/cli" class="inline-block rounded-xl border border-paper/30 px-6 py-3.5 text-paper font-medium hover:border-paper transition-colors">Install CLI</a>
       </div>
     </div>
   </section>
 
-  <section class="mx-auto max-w-3xl px-6 py-20">
-    <h2 class="text-3xl font-semibold md:text-4xl">Everything in one calm place.</h2>
-    <ul class="mt-8 space-y-4">
-      <li><strong>Projects</strong> — group everything by project</li>
-      <li><strong>Memos</strong> — short thoughts, long notes, same place</li>
-      <li><strong>Schedule</strong> — today and next week, one view</li>
-    </ul>
+  <!-- FEATURES (3 hook rows) -->
+  <section data-home class="bg-paper">
+    <div class="mx-auto max-w-5xl px-6 py-24 md:px-12 md:py-32">
+      <p class="text-ink/50 text-sm font-medium tracking-wider uppercase">Three things, one place</p>
+      <h2 class="mt-4 text-[clamp(2rem,5vw,3.5rem)] font-light leading-[1.05] tracking-[-0.025em]">
+        One screen where work stays.
+      </h2>
+
+      <div class="mt-20 grid gap-16 md:gap-20">
+        <article class="grid gap-4 md:grid-cols-[180px_1fr] md:gap-12 border-t border-ink/10 pt-12">
+          <p class="text-sm font-medium text-ink/50 tracking-wider uppercase md:pt-1">01 · Projects</p>
+          <div>
+            <h3 class="text-2xl font-medium leading-tight md:text-3xl tracking-tight">It starts with a single line.</h3>
+            <p class="mt-3 text-base text-ink/70 leading-relaxed md:text-lg">The moment you give it a name, scattered work moves under it. Memos, schedule, attachments — all branches of one project.</p>
+          </div>
+        </article>
+
+        <article class="grid gap-4 md:grid-cols-[180px_1fr] md:gap-12 border-t border-ink/10 pt-12">
+          <p class="text-sm font-medium text-ink/50 tracking-wider uppercase md:pt-1">02 · Memos</p>
+          <div>
+            <h3 class="text-2xl font-medium leading-tight md:text-3xl tracking-tight">A pen in your hand in 0.3 seconds.</h3>
+            <p class="mt-3 text-base text-ink/70 leading-relaxed md:text-lg"><code class="bg-ink/5 px-1.5 py-0.5 rounded">Cmd+Shift+M</code>. Catch passing thoughts on the spot. Short notes, long writing — same place.</p>
+          </div>
+        </article>
+
+        <article class="grid gap-4 md:grid-cols-[180px_1fr] md:gap-12 border-t border-ink/10 pt-12">
+          <p class="text-sm font-medium text-ink/50 tracking-wider uppercase md:pt-1">03 · Schedule</p>
+          <div>
+            <h3 class="text-2xl font-medium leading-tight md:text-3xl tracking-tight">See just today, or pull tomorrow into view.</h3>
+            <p class="mt-3 text-base text-ink/70 leading-relaxed md:text-lg">Hold time's weight in one screen. Don't let alerts wash it away — handle it yourself.</p>
+          </div>
+        </article>
+      </div>
+    </div>
   </section>
 
-  <section class="mx-auto max-w-3xl px-6 py-20">
-    <h2 class="text-3xl font-semibold md:text-4xl">Local-first, all the way.</h2>
-    <p class="mt-4 text-ink/80">Your data lives on your Mac at <code class="rounded bg-ink/5 px-1">~/Library/Application Support/com.newturn2017.hearth/data.db</code>. Hearth never transmits to any server. Time Machine backs it up; the CLI reads and writes it directly.</p>
+  <!-- DIFFERENTIATOR -->
+  <section data-home class="bg-ink text-paper">
+    <div class="mx-auto max-w-5xl px-6 py-24 md:px-12 md:py-32">
+      <p class="text-paper/50 text-sm font-medium tracking-wider uppercase">Agent-native, by design</p>
+      <h2 class="mt-4 text-[clamp(2rem,5vw,3.5rem)] font-light leading-[1.05] tracking-[-0.025em]">
+        Claude Code drives it directly.
+      </h2>
+      <div class="mt-12 grid gap-8 md:grid-cols-2 md:gap-16 md:mt-16">
+        <p class="text-lg text-paper md:text-xl leading-snug">
+          Say what you want; <code class="bg-paper/10 px-1.5 py-0.5 rounded">hearth-cli</code> writes it down,<br/>
+          and the open Hearth refreshes immediately.
+        </p>
+        <p class="text-base text-paper/70 leading-relaxed md:text-lg">
+          'Leave a memo for tomorrow's agenda' — one natural sentence and your workspace moves. No context switch — your agent uses your tools the way you do.
+        </p>
+      </div>
+      <div class="mt-12 aspect-video w-full rounded-xl bg-paper/5 border border-paper/10">
+        <!-- App Preview video slot (Day 13 embed) -->
+      </div>
+    </div>
   </section>
 
-  <section class="mx-auto max-w-3xl px-6 py-20 text-center">
-    <div class="flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
-      <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-full bg-ink px-6 py-3 text-paper">Get it on the Mac App Store</a>
-      <a href="/en/install/cli" class="inline-block rounded-full border border-ink/20 px-6 py-3">Install CLI</a>
+  <!-- LOCAL-FIRST -->
+  <section data-home class="bg-paper">
+    <div class="mx-auto max-w-4xl px-6 py-24 md:px-12 md:py-32 text-center">
+      <p class="text-ink/50 text-sm font-medium tracking-wider uppercase">Local-first, no server</p>
+      <h2 class="mt-4 text-[clamp(2rem,5vw,3.5rem)] font-light leading-[1.05] tracking-[-0.025em]">
+        No server.<br/>You know the coordinates.
+      </h2>
+      <p class="mt-8 text-base text-ink/70 leading-relaxed md:text-lg">
+        All your data lives in a single SQLite file.<br class="hidden md:inline"/>
+        Time Machine backs it up; the CLI reads and writes it.
+      </p>
+      <p class="mt-8 inline-block rounded-lg bg-ink/5 px-4 py-3 font-mono text-sm text-ink/80">
+        ~/Library/Application Support/com.newturn2017.hearth/data.db
+      </p>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section data-home class="bg-ink text-paper">
+    <div class="mx-auto max-w-4xl px-6 py-20 md:px-12 md:py-28 text-center">
+      <h2 class="text-[clamp(1.75rem,4vw,2.75rem)] font-light leading-tight tracking-[-0.02em]">
+        Start your workspace now.
+      </h2>
+      <div class="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
+        <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-xl bg-paper px-6 py-3.5 text-ink font-medium hover:bg-bone transition-colors">Get it on the Mac App Store</a>
+        <a href="/en/install/cli" class="inline-block rounded-xl border border-paper/30 px-6 py-3.5 text-paper font-medium hover:border-paper transition-colors">Install CLI</a>
+      </div>
     </div>
   </section>
 </Base>
