@@ -13,3 +13,110 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
 }
+
+/* Typography — applied to non-home routes via prose-like defaults inside <main> */
+main {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+main h1 {
+  font-size: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+}
+
+main h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+main h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+main p,
+main ul,
+main ol {
+  margin-bottom: 1rem;
+}
+
+main ul,
+main ol {
+  padding-left: 1.5rem;
+}
+
+main li {
+  margin-bottom: 0.25rem;
+}
+
+main a {
+  color: var(--color-ember);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+main a:hover {
+  text-decoration-thickness: 2px;
+}
+
+main code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875em;
+  background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+main pre {
+  background: color-mix(in srgb, var(--color-ink) 96%, white);
+  color: var(--color-paper);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+main pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+main small {
+  color: color-mix(in srgb, var(--color-ink) 60%, transparent);
+}
+
+/* The home page sets its own layout via section classes — neutralize main padding there */
+body:has(section[class*="max-w-"]) main {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Focus visibility for keyboard navigation */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-ember);
+  outline-offset: 3px;
+  border-radius: 0.25rem;
+}
+
+/* prefers-color-scheme: dark — token swap */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #14120f;
+    --color-ink: #f2efe8;
+  }
+}

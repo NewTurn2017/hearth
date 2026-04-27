@@ -4,7 +4,7 @@ const { locale, path } = Astro.props;
 const other = locale === 'ko' ? 'en' : 'ko';
 const otherLabel = other === 'ko' ? '한국어' : 'English';
 ---
-<a href={`/${other}${path}`} hreflang={other} rel="alternate" data-locale-switch>
+<a href={`/${other}${path}`} hreflang={other} rel="alternate" data-locale-switch class="hover:text-ink">
   {otherLabel}
 </a>
 <script is:inline>
