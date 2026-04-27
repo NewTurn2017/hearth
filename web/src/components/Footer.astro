@@ -5,8 +5,12 @@ const labels = locale === 'ko'
   ? { privacy: '개인정보처리방침', support: '지원', copyright: '© 2026 Hearth' }
   : { privacy: 'Privacy', support: 'Support', copyright: '© 2026 Hearth' };
 ---
-<footer>
-  <a href={`/${locale}/privacy`}>{labels.privacy}</a>
-  <a href={`/${locale}/support`}>{labels.support}</a>
-  <span>{labels.copyright}</span>
+<footer class="mt-24 border-t border-ink/10">
+  <div class="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-6 py-8 text-sm text-ink/60 md:flex-row">
+    <span>{labels.copyright}</span>
+    <div class="flex gap-4">
+      <a href={`/${locale}/privacy`} class="hover:text-ink">{labels.privacy}</a>
+      <a href={`/${locale}/support`} class="hover:text-ink">{labels.support}</a>
+    </div>
+  </div>
 </footer>
