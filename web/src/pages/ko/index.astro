@@ -2,48 +2,120 @@
 import Base from '../../layouts/Base.astro';
 ---
 <Base
-  title="Hearth · 로컬에 사는 AI 에이전트 워크스페이스"
-  description="Projects · Memos · Schedule, 한 곳에 차분하게."
+  title="Hearth · 고요한 워크스페이스"
+  description="프로젝트, 메모, 일정 — 한 자리에. AI 에이전트가 직접 손을 대는 로컬 워크스페이스."
   locale="ko"
   path="/"
 >
-  <section class="mx-auto max-w-3xl px-6 py-24 text-center">
-    <h1 class="text-5xl font-semibold tracking-tight md:text-6xl">로컬에 사는<br/>AI 에이전트 워크스페이스</h1>
-    <p class="mt-6 text-lg text-ink/70">Projects · Memos · Schedule, 한 곳에 차분하게.</p>
-    <div class="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
-      <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-full bg-ink px-6 py-3 text-paper">Mac App Store에서 받기</a>
-      <a href="/ko/install/cli" class="inline-block rounded-full border border-ink/20 px-6 py-3">CLI 설치하기</a>
-    </div>
-  </section>
-
-  <section class="bg-ink text-paper">
-    <div class="mx-auto max-w-4xl px-6 py-24">
-      <h2 class="text-3xl font-semibold md:text-4xl">Claude Code에서 직접 조작하세요</h2>
-      <p class="mt-4 text-paper/80">Hearth는 명령형 인터페이스를 제공합니다. 자연어로 시키면 <code class="rounded bg-paper/10 px-1">skills/hearth</code>가 <code class="rounded bg-paper/10 px-1">hearth-cli</code>를 호출하고, 열려 있는 Hearth는 즉시 새로고침됩니다.</p>
-      <div class="mt-8 aspect-video w-full rounded-lg bg-paper/5">
-        <!-- Phase 6에서 <video> 임베드 -->
+  <!-- HERO -->
+  <section data-home class="bg-ink text-paper">
+    <div class="mx-auto max-w-6xl px-6 py-24 md:px-12 md:py-40">
+      <p class="text-paper/60 text-sm font-medium tracking-wider uppercase mb-8">Hearth · macOS</p>
+      <h1 class="text-[clamp(3.5rem,12vw,9rem)] font-extralight leading-[0.95] tracking-[-0.04em]">
+        고요한<br/>워크스페이스
+      </h1>
+      <div class="mt-12 grid gap-8 md:grid-cols-2 md:gap-16 md:mt-16">
+        <p class="text-xl text-paper md:text-2xl leading-snug">
+          프로젝트, 메모, 일정 — 한 자리에.<br/>
+          AI 에이전트가 직접 손을 대는<br/>
+          로컬 워크스페이스.
+        </p>
+        <p class="text-base text-paper/70 leading-relaxed md:text-lg">
+          데이터는 당신 Mac에만 있습니다. Claude Code에서 자연어로 시키면, hearth-cli가 받아 적고 열려 있는 Hearth는 즉시 새로고침됩니다. 컨텍스트 전환 없이 손에 쥔 듯 사용하세요.
+        </p>
+      </div>
+      <div class="mt-12 flex flex-col gap-3 md:flex-row md:gap-4 md:mt-16">
+        <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-xl bg-paper px-6 py-3.5 text-ink font-medium hover:bg-bone transition-colors">Mac App Store에서 받기</a>
+        <a href="/ko/install/cli" class="inline-block rounded-xl border border-paper/30 px-6 py-3.5 text-paper font-medium hover:border-paper transition-colors">CLI 설치하기</a>
       </div>
     </div>
   </section>
 
-  <section class="mx-auto max-w-3xl px-6 py-20">
-    <h2 class="text-3xl font-semibold md:text-4xl">한 곳에 담는 일상</h2>
-    <ul class="mt-8 space-y-4">
-      <li><strong>Projects</strong> — 프로젝트 단위로 모든 것을 묶는다</li>
-      <li><strong>Memos</strong> — 짧은 생각, 긴 문서, 다 같은 자리에</li>
-      <li><strong>Schedule</strong> — 오늘과 다음 주를 한 화면에</li>
-    </ul>
+  <!-- FEATURES (3 hook rows) -->
+  <section data-home class="bg-paper">
+    <div class="mx-auto max-w-5xl px-6 py-24 md:px-12 md:py-32">
+      <p class="text-ink/50 text-sm font-medium tracking-wider uppercase">Three things, one place</p>
+      <h2 class="mt-4 text-[clamp(2rem,5vw,3.5rem)] font-light leading-[1.05] tracking-[-0.025em]">
+        한 화면 안에 일이 머무는 자리.
+      </h2>
+
+      <div class="mt-20 grid gap-16 md:gap-20">
+        <article class="grid gap-4 md:grid-cols-[180px_1fr] md:gap-12 border-t border-ink/10 pt-12">
+          <p class="text-sm font-medium text-ink/50 tracking-wider uppercase md:pt-1">01 · Projects</p>
+          <div>
+            <h3 class="text-2xl font-medium leading-tight md:text-3xl tracking-tight">한 줄에서 시작한다.</h3>
+            <p class="mt-3 text-base text-ink/70 leading-relaxed md:text-lg">이름을 붙이는 순간, 흩어진 일들이 그 아래로 모인다. 메모, 일정, 첨부 — 모두 한 프로젝트의 가지로.</p>
+          </div>
+        </article>
+
+        <article class="grid gap-4 md:grid-cols-[180px_1fr] md:gap-12 border-t border-ink/10 pt-12">
+          <p class="text-sm font-medium text-ink/50 tracking-wider uppercase md:pt-1">02 · Memos</p>
+          <div>
+            <h3 class="text-2xl font-medium leading-tight md:text-3xl tracking-tight">0.3초 안에 펜이 손에.</h3>
+            <p class="mt-3 text-base text-ink/70 leading-relaxed md:text-lg"><code class="bg-ink/5 px-1.5 py-0.5 rounded">Cmd+Shift+M</code>. 지나가는 생각을 그 자리에서 잡는다. 짧은 메모도 긴 노트도, 같은 자리에.</p>
+          </div>
+        </article>
+
+        <article class="grid gap-4 md:grid-cols-[180px_1fr] md:gap-12 border-t border-ink/10 pt-12">
+          <p class="text-sm font-medium text-ink/50 tracking-wider uppercase md:pt-1">03 · Schedule</p>
+          <div>
+            <h3 class="text-2xl font-medium leading-tight md:text-3xl tracking-tight">오늘만 보거나, 내일까지 끌어당기거나.</h3>
+            <p class="mt-3 text-base text-ink/70 leading-relaxed md:text-lg">한 화면에서 시간의 무게를 본다. 알림으로 흘려보내지 않고, 직접 손에 쥔다.</p>
+          </div>
+        </article>
+      </div>
+    </div>
   </section>
 
-  <section class="mx-auto max-w-3xl px-6 py-20">
-    <h2 class="text-3xl font-semibold md:text-4xl">처음부터 끝까지 로컬</h2>
-    <p class="mt-4 text-ink/80">데이터는 당신 Mac 안에만 있습니다. <code class="rounded bg-ink/5 px-1">~/Library/Application Support/com.newturn2017.hearth/data.db</code>. Time Machine으로 백업되고, CLI로 직접 읽고 쓸 수 있습니다.</p>
+  <!-- DIFFERENTIATOR -->
+  <section data-home class="bg-ink text-paper">
+    <div class="mx-auto max-w-5xl px-6 py-24 md:px-12 md:py-32">
+      <p class="text-paper/50 text-sm font-medium tracking-wider uppercase">Agent-native, by design</p>
+      <h2 class="mt-4 text-[clamp(2rem,5vw,3.5rem)] font-light leading-[1.05] tracking-[-0.025em]">
+        Claude Code가 직접 손을 댄다.
+      </h2>
+      <div class="mt-12 grid gap-8 md:grid-cols-2 md:gap-16 md:mt-16">
+        <p class="text-lg text-paper md:text-xl leading-snug">
+          말로 시키면 <code class="bg-paper/10 px-1.5 py-0.5 rounded">hearth-cli</code>가 받아 적고,<br/>
+          열려 있는 Hearth는 즉시 갱신된다.
+        </p>
+        <p class="text-base text-paper/70 leading-relaxed md:text-lg">
+          "내일 회의 안건 메모 남겨줘" — 자연어 한 줄로 워크스페이스가 움직인다. 컨텍스트 전환 없이, 에이전트가 당신의 도구를 손에 쥔 듯 사용한다.
+        </p>
+      </div>
+      <div class="mt-12 aspect-video w-full rounded-xl bg-paper/5 border border-paper/10">
+        <!-- App Preview 영상 자리 (Day 13 임베드) -->
+      </div>
+    </div>
   </section>
 
-  <section class="mx-auto max-w-3xl px-6 py-20 text-center">
-    <div class="flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
-      <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-full bg-ink px-6 py-3 text-paper">Mac App Store에서 받기</a>
-      <a href="/ko/install/cli" class="inline-block rounded-full border border-ink/20 px-6 py-3">CLI 설치하기</a>
+  <!-- LOCAL-FIRST -->
+  <section data-home class="bg-paper">
+    <div class="mx-auto max-w-4xl px-6 py-24 md:px-12 md:py-32 text-center">
+      <p class="text-ink/50 text-sm font-medium tracking-wider uppercase">Local-first, no server</p>
+      <h2 class="mt-4 text-[clamp(2rem,5vw,3.5rem)] font-light leading-[1.05] tracking-[-0.025em]">
+        서버는 없다.<br/>좌표는 내가 안다.
+      </h2>
+      <p class="mt-8 text-base text-ink/70 leading-relaxed md:text-lg">
+        모든 데이터는 한 SQLite 파일 안에 있다.<br class="hidden md:inline"/>
+        Time Machine이 백업하고, CLI가 직접 읽고 쓴다.
+      </p>
+      <p class="mt-8 inline-block rounded-lg bg-ink/5 px-4 py-3 font-mono text-sm text-ink/80">
+        ~/Library/Application Support/com.newturn2017.hearth/data.db
+      </p>
+    </div>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section data-home class="bg-ink text-paper">
+    <div class="mx-auto max-w-4xl px-6 py-20 md:px-12 md:py-28 text-center">
+      <h2 class="text-[clamp(1.75rem,4vw,2.75rem)] font-light leading-tight tracking-[-0.02em]">
+        지금, 당신의 작업실을 켜세요.
+      </h2>
+      <div class="mt-10 flex flex-col items-center justify-center gap-3 md:flex-row md:gap-4">
+        <a href="https://apps.apple.com/app/hearth/id0000000000" class="inline-block rounded-xl bg-paper px-6 py-3.5 text-ink font-medium hover:bg-bone transition-colors">Mac App Store에서 받기</a>
+        <a href="/ko/install/cli" class="inline-block rounded-xl border border-paper/30 px-6 py-3.5 text-paper font-medium hover:border-paper transition-colors">CLI 설치하기</a>
+      </div>
     </div>
   </section>
 </Base>
