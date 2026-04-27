@@ -3,14 +3,14 @@ import LocaleSwitcher from './LocaleSwitcher.astro';
 interface Props { locale: 'ko' | 'en'; path: string; }
 const { locale, path } = Astro.props;
 const nav = locale === 'ko'
-  ? [{ href: '/install/cli', label: 'CLI 설치' }, { href: '/install/skill', label: 'Skill 설치' }, { href: '/support', label: '지원' }]
-  : [{ href: '/install/cli', label: 'Install CLI' }, { href: '/install/skill', label: 'Install Skill' }, { href: '/support', label: 'Support' }];
+  ? [{ href: '/install/cli', label: 'CLI' }, { href: '/install/skill', label: 'Skill' }, { href: '/support', label: '지원' }]
+  : [{ href: '/install/cli', label: 'CLI' }, { href: '/install/skill', label: 'Skill' }, { href: '/support', label: 'Support' }];
 ---
-<header class="border-b border-ink/10">
-  <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
-    <a href={`/${locale}/`} aria-label="Hearth home" class="text-lg font-semibold tracking-tight">Hearth</a>
-    <nav class="flex items-center gap-4 text-sm text-ink/70">
-      {nav.map((n) => <a href={`/${locale}${n.href}`} class="hover:text-ink">{n.label}</a>)}
+<header class="bg-ink text-paper">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4 md:px-8">
+    <a href={`/${locale}/`} aria-label="Hearth home" class="font-medium text-base tracking-tight">Hearth</a>
+    <nav class="flex items-center gap-5 text-sm">
+      {nav.map((n) => <a href={`/${locale}${n.href}`} class="text-paper/80 hover:text-paper transition-colors">{n.label}</a>)}
       <LocaleSwitcher locale={locale} path={path} />
     </nav>
   </div>
