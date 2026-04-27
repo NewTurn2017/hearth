@@ -1,0 +1,16 @@
+---
+interface Props { locale: 'ko' | 'en'; path: string; }
+const { locale, path } = Astro.props;
+const other = locale === 'ko' ? 'en' : 'ko';
+const otherLabel = other === 'ko' ? '한국어' : 'English';
+---
+<a href={`/${other}${path}`} hreflang={other} rel="alternate" data-locale-switch>
+  {otherLabel}
+</a>
+<script is:inline>
+  document.querySelectorAll('[data-locale-switch]').forEach((a) => {
+    a.addEventListener('click', () => {
+      document.cookie = `hearth_locale=${a.getAttribute('hreflang')}; path=/; max-age=31536000; SameSite=Lax`;
+    });
+  });
+</script>

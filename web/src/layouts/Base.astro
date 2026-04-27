@@ -1,0 +1,36 @@
+---
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  locale: 'ko' | 'en';
+  path: string; // e.g. "/install/cli"
+}
+
+const { title, description, locale, path } = Astro.props;
+const altLocale = locale === 'ko' ? 'en' : 'ko';
+const canonical = `https://hearth.codewithgenie.com/${locale}${path}`;
+const altUrl = `https://hearth.codewithgenie.com/${altLocale}${path}`;
+const xDefaultUrl = `https://hearth.codewithgenie.com/ko${path}`;
+---
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang={locale} href={canonical} />
+    <link rel="alternate" hreflang={altLocale} href={altUrl} />
+    <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />
+    <meta name="color-scheme" content="light dark" />
+  </head>
+  <body>
+    <Header locale={locale} path={path} />
+    <main><slot /></main>
+    <Footer locale={locale} />
+  </body>
+</html>
