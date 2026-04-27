@@ -1,0 +1,30 @@
+---
+import Base from '../../../layouts/Base.astro';
+---
+<Base
+  title="Add the Hearth skill to Claude Code"
+  description="One command: hearth-cli install-skill."
+  locale="en"
+  path="/install/skill"
+>
+  <h1>Add the Hearth skill to Claude Code</h1>
+  <p>Make sure <a href="/en/install/cli">hearth-cli</a> is installed first.</p>
+
+  <h2>One command</h2>
+  <pre><code>hearth-cli install-skill</code></pre>
+
+  <h2>What happens</h2>
+  <ul>
+    <li><code>~/.claude/skills/hearth/</code> is created.</li>
+    <li>skill.md and supporting files are unpacked there.</li>
+    <li>The next Claude Code session picks it up automatically.</li>
+  </ul>
+
+  <h2>Example</h2>
+  <p>Call it in natural language. e.g. <em>"Leave a memo in Hearth — agenda for tomorrow's meeting."</em></p>
+
+  <h2>Uninstall</h2>
+  <pre><code>hearth-cli uninstall-skill
+# or manually
+rm -rf ~/.claude/skills/hearth</code></pre>
+</Base>
