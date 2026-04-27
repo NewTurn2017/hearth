@@ -1,3 +1,19 @@
 ---
-return Astro.redirect('/ko/');
+// 정적 빌드 fallback. 자바스크립트 비활성 환경은 ko로 강제.
 ---
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hearth</title>
+    <meta http-equiv="refresh" content="0;url=/ko/" />
+    <script is:inline>
+      (function () {
+        var match = document.cookie.match(/(?:^|; )hearth_locale=(ko|en)/);
+        var locale = match ? match[1] : (navigator.language && navigator.language.startsWith('en') ? 'en' : 'ko');
+        location.replace('/' + locale + '/');
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
