@@ -8,7 +8,10 @@ const nav = locale === 'ko'
 ---
 <header class="bg-ink text-paper">
   <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4 md:px-8">
-    <a href={`/${locale}/`} aria-label="Hearth home" class="font-medium text-base tracking-tight">Hearth</a>
+    <a href={`/${locale}/`} aria-label="Hearth home" class="flex items-center gap-2.5 font-medium text-base tracking-tight">
+      <img src="/icon-64.png" alt="" width="28" height="28" class="rounded-md" />
+      <span>Hearth</span>
+    </a>
     <nav class="flex items-center gap-5 text-sm">
       {nav.map((n) => <a href={`/${locale}${n.href}`} class="text-paper/80 hover:text-paper transition-colors">{n.label}</a>)}
       <LocaleSwitcher locale={locale} path={path} />
