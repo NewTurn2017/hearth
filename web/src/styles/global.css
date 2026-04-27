@@ -110,10 +110,4 @@ a:focus-visible, button:focus-visible {
   border-radius: 4px;
 }
 
-/* Dark scheme — invert paper/ink */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-paper: #0a1505;
-    --color-ink: #F7F4EB;
-  }
-}
+/* Editorial identity stays consistent across light/dark OS modes — no token swap. */
