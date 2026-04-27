@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   site: 'https://hearth.codewithgenie.com',
@@ -9,5 +10,8 @@ export default defineConfig({
     locales: ['ko', 'en'],
     routing: { prefixDefaultLocale: true, redirectToDefaultLocale: false },
     fallback: { en: 'ko' },
+  },
+  vite: {
+    plugins: [tailwindcss()],
   },
 });
