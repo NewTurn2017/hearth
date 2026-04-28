@@ -137,7 +137,7 @@ jobs:
           SHA_X86: ${{ steps.pack.outputs.sha_x86 }}
         run: |
           set -euo pipefail
-          gh repo clone withgenie/homebrew-hearth /tmp/tap
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/withgenie/homebrew-hearth.git" /tmp/tap
           cd /tmp/tap
           git config user.name  "hearth-release-bot"
           git config user.email "release@codewithgenie.com"
