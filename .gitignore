@@ -38,3 +38,6 @@ dist/release/
 
 # Local video editing scratch
 video-intro/
+
+# insane-design analysis artifacts (not source)
+insane-design/
