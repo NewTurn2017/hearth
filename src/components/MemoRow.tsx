@@ -127,7 +127,7 @@ export function MemoRow({
             className="w-full bg-[var(--color-surface-1)] border border-[var(--color-border)] rounded px-2 py-1 outline-none text-[12.5px] resize-y min-h-[60px] text-[var(--color-text-hi)]"
           />
         ) : (
-          <p className="line-clamp-2 whitespace-pre-wrap break-words leading-snug text-[var(--color-text)]">
+          <p className="line-clamp-2 whitespace-pre-wrap [overflow-wrap:anywhere] leading-snug text-[var(--color-text)]">
             {preview}
           </p>
         )}

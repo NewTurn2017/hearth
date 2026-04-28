@@ -2,133 +2,163 @@ name: release-cli
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['cli-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'CLI version (e.g. 1.0.0 or 1.0.0-rc1). Tag form is cli-v<version>.'
+        required: true
+      skip_signing:
+        description: 'Skip codesign + notarize (use when Developer ID secrets unavailable)'
+        type: boolean
+        default: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build-cli:
-    name: build ${{ matrix.target }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: macos-14,     target: aarch64-apple-darwin,       strip: strip }
-          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu,   strip: strip }
-    runs-on: ${{ matrix.os }}
+  build:
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      MANIFEST_PATH: src-tauri/Cargo.toml
+      PACKAGE: hearth-cli
+      BIN_NAME: hearth
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v4
 
-      # dtolnay/rust-toolchain@stable intentionally tracks Rust's latest
-      # stable release — SHA-pinning would defeat the purpose. The action
-      # is a small, widely-used, trusted wrapper over rustup.
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae  # v2
-        with:
-          workspaces: src-tauri -> src-tauri/target
-          key: ${{ matrix.target }}
-
-      - name: Build hearth-cli
-        working-directory: src-tauri
-        run: cargo build --release --target ${{ matrix.target }} -p hearth-cli
-
-      - name: Strip binary
-        run: ${{ matrix.strip }} src-tauri/target/${{ matrix.target }}/release/hearth
-
-      - name: Tar
+      - name: Resolve version
+        id: ver
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME}"
-          TARBALL="hearth-${VERSION}-${{ matrix.target }}.tar.gz"
-          tar czf "$TARBALL" -C src-tauri/target/${{ matrix.target }}/release hearth
-          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: hearth-${{ matrix.target }}
-          path: ${{ env.TARBALL }}
-          if-no-files-found: error
-
-  bundle-skills:
-    name: bundle skills
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - name: Tar skills
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME}"
-          TARBALL="hearth-skills-${VERSION}.tar.gz"
-          tar czf "$TARBALL" skills/
-          echo "TARBALL=$TARBALL" >> "$GITHUB_ENV"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: skills-bundle
-          path: ${{ env.TARBALL }}
-          if-no-files-found: error
-
-  publish:
-    name: publish release
-    needs: [build-cli, bundle-skills]
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v8.0.1
-        with:
-          path: dist
-
-      - name: Flatten + compute SHA256SUMS
-        working-directory: dist
-        run: |
-          set -euo pipefail
-          # Artifacts land in subdirs named after the upload; flatten them.
-          mv hearth-*/hearth-*.tar.gz .
-          mv skills-bundle/hearth-skills-*.tar.gz .
-          # Remove the now-empty artifact subdirs. Trailing slashes anchor
-          # the glob to directories only — critical because the files we just
-          # moved (hearth-v*.tar.gz) would otherwise match `hearth-*`.
-          rm -rf hearth-*/ skills-bundle/
-          ls -la
-          sha256sum *.tar.gz > SHA256SUMS
-          cat SHA256SUMS
-
-      - name: Extract release notes
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          ./scripts/extract-release-notes.sh "$VERSION" > RELEASE_NOTES.md
-          echo "---"
-          cat RELEASE_NOTES.md
-
-      - name: Create or update release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
-          VERSION="${TAG#v}"
-          cd dist
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG exists; uploading CLI+skills assets with --clobber."
-            gh release upload "$TAG" --clobber *.tar.gz SHA256SUMS
-            gh release edit "$TAG" --notes-file ../RELEASE_NOTES.md --title "Hearth $VERSION"
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            v="${{ github.event.inputs.version }}"
           else
-            echo "Creating release $TAG."
-            gh release create "$TAG" \
-              --title "Hearth $VERSION" \
-              --notes-file ../RELEASE_NOTES.md \
-              *.tar.gz SHA256SUMS
+            v="${GITHUB_REF_NAME#cli-v}"
           fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Building hearth-cli $v"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Build (arm64 + x86_64)
+        run: |
+          set -euo pipefail
+          cargo build --release --manifest-path "$MANIFEST_PATH" -p "$PACKAGE" --target aarch64-apple-darwin
+          cargo build --release --manifest-path "$MANIFEST_PATH" -p "$PACKAGE" --target x86_64-apple-darwin
+
+      - name: Codesign
+        if: ${{ github.event.inputs.skip_signing != 'true' }}
+        env:
+          CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CERT_P12_BASE64" ]; then
+            echo "::error::DEVELOPER_ID_CERT_P12 secret missing — re-run with skip_signing=true to bypass."
+            exit 1
+          fi
+          echo "$CERT_P12_BASE64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -lut 3600 build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          for arch in aarch64-apple-darwin x86_64-apple-darwin; do
+            codesign --sign "Developer ID Application" --options runtime --timestamp \
+              "src-tauri/target/$arch/release/$BIN_NAME"
+            codesign --verify --strict --verbose=2 "src-tauri/target/$arch/release/$BIN_NAME"
+          done
+          rm -f /tmp/cert.p12
+
+      - name: Notarize
+        if: ${{ github.event.inputs.skip_signing != 'true' }}
+        env:
+          AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
+          AC_API_KEY_ISSUER: ${{ secrets.AC_API_KEY_ISSUER }}
+          AC_API_KEY_BASE64: ${{ secrets.AC_API_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          echo "$AC_API_KEY_BASE64" | base64 --decode > /tmp/AuthKey.p8
+          for arch in aarch64-apple-darwin x86_64-apple-darwin; do
+            (cd "src-tauri/target/$arch/release" && zip "/tmp/${BIN_NAME}-$arch.zip" "$BIN_NAME")
+            xcrun notarytool submit "/tmp/${BIN_NAME}-$arch.zip" \
+              --key /tmp/AuthKey.p8 \
+              --key-id "$AC_API_KEY_ID" \
+              --issuer "$AC_API_KEY_ISSUER" \
+              --wait
+          done
+          rm -f /tmp/AuthKey.p8
+
+      - name: Pack tarballs + compute SHAs
+        id: pack
+        run: |
+          set -euo pipefail
+          v="${{ steps.ver.outputs.version }}"
+          mkdir -p dist
+          tar czf "dist/hearth-cli-${v}-arm64.tar.gz"  -C src-tauri/target/aarch64-apple-darwin/release "$BIN_NAME"
+          tar czf "dist/hearth-cli-${v}-x86_64.tar.gz" -C src-tauri/target/x86_64-apple-darwin/release  "$BIN_NAME"
+          sha_arm=$(shasum -a 256 "dist/hearth-cli-${v}-arm64.tar.gz"  | awk '{print $1}')
+          sha_x86=$(shasum -a 256 "dist/hearth-cli-${v}-x86_64.tar.gz" | awk '{print $1}')
+          echo "sha_arm=$sha_arm" >> "$GITHUB_OUTPUT"
+          echo "sha_x86=$sha_x86" >> "$GITHUB_OUTPUT"
+          ls -la dist
+
+      - name: Upload to R2
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          brew install rclone
+          rclone config create r2 s3 \
+            provider Cloudflare \
+            access_key_id "$R2_ACCESS_KEY_ID" \
+            secret_access_key "$R2_SECRET_ACCESS_KEY" \
+            endpoint "$R2_ENDPOINT" \
+            acl public-read \
+            no_check_bucket true
+          rclone copy dist/ r2:hearth/cli/
+
+      - name: Bump tap formula via PR
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          SHA_ARM: ${{ steps.pack.outputs.sha_arm }}
+          SHA_X86: ${{ steps.pack.outputs.sha_x86 }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/withgenie/homebrew-hearth.git" /tmp/tap
+          cd /tmp/tap
+          git config user.name  "hearth-release-bot"
+          git config user.email "release@codewithgenie.com"
+          git checkout -b "bump-$VERSION"
+          python3 - "$VERSION" "$SHA_ARM" "$SHA_X86" <<'PY'
+          import pathlib, re, sys
+          version, sha_arm, sha_x86 = sys.argv[1:]
+          p = pathlib.Path("Formula/hearth-cli.rb")
+          src = p.read_text()
+          src = re.sub(r'version "[^"]+"', f'version "{version}"', src, count=1)
+          src = re.sub(
+              r'(on_arm do.*?url ")[^"]+(".*?sha256 ")[0-9a-f]+(")',
+              lambda m: f'{m.group(1)}https://dl.codewithgenie.com/cli/hearth-cli-{version}-arm64.tar.gz{m.group(2)}{sha_arm}{m.group(3)}',
+              src, flags=re.S, count=1)
+          src = re.sub(
+              r'(on_intel do.*?url ")[^"]+(".*?sha256 ")[0-9a-f]+(")',
+              lambda m: f'{m.group(1)}https://dl.codewithgenie.com/cli/hearth-cli-{version}-x86_64.tar.gz{m.group(2)}{sha_x86}{m.group(3)}',
+              src, flags=re.S, count=1)
+          p.write_text(src)
+          PY
+          git add Formula/hearth-cli.rb
+          git commit -m "bump: hearth-cli $VERSION"
+          git push -u origin "bump-$VERSION"
+          gh pr create --title "bump: hearth-cli $VERSION" --body "Auto-generated by release-cli workflow."

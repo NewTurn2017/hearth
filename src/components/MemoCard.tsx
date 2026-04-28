@@ -151,7 +151,7 @@ export function MemoCard({
             style={{ color: colorDef.text }}
           />
         ) : (
-          <p className="text-sm whitespace-pre-wrap cursor-pointer">
+          <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere] cursor-pointer">
             {memo.content || "클릭하여 메모 작성..."}
           </p>
         )}
