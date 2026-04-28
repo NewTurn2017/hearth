@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Hearth",
   "version": "0.9.5",
-  "identifier": "com.newturn2017.hearth",
+  "identifier": "com.codewithgenie.hearth",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -33,7 +33,7 @@
     "longDescription": "Hearth is a local-first personal workspace that unifies projects, sticky memos, and schedules, driven by an optional AI command palette powered by OpenAI.",
     "publisher": "Jaehyun Jang",
     "copyright": "© 2026 Jaehyun Jang",
-    "homepage": "https://github.com/NewTurn2017/hearth",
+    "homepage": "https://github.com/withgenie/hearth",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -52,7 +52,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI3QkVFQkVBNEZBODA0QTQKUldTa0JLaFA2dXUrSjVkUENhLzEycEtJL1FUUXljaFVBYUZOYjlpTjBGVVR0dGExdk1NRnpaZkUK",
       "endpoints": [
-        "https://github.com/NewTurn2017/hearth/releases/latest/download/latest.json"
+        "https://github.com/withgenie/hearth/releases/latest/download/latest.json"
       ]
     }
   }

@@ -11,7 +11,7 @@
  * SAFETY MODEL — read before editing
  * ----------------------------------
  *  - The user's live DB lives at:
- *        ~/Library/Application Support/com.newturn2017.hearth/data.db
+ *        ~/Library/Application Support/com.codewithgenie.hearth/data.db
  *    A backup of that DB exists at ~/.hearth-backup-pre-screenshots-20260426/
  *    BUT THIS SCRIPT MUST NEVER WRITE TO THE LIVE PATH.
  *  - The script aborts loudly if --target resolves to that live path (or a
@@ -28,7 +28,7 @@
  *     bun scripts/seed-screenshots.ts --locale=en --dry-run
  *
  * After seeding, point a Hearth dev build at the seeded DB by symlinking or
- * copying it into ~/Library/Application Support/com.newturn2017.hearth/data.db
+ * copying it into ~/Library/Application Support/com.codewithgenie.hearth/data.db
  * AFTER confirming the live DB is backed up. (That swap is a manual, deliberate
  * step — this script never performs it.)
  */
@@ -130,7 +130,7 @@ function printUsage() {
                  en -> ~/.hearth-screenshot-seed-en.db
                  ko -> ~/.hearth-screenshot-seed-ko.db
                Must NOT resolve to the live Hearth DB
-               (~/Library/Application Support/com.newturn2017.hearth/data.db).
+               (~/Library/Application Support/com.codewithgenie.hearth/data.db).
   --dry-run    Print what would be inserted; do not write any files.
   -h, --help   Show this message.
 `);
@@ -149,13 +149,13 @@ function expandHome(p: string): string {
 function liveDbCandidates(): string[] {
   const home = homedir();
   // Production path used by tauri's app_data_dir() on macOS:
-  //   ~/Library/Application Support/com.newturn2017.hearth/data.db
+  //   ~/Library/Application Support/com.codewithgenie.hearth/data.db
   // (Confirmed in src-tauri/cli/src/db.rs and src-tauri/app/src/lib.rs.)
   const macPath = join(
     home,
     "Library",
     "Application Support",
-    "com.newturn2017.hearth",
+    "com.codewithgenie.hearth",
     "data.db",
   );
   return [macPath];
@@ -491,7 +491,7 @@ function main() {
     `  ${seed.projects.length} projects, ${seed.memos.length} memos, ${seed.schedules.length} schedules.`,
   );
   console.log(
-    "Live DB at ~/Library/Application Support/com.newturn2017.hearth/data.db was NOT touched.",
+    "Live DB at ~/Library/Application Support/com.codewithgenie.hearth/data.db was NOT touched.",
   );
 }
 

@@ -69,7 +69,7 @@ Perform once per release in a macOS guest user account (to reproduce first-run G
 - [ ] Settings → AI → OpenAI key → `프로젝트 목록 보여줘` returns
 - [ ] Settings → AI → provider `local` + MLX running → chat responds
 - [ ] Settings → Backup → 지금 백업 → file created in configured dir
-- [ ] `~/Library/Application Support/com.newturn2017.hearth/data.db` exists
+- [ ] `~/Library/Application Support/com.codewithgenie.hearth/data.db` exists
 
 Any failure → yank (`gh release delete vX.Y.Z && git push --delete origin vX.Y.Z`), fix, roll forward with vX.Y.(Z+1). Do **not** edit an existing release in place.
 

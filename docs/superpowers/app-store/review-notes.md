@@ -28,7 +28,7 @@ Thank you for reviewing Hearth.
 2. APP OVERVIEW
    Hearth is a local-first personal workspace combining projects, memos,
    and schedules with an AI command palette. All user data is stored in
-   a local SQLite database (~/Library/Application Support/com.newturn2017.hearth/).
+   a local SQLite database (~/Library/Application Support/com.codewithgenie.hearth/).
    No user data is transmitted to any Hearth server (we operate no server).
 
 3. KEY FLOWS TO TEST

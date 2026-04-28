@@ -15,14 +15,16 @@ pub fn default_db_path() -> Option<PathBuf> {
 
 #[cfg(target_os = "macos")]
 fn dirs_macos() -> Option<PathBuf> {
-    let home = std::env::var_os("HOME")?;
-    Some(
-        PathBuf::from(home)
-            .join("Library")
-            .join("Application Support")
-            .join("com.newturn2017.hearth")
-            .join("data.db"),
-    )
+    let home = PathBuf::from(std::env::var_os("HOME")?);
+    let app_support = home.join("Library").join("Application Support");
+    let new_dir = app_support.join("com.codewithgenie.hearth");
+    let legacy_dir = app_support.join("com.newturn2017.hearth");
+    // One-shot migration from the pre-rebrand bundle id. Only fires when the
+    // legacy directory exists and the new one does not — never overwrites.
+    if !new_dir.exists() && legacy_dir.exists() {
+        let _ = std::fs::rename(&legacy_dir, &new_dir);
+    }
+    Some(new_dir.join("data.db"))
 }
 
 pub fn resolve_db_path(flag: Option<&str>) -> Result<PathBuf> {

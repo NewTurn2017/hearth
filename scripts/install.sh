@@ -2,7 +2,7 @@
 # Hearth one-line installer.
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/withgenie/hearth/main/scripts/install.sh | bash
 #   curl -sSL ... | bash -s -- --version v0.8.0
 #   curl -sSL ... | bash -s -- --uninstall
 #
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # ---- constants ----
-REPO_SLUG="NewTurn2017/hearth"
+REPO_SLUG="withgenie/hearth"
 RELEASES_BASE="${HEARTH_RELEASES_URL:-https://github.com/$REPO_SLUG/releases/download}"
 API_LATEST="https://api.github.com/repos/$REPO_SLUG/releases/latest"
 
