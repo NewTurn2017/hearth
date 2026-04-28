@@ -41,3 +41,8 @@ video-intro/
 
 # insane-design analysis artifacts (not source)
 insane-design/
+
+# MAS code-signing material (provisioning profiles, certs)
+certs/*.provisionprofile
+certs/*.cer
+certs/*.p12
