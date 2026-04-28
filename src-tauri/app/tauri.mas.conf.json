@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "macOS": {
+      "signingIdentity": "Apple Distribution: jaehyun jang (2UANJX7ATM)",
+      "providerShortName": "2UANJX7ATM",
+      "entitlements": "entitlements.mas.plist",
+      "minimumSystemVersion": "11.0"
+    }
+  }
+}
