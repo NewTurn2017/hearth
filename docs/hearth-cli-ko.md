@@ -71,7 +71,7 @@ DB 경로 우선순위는 다음과 같습니다.
 
 1. `--db <PATH>`
 2. `HEARTH_DB` 환경변수
-3. macOS 기본 앱 DB: `~/Library/Application Support/com.newturn2017.hearth/data.db`
+3. macOS 기본 앱 DB: `~/Library/Application Support/com.codewithgenie.hearth/data.db` (이전 `com.newturn2017.hearth/`는 첫 실행 시 자동 이관)
 
 현재 CLI의 자동 기본 경로 해석은 macOS 기준입니다. Windows/Linux에서 테스트할 때는 `--db` 또는 `HEARTH_DB`를 명시하는 편이 안전합니다.
 

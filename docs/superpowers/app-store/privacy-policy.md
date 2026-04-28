@@ -29,7 +29,7 @@ is sent to a Hearth server, because there is no Hearth server.
 ## 3. Data that stays on your Mac
 
 All app data is stored at:
-`~/Library/Application Support/com.newturn2017.hearth/data.db`
+`~/Library/Application Support/com.codewithgenie.hearth/data.db`
 
 You can inspect, back up, copy, or delete this file at any time.
 
@@ -99,7 +99,7 @@ Hearth 서버로 전송되는 정보는 없으며, Hearth는 자체 서버를 �
 ## 3. Mac에 저장되는 데이터
 
 앱 데이터는 다음 위치에 저장됩니다:
-`~/Library/Application Support/com.newturn2017.hearth/data.db`
+`~/Library/Application Support/com.codewithgenie.hearth/data.db`
 
 이 파일은 언제든지 직접 확인, 백업, 복사, 삭제할 수 있습니다.
 

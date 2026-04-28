@@ -5,7 +5,7 @@
 ## 한 줄 설치
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/withgenie/hearth/main/scripts/install.sh | bash
 ```
 
 이 명령이 하는 일:
@@ -30,7 +30,7 @@ curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/inst
 
 ```bash
 HEARTH_VERSION=v0.8.0 HEARTH_BIN_DIR=~/bin \
-  curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/install.sh | bash
+  curl -sSL https://raw.githubusercontent.com/withgenie/hearth/main/scripts/install.sh | bash
 ```
 
 ## 플래그
@@ -97,7 +97,7 @@ hearth db path
 
 ```bash
 HEARTH_SKILLS_DIR=~/.codex/skills \
-  curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/install.sh | bash
+  curl -sSL https://raw.githubusercontent.com/withgenie/hearth/main/scripts/install.sh | bash
 ```
 
 ## 업그레이드
@@ -107,7 +107,7 @@ HEARTH_SKILLS_DIR=~/.codex/skills \
 ## 삭제
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/NewTurn2017/hearth/main/scripts/install.sh | bash -s -- --uninstall
+curl -sSL https://raw.githubusercontent.com/withgenie/hearth/main/scripts/install.sh | bash -s -- --uninstall
 ```
 
 스크립트가 한 일만 되돌립니다 — 바이너리와 우리가 만든 심링크만 제거. staging 디렉토리는 보존됩니다. 완전 삭제:
@@ -135,7 +135,7 @@ macOS Gatekeeper. 위 "macOS Gatekeeper" 섹션 참고.
 현재 macOS aarch64 (Apple Silicon) 와 Linux x86_64 만 지원합니다. 다른 플랫폼은 소스에서 빌드:
 
 ```bash
-git clone https://github.com/NewTurn2017/hearth.git
+git clone https://github.com/withgenie/hearth.git
 cd hearth/src-tauri && cargo build --release -p hearth-cli
 ```
 

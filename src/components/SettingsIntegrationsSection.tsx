@@ -73,7 +73,7 @@ export function SettingsIntegrationsSection() {
               직접 사용해도 됩니다. Homebrew로 한 줄 설치:
             </p>
             <pre className="text-[11px] font-mono rounded bg-black/40 px-2 py-1 mb-3 select-all">
-              brew install newturn2017/tap/hearth-cli
+              brew install withgenie/hearth/hearth-cli
             </pre>
             <div className="flex items-center gap-2">
               <Button

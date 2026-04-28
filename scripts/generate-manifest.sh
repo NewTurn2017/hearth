@@ -18,7 +18,7 @@ OUT="$OUT_DIR/latest.json"
 
 NOTES="$("$ROOT/scripts/extract-release-notes.sh" "$VER")"
 PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-URL="https://github.com/NewTurn2017/hearth/releases/latest/download/Hearth.app.tar.gz"
+URL="https://github.com/withgenie/hearth/releases/latest/download/Hearth.app.tar.gz"
 
 jq -n \
   --arg version "$VER" \

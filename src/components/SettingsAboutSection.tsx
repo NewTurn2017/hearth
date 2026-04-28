@@ -53,7 +53,7 @@ export function SettingsAboutSection({ active }: { active: boolean }) {
           <div className="flex items-center justify-between py-1">
             <span className="text-[var(--color-text-muted)]">번들 ID</span>
             <span className="font-mono text-[var(--color-text)]">
-              com.newturn2017.hearth
+              com.codewithgenie.hearth
             </span>
           </div>
           {tauri && (
