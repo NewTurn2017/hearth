@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Local-first personal workspace for projects, memos, and schedules — with an AI command palette.",
   "author": "Jaehyun Jang <hyuni2020@gmail.com>",
-  "license": "MIT",
+  "license": "FSL-1.1-Apache-2.0",
   "homepage": "https://github.com/NewTurn2017/hearth",
   "repository": {
     "type": "git",

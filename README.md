@@ -14,9 +14,13 @@
 [![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri)](https://tauri.app)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
 [![Rust](https://img.shields.io/badge/Rust-edition%202021-000000?logo=rust)](https://rust-lang.org)
-[![License](https://img.shields.io/github/license/NewTurn2017/hearth)](LICENSE)
+[![License: FSL-1.1-Apache-2.0](https://img.shields.io/badge/license-FSL--1.1--Apache--2.0-blue)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](https://tauri.app)
-[![Latest Release](https://img.shields.io/github/v/release/NewTurn2017/hearth?display_name=tag&sort=semver)](https://github.com/NewTurn2017/hearth/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/withgenie/hearth?display_name=tag&sort=semver)](https://github.com/withgenie/hearth/releases/latest)
+
+---
+
+> **🚀 Hearth Pro 사전 등록 오픈** — 클라우드 동기화, 호스팅 AI(키 불필요), 프리미엄 테마, 우선 지원이 포함된 유료 플랜을 곧 시작합니다. 무료 데스크톱 앱은 그대로 유지되며, 사전 등록자에게 런칭 할인을 드립니다. **[사전 등록하기 →](https://github.com/withgenie/hearth/discussions)** *(임시 링크 — 정식 등록 폼은 곧 공개)*
 
 ---
 
@@ -329,6 +333,22 @@ npm run tauri build
 
 이슈와 PR 환영합니다. 버그 제보는 재현 절차 · OS · 콘솔 로그를 같이 남겨 주세요.
 
+## Pricing
+
+| | 무료 (Hearth) | Hearth Pro |
+|---|---|---|
+| 로컬 SQLite, 명령 팔레트, 메모, 일정, Quick Capture | ✅ | ✅ |
+| AI (BYOK — OpenAI 키 직접 등록) | ✅ | ✅ |
+| **호스팅 AI** (키 등록 불필요) | — | ✅ |
+| **디바이스 간 클라우드 동기화** | — | ✅ |
+| 프리미엄 테마 / 우선 지원 / 우선 업데이트 | — | ✅ |
+
+가격 및 출시 일정은 사전 등록자에게 우선 공지됩니다. (예상: 월 ₩9,900 수준)
+
 ## License
 
-MIT © 2026 NewTurn2017
+[**FSL-1.1-Apache-2.0**](LICENSE) © 2026 WithGenie
+
+Hearth는 [Functional Source License](https://fsl.software) 하에 배포됩니다. 개인 사용 · 내부 사용 · 비영리 교육 / 연구는 자유롭게 가능하며, **Hearth와 동일하거나 실질적으로 유사한 기능을 제공하는 상용 제품/서비스로 재판매하는 행위(Competing Use)** 만 제한됩니다. 각 릴리스는 공개 2년 후 자동으로 Apache 2.0으로 회귀합니다.
+
+> 0.9.5 이전 릴리스는 MIT 라이선스로 배포되었으며, 그 버전에 한해서는 MIT 조건이 영구적으로 유효합니다.

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **라이선스**: MIT → **FSL-1.1-Apache-2.0** ([Functional Source License](https://fsl.software))로 전환했습니다. 개인·내부·비영리 사용은 그대로 자유로우며, Hearth와 경쟁하는 상용 제품을 만드는 용도(Competing Use)만 제한됩니다. 각 릴리스는 공개 2년 후 Apache 2.0으로 자동 회귀합니다. **0.9.5 이전 릴리스는 MIT 조건을 영구적으로 유지**합니다.
+- **README**: Hearth Pro 사전 등록 안내, 가격 표, 라이선스 섹션 갱신.
+
+### Added
+
+- **Hearth Pro 사전 등록 트랙**: 클라우드 동기화 · 호스팅 AI · 프리미엄 테마 · 우선 지원이 포함된 유료 플랜의 사전 등록을 README 상단에서 안내합니다.
+
 ## [0.9.5] - 2026-04-26
 
 ### Fixed
