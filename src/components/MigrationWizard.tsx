@@ -21,14 +21,31 @@ export function MigrationWizard() {
   useEffect(() => {
     let cancelled = false;
     let unlisten: UnlistenFn | undefined;
+
+    function reveal() {
+      if (cancelled) return;
+      if (onceRef.current) return;
+      onceRef.current = true;
+      setOpen(true);
+      setStage("intro");
+    }
+
     (async () => {
-      const off = await listen("migration:required", () => {
-        if (cancelled) return;
-        if (onceRef.current) return;
-        onceRef.current = true;
-        setOpen(true);
-        setStage("intro");
-      });
+      // Belt-and-suspenders: if the listener registers after Rust emits
+      // `migration:required` (the 1500ms delay in setup() vs. React mount
+      // timing), we still need to surface the wizard. Query the status
+      // explicitly and reveal if the user has neither a bookmark nor an
+      // explicit dismiss marker.
+      try {
+        const status = await api.getDataFolderStatus();
+        if (!status.hasBookmark && !status.dismissed) {
+          reveal();
+        }
+      } catch {
+        // Non-Tauri context (tests) — ignore.
+      }
+
+      const off = await listen("migration:required", reveal);
       if (cancelled) off();
       else unlisten = off;
     })();
@@ -99,7 +116,7 @@ export function MigrationWizard() {
         {stage === "intro" && (
           <>
             <p className="text-[13px] text-[var(--color-text)] leading-relaxed mb-2">
-              Hearth는 <code>~/Library/Application Support/com.newturn2017.hearth/</code>
+              Hearth는 <code>~/Library/Application Support/com.codewithgenie.hearth/</code>
               에 데이터를 보관합니다. 이 위치 접근 권한을 한 번 허용해 주세요.
             </p>
             <p className="text-[12px] text-[var(--color-text-muted)] leading-relaxed mb-5">
