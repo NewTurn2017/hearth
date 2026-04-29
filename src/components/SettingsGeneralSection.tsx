@@ -1,29 +1,18 @@
 import { useEffect, useState } from "react";
-import { Download, RefreshCw } from "lucide-react";
 import { Button } from "../ui/Button";
 import * as api from "../api";
 import type { NotificationPermission } from "../api";
-import type { PendingUpdate } from "../hooks/useAppUpdater";
 import { useQuickCaptureShortcut } from "../hooks/useQuickCaptureShortcut";
 import { ShortcutRecorder } from "./settings/ShortcutRecorder";
-import { useToast } from "../ui/Toast";
 
 export function SettingsGeneralSection({
   active,
-  pendingUpdate,
-  updateChecking = false,
-  onCheckForUpdates,
 }: {
   active: boolean;
-  pendingUpdate?: PendingUpdate | null;
-  updateChecking?: boolean;
-  onCheckForUpdates?: () => Promise<void>;
 }) {
-  const toast = useToast();
   const [autostart, setAutostartState] = useState<boolean>(false);
   const [perm, setPerm] = useState<NotificationPermission>("unknown");
   const [busy, setBusy] = useState(false);
-  const [installing, setInstalling] = useState(false);
   const {
     combo,
     display,
@@ -74,17 +63,6 @@ export function SettingsGeneralSection({
     }
   }
 
-  async function installUpdate() {
-    if (!pendingUpdate) return;
-    setInstalling(true);
-    try {
-      await pendingUpdate.install();
-    } catch (e) {
-      toast.error(`업데이트 실패: ${e}`);
-      setInstalling(false);
-    }
-  }
-
   const permLabel = {
     granted: "허용됨",
     denied: "차단됨",
@@ -129,37 +107,6 @@ export function SettingsGeneralSection({
             macOS 시스템 설정 → 알림 → Hearth 에서 허용으로 변경해 주세요.
           </p>
         )}
-      </section>
-
-      <section>
-        <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">
-          업데이트
-        </h3>
-        <div className="flex items-center gap-2 text-[13px]">
-          <Button
-            size="sm"
-            variant="secondary"
-            leftIcon={RefreshCw}
-            onClick={() => void onCheckForUpdates?.()}
-            disabled={updateChecking || !onCheckForUpdates}
-          >
-            {updateChecking ? "확인 중…" : "업데이트 확인"}
-          </Button>
-          {pendingUpdate && (
-            <Button
-              size="sm"
-              variant="primary"
-              leftIcon={Download}
-              onClick={installUpdate}
-              disabled={installing}
-            >
-              {installing ? "설치 중…" : `v${pendingUpdate.version} 설치`}
-            </Button>
-          )}
-        </div>
-        <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
-          새 버전이 있으면 다운로드 후 Hearth를 다시 시작합니다.
-        </p>
       </section>
 
       <section>

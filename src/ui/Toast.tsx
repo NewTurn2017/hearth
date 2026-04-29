@@ -72,8 +72,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   // Memoize so the context value's identity is stable across re-renders.
   // Otherwise every toast re-renders ToastProvider → new `api` identity →
-  // every consumer's `useEffect(..., [toast])` restarts (notably the
-  // updater's 30s startup timer and 24h interval).
+  // every consumer's `useEffect(..., [toast])` restarts.
   const api = useMemo<ToastApi>(
     () => ({
       success: (message, opts) =>

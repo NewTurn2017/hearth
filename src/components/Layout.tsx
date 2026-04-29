@@ -11,7 +11,6 @@ import { FindPalette } from "./FindPalette";
 import { buildLocalCommands } from "../command/dispatch";
 import type { Tab, Priority, ToolCall } from "../types";
 import { PRIORITIES } from "../types";
-import { useAppUpdater } from "../hooks/useAppUpdater";
 import { useDbRecoveryNotice } from "../hooks/useDbRecoveryNotice";
 import { useCmdF } from "../lib/shortcuts";
 import { useToast } from "../ui/Toast";
@@ -27,7 +26,6 @@ export function Layout({
     openNewProject: () => void;
   }) => React.ReactNode;
 }) {
-  const appUpdater = useAppUpdater();
   useDbRecoveryNotice();
   const toast = useToast();
   const [version, setVersion] = useState<string>("");
@@ -190,7 +188,6 @@ export function Layout({
           setSettingsOpen(true);
         }}
         version={version}
-        pendingUpdate={appUpdater.pending}
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -235,9 +232,6 @@ export function Layout({
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         initialTab={settingsInitialTab}
-        pendingUpdate={appUpdater.pending}
-        updateChecking={appUpdater.checking}
-        onCheckForUpdates={appUpdater.checkNow}
       />
     </div>
   );
