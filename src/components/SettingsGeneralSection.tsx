@@ -10,7 +10,6 @@ export function SettingsGeneralSection({
 }: {
   active: boolean;
 }) {
-  const [autostart, setAutostartState] = useState<boolean>(false);
   const [perm, setPerm] = useState<NotificationPermission>("unknown");
   const [busy, setBusy] = useState(false);
   const {
@@ -24,11 +23,7 @@ export function SettingsGeneralSection({
 
   async function refresh() {
     try {
-      const [a, p] = await Promise.all([
-        api.getAutostart(),
-        api.notificationsPermission(),
-      ]);
-      setAutostartState(a);
+      const p = await api.notificationsPermission();
       setPerm(p);
     } catch (e) {
       console.error("general settings load failed:", e);
@@ -38,18 +33,6 @@ export function SettingsGeneralSection({
   useEffect(() => {
     if (active) refresh();
   }, [active]);
-
-  async function toggleAutostart(next: boolean) {
-    setBusy(true);
-    try {
-      await api.setAutostart(next);
-      setAutostartState(next);
-    } catch (e) {
-      console.error("set_autostart failed:", e);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function requestPerm() {
     setBusy(true);
@@ -73,18 +56,14 @@ export function SettingsGeneralSection({
     <div className="flex flex-col gap-6">
       <section>
         <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">
-          자동 시작
+          로그인 시 자동 실행
         </h3>
-        <label className="flex items-center gap-2 text-[13px]">
-          <input
-            type="checkbox"
-            checked={autostart}
-            disabled={busy}
-            onChange={(e) => toggleAutostart(e.target.checked)}
-            aria-label="로그인 시 Hearth 자동 실행"
-          />
-          <span>로그인 시 Hearth 자동 실행 (백그라운드에서 조용히 시작)</span>
-        </label>
+        <div className="rounded-md border border-[var(--color-border)] p-3 text-[12px] text-[var(--color-text-muted)] leading-relaxed">
+          Mac App Store 정책 호환을 위해 1.1에서 지원될 예정입니다.
+          <br />
+          그동안은 macOS 시스템 설정 → 일반 → 로그인 항목에 Hearth를 추가해
+          주세요.
+        </div>
       </section>
 
       <section>
@@ -149,9 +128,8 @@ export function SettingsGeneralSection({
         )}
         <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
           어느 앱에서든 이 단축키로 한 줄 메모를 남길 수 있어요. Hearth가 완전히
-          종료되면 작동하지 않으니 "로그인 시 자동 실행"을 켜두는 걸 추천합니다.
-          저장된 메모는 기본 노란색으로 메모 탭 상단에 쌓입니다. (combo:{" "}
-          <code>{combo}</code>)
+          종료되면 작동하지 않습니다. 저장된 메모는 기본 노란색으로 메모 탭
+          상단에 쌓입니다. (combo: <code>{combo}</code>)
         </p>
       </section>
     </div>

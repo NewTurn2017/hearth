@@ -178,11 +178,6 @@ export const getBackupDir = () => invoke<string>("get_backup_dir");
 export const setBackupDir = (path: string) =>
   invoke<string>("set_backup_dir", { path });
 
-// 자동 시작 (autostart)
-export const getAutostart = () => invoke<boolean>("get_autostart");
-export const setAutostart = (enabled: boolean) =>
-  invoke<void>("set_autostart", { enabled });
-
 // 알림 권한 (notification permissions)
 export type NotificationPermission = "granted" | "denied" | "unknown";
 export const notificationsPermission = () =>
