@@ -27,7 +27,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "category": "public.app-category.productivity",
     "shortDescription": "Local-first personal workspace.",
     "longDescription": "Hearth is a local-first personal workspace that unifies projects, sticky memos, and schedules, driven by an optional AI command palette powered by OpenAI.",
@@ -42,18 +42,11 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "Developer ID Application: jaehyun jang (2UANJX7ATM)",
+      "signingIdentity": "Apple Distribution: jaehyun jang (2UANJX7ATM)",
       "providerShortName": "2UANJX7ATM",
-      "entitlements": "entitlements.plist",
+      "entitlements": "entitlements.mas.plist",
       "minimumSystemVersion": "11.0"
     }
   },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI3QkVFQkVBNEZBODA0QTQKUldTa0JLaFA2dXUrSjVkUENhLzEycEtJL1FUUXljaFVBYUZOYjlpTjBGVVR0dGExdk1NRnpaZkUK",
-      "endpoints": [
-        "https://github.com/withgenie/hearth/releases/latest/download/latest.json"
-      ]
-    }
-  }
+  "plugins": {}
 }

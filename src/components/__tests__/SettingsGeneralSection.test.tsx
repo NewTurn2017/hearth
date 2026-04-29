@@ -50,36 +50,4 @@ describe("SettingsGeneralSection", () => {
     fireEvent.click(btn);
     await waitFor(() => expect(api.notificationsRequest).toHaveBeenCalled());
   });
-
-  it("calls manual update check from the general settings section", async () => {
-    const onCheckForUpdates = vi.fn().mockResolvedValue(undefined);
-    render(
-      <SettingsGeneralSection
-        active
-        onCheckForUpdates={onCheckForUpdates}
-        updateChecking={false}
-        pendingUpdate={null}
-      />,
-    );
-    const btn = await screen.findByRole("button", { name: "업데이트 확인" });
-    fireEvent.click(btn);
-    expect(onCheckForUpdates).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows an install button when an update is pending", async () => {
-    const install = vi.fn().mockResolvedValue(undefined);
-    render(
-      <SettingsGeneralSection
-        active
-        pendingUpdate={{
-          version: "0.10.0",
-          install,
-          dismiss: vi.fn(),
-        }}
-      />,
-    );
-    const btn = await screen.findByRole("button", { name: "v0.10.0 설치" });
-    fireEvent.click(btn);
-    await waitFor(() => expect(install).toHaveBeenCalledTimes(1));
-  });
 });
