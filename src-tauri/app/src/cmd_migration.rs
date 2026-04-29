@@ -8,6 +8,7 @@
 // Spec: docs/superpowers/specs/2026-04-26-mas-readiness-design.md §4-3.
 
 use serde::Serialize;
+use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 const BOOKMARK_KEY: &str = "hearth.dataDirBookmark";
@@ -71,6 +72,65 @@ pub async fn dismiss_migration() -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+pub fn restart_app(app: AppHandle) {
+    app.restart();
+}
+
+/// Outcome of the boot-time bookmark decision.
+///
+/// `Bookmarked` — the persisted bookmark resolved successfully and
+/// `startAccessingSecurityScopedResource` succeeded; `access` must live for
+/// the duration of the app process so the resource stays accessible.
+///
+/// `Fallback` — no usable bookmark; the app boots from the sandbox container
+/// path. `needs_wizard` is true when the user has neither chosen a folder
+/// nor explicitly dismissed the wizard, so the frontend should surface the
+/// migration prompt.
+pub enum BootDecision {
+    Bookmarked {
+        db_dir: PathBuf,
+        access: BookmarkAccess,
+    },
+    Fallback {
+        db_dir: PathBuf,
+        needs_wizard: bool,
+    },
+}
+
+/// RAII handle that releases the security-scoped resource when dropped.
+/// Stored in app state so it survives for the lifetime of the process.
+pub struct BookmarkAccess {
+    #[cfg(target_os = "macos")]
+    url: objc2::rc::Retained<objc2_foundation::NSURL>,
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for BookmarkAccess {
+    fn drop(&mut self) {
+        unsafe {
+            self.url.stopAccessingSecurityScopedResource();
+        }
+    }
+}
+
+/// Decide where the DB lives at boot. `fallback_dir` is the sandbox container
+/// path — used when no bookmark is set. On non-macOS this always returns
+/// `Fallback` with `needs_wizard: false` since the wizard is mac-only.
+pub fn decide_boot(fallback_dir: PathBuf) -> BootDecision {
+    #[cfg(target_os = "macos")]
+    {
+        macos::decide_boot(fallback_dir)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        BootDecision::Fallback {
+            db_dir: fallback_dir,
+            needs_wizard: false,
+        }
+    }
+}
+
 #[cfg(target_os = "macos")]
 mod macos {
     use super::*;
@@ -79,7 +139,55 @@ mod macos {
         MainThreadMarker, NSData, NSString, NSURL, NSURLBookmarkCreationOptions,
         NSURLBookmarkResolutionOptions, NSUserDefaults,
     };
-    use std::path::PathBuf;
+
+    pub fn decide_boot(fallback_dir: PathBuf) -> BootDecision {
+        let Some(blob) = read_bookmark_blob() else {
+            return BootDecision::Fallback {
+                db_dir: fallback_dir,
+                needs_wizard: !read_dismissed(),
+            };
+        };
+
+        let resolved = match resolve_bookmark(&blob) {
+            Ok(r) => r,
+            Err(e) => {
+                // Folder gone / blob corrupt — clear and re-prompt next launch.
+                eprintln!("bookmark resolve failed: {e}");
+                clear_bookmark_blob();
+                return BootDecision::Fallback {
+                    db_dir: fallback_dir,
+                    needs_wizard: !read_dismissed(),
+                };
+            }
+        };
+
+        if resolved.stale {
+            // Folder moved/renamed. Best-effort refresh; even if persistence
+            // fails the resolved URL is still usable for this session.
+            if let Err(e) = refresh_stale_bookmark(&resolved.path) {
+                eprintln!("stale bookmark refresh failed: {e}");
+            }
+        }
+
+        let started = unsafe { resolved.url.startAccessingSecurityScopedResource() };
+        if !started {
+            eprintln!(
+                "startAccessingSecurityScopedResource returned false for {}",
+                resolved.path
+            );
+            // Sandbox refused — fall back so the app still boots. User can
+            // re-pick from Settings.
+            return BootDecision::Fallback {
+                db_dir: fallback_dir,
+                needs_wizard: !read_dismissed(),
+            };
+        }
+
+        BootDecision::Bookmarked {
+            db_dir: PathBuf::from(&resolved.path),
+            access: BookmarkAccess { url: resolved.url },
+        }
+    }
 
     pub fn get_status() -> Result<DataFolderStatus, String> {
         let dismissed = read_dismissed();
