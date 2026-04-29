@@ -8,6 +8,9 @@ pub fn init_db(db_path: &Path) -> Result<Connection> {
 
     conn.execute_batch("PRAGMA journal_mode=WAL;")?;
     conn.execute_batch("PRAGMA foreign_keys=ON;")?;
+    // Coexist with `hearth-cli` writing to the same DB outside the sandbox.
+    // 5s gives the other process room to commit before we surface SQLITE_BUSY.
+    conn.busy_timeout(std::time::Duration::from_secs(5))?;
 
     run_migrations(&conn)?;
 

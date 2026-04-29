@@ -1,5 +1,5 @@
 // Security-scoped bookmark plumbing for the canonical data folder
-// (~/Library/Application Support/com.newturn2017.hearth/).
+// (~/Library/Application Support/com.codewithgenie.hearth/).
 //
 // PR-A: exposes three Tauri commands that the migration wizard UI (PR-B)
 // will drive. The DB bootstrap path in lib.rs::setup() is intentionally
@@ -9,7 +9,7 @@
 
 use serde::Serialize;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 const BOOKMARK_KEY: &str = "hearth.dataDirBookmark";
 const DISMISSED_KEY: &str = "hearth.migrationDismissed";
@@ -162,9 +162,11 @@ mod macos {
         };
 
         if resolved.stale {
-            // Folder moved/renamed. Best-effort refresh; even if persistence
-            // fails the resolved URL is still usable for this session.
-            if let Err(e) = refresh_stale_bookmark(&resolved.path) {
+            // Folder moved/renamed. Best-effort refresh — pass the resolved
+            // URL itself, since a freshly-constructed NSURL has no
+            // security-scope grant and bookmarkDataWithOptions(.WithSecurityScope)
+            // would fail. Spec §4-3: "bookmark 재생성 (resolved url 그대로)".
+            if let Err(e) = refresh_stale_bookmark(&resolved.url) {
                 eprintln!("stale bookmark refresh failed: {e}");
             }
         }
@@ -175,8 +177,9 @@ mod macos {
                 "startAccessingSecurityScopedResource returned false for {}",
                 resolved.path
             );
-            // Sandbox refused — fall back so the app still boots. User can
-            // re-pick from Settings.
+            // Sandbox refused — clear the poison-pill blob so we re-prompt
+            // on next launch instead of looping in degraded mode forever.
+            clear_bookmark_blob();
             return BootDecision::Fallback {
                 db_dir: fallback_dir,
                 needs_wizard: !read_dismissed(),
@@ -201,11 +204,11 @@ mod macos {
         };
 
         match resolve_bookmark(&blob) {
-            Ok(Resolved { path, stale, .. }) => {
+            Ok(Resolved { path, stale, url }) => {
                 if stale {
                     // Best-effort refresh; failure is non-fatal — UI still
                     // gets the resolved path so the user can keep working.
-                    let _ = refresh_stale_bookmark(&path);
+                    let _ = refresh_stale_bookmark(&url);
                 }
                 Ok(DataFolderStatus {
                     has_bookmark: true,
@@ -230,11 +233,14 @@ mod macos {
     }
 
     pub async fn choose_folder(app: AppHandle) -> Result<ChooseFolderResponse, String> {
-        let initial_dir = app
-            .path()
-            .app_data_dir()
+        // Open NSOpenPanel pre-pointed at the canonical (non-container)
+        // location used by 0.x — that's where existing users' data lives,
+        // and it's outside the sandbox container. `app_data_dir()` under
+        // MAS would return the container path, which is the wrong place
+        // for the primary migration audience.
+        let initial_dir = std::env::var("HOME")
             .ok()
-            .map(|p| p.to_string_lossy().into_owned());
+            .map(|h| format!("{h}/Library/Application Support/com.codewithgenie.hearth"));
 
         let (tx, rx) = tokio::sync::oneshot::channel::<Result<ChooseFolderResponse, String>>();
         app.run_on_main_thread(move || {
@@ -253,7 +259,11 @@ mod macos {
 
         let panel = NSOpenPanel::openPanel(mtm);
         panel.setCanChooseDirectories(true);
-        panel.setCanChooseFiles(true);
+        // Folder-only: lib.rs::setup() unconditionally appends `data.db` to
+        // the chosen path, so a file selection would produce
+        // `<.../data.db>/data.db` and fail SQLite open. The wizard copy also
+        // says "데이터 폴더 선택", so this matches user expectations.
+        panel.setCanChooseFiles(false);
         panel.setAllowsMultipleSelection(false);
         let prompt = NSString::from_str("Hearth 데이터 폴더 선택");
         panel.setPrompt(Some(&prompt));
@@ -298,7 +308,6 @@ mod macos {
     struct Resolved {
         path: String,
         stale: bool,
-        #[allow(dead_code)] // PR-B will use the URL to start access.
         url: objc2::rc::Retained<NSURL>,
     }
 
@@ -323,10 +332,8 @@ mod macos {
         })
     }
 
-    fn refresh_stale_bookmark(path: &str) -> Result<(), String> {
-        let path_ns = NSString::from_str(path);
-        let url = NSURL::fileURLWithPath(&path_ns);
-        let blob = create_bookmark(&url)?;
+    fn refresh_stale_bookmark(url: &NSURL) -> Result<(), String> {
+        let blob = create_bookmark(url)?;
         write_bookmark_blob(&blob);
         Ok(())
     }
