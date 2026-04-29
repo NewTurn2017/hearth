@@ -25,7 +25,6 @@ use tauri::State;
 const K_OPENAI_KEY: &str = "ai.openai_api_key";
 const K_UI_SCALE: &str = "ui.scale";
 pub(crate) const K_BACKUP_DIR: &str = "backup.dir";
-pub(crate) const K_AUTOSTART: &str = "autostart.enabled";
 pub(crate) const K_THEME: &str = "ui.theme";
 
 /// Shape safe to expose over IPC — the raw API key never crosses this

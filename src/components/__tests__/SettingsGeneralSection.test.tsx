@@ -4,8 +4,6 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { SettingsGeneralSection } from "../SettingsGeneralSection";
 
 vi.mock("../../api", () => ({
-  getAutostart: vi.fn().mockResolvedValue(false),
-  setAutostart: vi.fn().mockResolvedValue(undefined),
   notificationsPermission: vi.fn().mockResolvedValue("unknown"),
   notificationsRequest: vi.fn().mockResolvedValue("granted"),
   getQuickCaptureShortcut: vi
@@ -36,12 +34,14 @@ describe("SettingsGeneralSection", () => {
     vi.clearAllMocks();
   });
 
-  it("reads initial autostart state and toggles via set_autostart", async () => {
+  it("renders the autostart 1.1 informational card instead of a toggle", async () => {
     render(<SettingsGeneralSection active />);
-    const toggle = await screen.findByLabelText("로그인 시 Hearth 자동 실행");
-    expect(toggle).not.toBeChecked();
-    fireEvent.click(toggle);
-    await waitFor(() => expect(api.setAutostart).toHaveBeenCalledWith(true));
+    expect(
+      await screen.findByText(/Mac App Store 정책 호환을 위해 1\.1에서/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("로그인 시 Hearth 자동 실행"),
+    ).not.toBeInTheDocument();
   });
 
   it("fires notifications_request when the permission button is clicked", async () => {

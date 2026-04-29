@@ -1,7 +1,6 @@
 pub mod ai_tools;
 mod cmd_actions;
 mod cmd_ai;
-mod cmd_autostart;
 mod cmd_backup;
 mod cmd_categories;
 mod cmd_clients;
@@ -29,10 +28,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--hidden"]),
-        ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
@@ -196,8 +191,6 @@ pub fn run() {
             cmd_settings::set_theme,
             cmd_notify::notifications_permission,
             cmd_notify::notifications_request,
-            cmd_autostart::get_autostart,
-            cmd_autostart::set_autostart,
             cmd_quick_capture::get_quick_capture_shortcut,
             cmd_quick_capture::get_quick_capture_shortcut_error,
             cmd_quick_capture::rebind_quick_capture_shortcut,
