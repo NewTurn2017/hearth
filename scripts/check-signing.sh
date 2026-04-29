@@ -43,7 +43,9 @@ echo "Hearth MAS pre-flight"
 echo "---------------------"
 
 # 1. Keychain identities ----------------------------------------------------
-identities="$(security find-identity -v -p codesigning 2>/dev/null || true)"
+# Use the unfiltered listing so installer certs (productsign policy, not
+# codesigning) show up alongside app-signing identities.
+identities="$(security find-identity -v 2>/dev/null || true)"
 for want in "${WANT_IDENTITIES[@]}"; do
   if printf '%s\n' "$identities" | grep -Fq "$want"; then
     ok "keychain has identity matching: $want"
