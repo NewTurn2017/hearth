@@ -5,6 +5,7 @@ mod cmd_backup;
 mod cmd_categories;
 mod cmd_clients;
 mod cmd_memos;
+mod cmd_migration;
 mod cmd_notify;
 mod cmd_projects;
 mod cmd_quick_capture;
@@ -198,6 +199,9 @@ pub fn run() {
             cmd_quick_capture::hide_quick_capture_window,
             cmd_quick_capture::toggle_quick_capture_window,
             cmd_quick_capture::resize_quick_capture_window,
+            cmd_migration::get_data_folder_status,
+            cmd_migration::choose_data_folder,
+            cmd_migration::dismiss_migration,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
