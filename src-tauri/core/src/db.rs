@@ -3,7 +3,18 @@
 use rusqlite::{Connection, Result};
 use std::path::{Path, PathBuf};
 
+/// Schema generation stamped via `PRAGMA user_version` once the DB is
+/// guaranteed to be on the 1.0 baseline. Any future destructive migration
+/// (column drop, type change, etc.) should bump this and snapshot through
+/// a similarly-named `.pre-X.Y.bak` next to the canonical DB.
+const SCHEMA_VERSION_1: i64 = 1;
+const PRE_1_0_BAK_SUFFIX: &str = ".pre-1.0.bak";
+
 pub fn init_db(db_path: &Path) -> Result<Connection> {
+    // Only snapshot DBs that already existed on disk; a fresh open on a
+    // brand-new install would back up a near-empty file for nothing.
+    let pre_existed = db_path.exists();
+
     let conn = Connection::open(db_path)?;
 
     conn.execute_batch("PRAGMA journal_mode=WAL;")?;
@@ -12,9 +23,58 @@ pub fn init_db(db_path: &Path) -> Result<Connection> {
     // 5s gives the other process room to commit before we surface SQLITE_BUSY.
     conn.busy_timeout(std::time::Duration::from_secs(5))?;
 
+    if pre_existed {
+        snapshot_pre_1_0_if_needed(&conn, db_path);
+    }
     run_migrations(&conn)?;
+    stamp_schema_version(&conn)?;
 
     Ok(conn)
+}
+
+fn pre_1_0_bak_path(db_path: &Path) -> PathBuf {
+    let file_name = db_path
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "data.db".to_string());
+    db_path.with_file_name(format!("{file_name}{PRE_1_0_BAK_SUFFIX}"))
+}
+
+/// One-time defensive snapshot taken the first time a 1.0 build opens a
+/// 0.9.x DB. Spec §4-3: "사전 백업: data.db → data.db.pre-1.0.bak (같은 폴더 내)".
+///
+/// Failure is intentionally non-fatal — the snapshot is a nice-to-have,
+/// and the user's data is untouched regardless. Errors land in stderr.
+fn snapshot_pre_1_0_if_needed(conn: &Connection, db_path: &Path) {
+    let version: i64 = match conn.query_row("PRAGMA user_version", [], |r| r.get(0)) {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("pre-1.0 snapshot: read user_version failed: {e}");
+            return;
+        }
+    };
+    if version >= SCHEMA_VERSION_1 {
+        return;
+    }
+    let bak_path = pre_1_0_bak_path(db_path);
+    if bak_path.exists() {
+        return;
+    }
+    // Fold any uncommitted WAL frames into the main file so the file copy
+    // captures the full state. TRUNCATE empties the WAL after merging so the
+    // sidecar is small.
+    let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+    if let Err(e) = std::fs::copy(db_path, &bak_path) {
+        eprintln!("pre-1.0 snapshot: copy failed: {e}");
+    }
+}
+
+fn stamp_schema_version(conn: &Connection) -> Result<()> {
+    let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
+    if version < SCHEMA_VERSION_1 {
+        conn.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION_1};"))?;
+    }
+    Ok(())
 }
 
 /// Outcome of `init_db_with_recovery`.
@@ -524,6 +584,101 @@ mod tests {
             )
             .unwrap();
         assert_eq!(hits, 1);
+    }
+
+    fn user_version(conn: &Connection) -> i64 {
+        conn.query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn fresh_install_does_not_snapshot_but_stamps_schema_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("data.db");
+        let bak_path = dir.path().join("data.db.pre-1.0.bak");
+
+        let conn = init_db(&db_path).unwrap();
+
+        assert!(!bak_path.exists(), "fresh install must not snapshot");
+        assert_eq!(user_version(&conn), SCHEMA_VERSION_1);
+    }
+
+    #[test]
+    fn pre_1_0_db_gets_snapshotted_on_first_open_then_stamped() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("data.db");
+        let bak_path = dir.path().join("data.db.pre-1.0.bak");
+
+        // Simulate a 0.9.x DB: tables exist, user_version still default 0.
+        {
+            let pre = Connection::open(&db_path).unwrap();
+            run_migrations(&pre).unwrap();
+            // Seed a row so we can prove the snapshot captured real data.
+            pre.execute(
+                "INSERT INTO memos (content) VALUES ('pre-1.0 memo')",
+                [],
+            )
+            .unwrap();
+            assert_eq!(user_version(&pre), 0);
+        }
+
+        let conn = init_db(&db_path).unwrap();
+
+        assert!(bak_path.exists(), "snapshot must be created");
+        assert_eq!(user_version(&conn), SCHEMA_VERSION_1);
+
+        // Snapshot reflects real seeded data.
+        let bak_conn = Connection::open(&bak_path).unwrap();
+        let bak_count: i64 = bak_conn
+            .query_row("SELECT COUNT(*) FROM memos", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(bak_count, 1);
+    }
+
+    #[test]
+    fn second_open_does_not_re_snapshot() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("data.db");
+        let bak_path = dir.path().join("data.db.pre-1.0.bak");
+
+        // Seed pre-1.0 DB and run init_db once to take the snapshot.
+        {
+            let pre = Connection::open(&db_path).unwrap();
+            run_migrations(&pre).unwrap();
+        }
+        let _ = init_db(&db_path).unwrap();
+        assert!(bak_path.exists());
+
+        // Mutate the .bak so we can detect re-snapshot by content change.
+        std::fs::write(&bak_path, b"sentinel").unwrap();
+
+        let _ = init_db(&db_path).unwrap();
+
+        let bak_bytes = std::fs::read(&bak_path).unwrap();
+        assert_eq!(
+            bak_bytes, b"sentinel",
+            "second open must not overwrite an existing .bak"
+        );
+    }
+
+    #[test]
+    fn snapshot_skipped_if_bak_already_exists_even_when_version_is_zero() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("data.db");
+        let bak_path = dir.path().join("data.db.pre-1.0.bak");
+
+        // 0.9.x DB.
+        {
+            let pre = Connection::open(&db_path).unwrap();
+            run_migrations(&pre).unwrap();
+        }
+        // Pre-existing .bak (e.g. from a half-completed previous boot).
+        std::fs::write(&bak_path, b"earlier-bak").unwrap();
+
+        let _ = init_db(&db_path).unwrap();
+
+        let bytes = std::fs::read(&bak_path).unwrap();
+        assert_eq!(bytes, b"earlier-bak");
     }
 
     #[test]
