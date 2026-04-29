@@ -32,13 +32,31 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
-            let app_data_dir = app
+            let fallback_dir = app
                 .path()
                 .app_data_dir()
                 .map_err(|e| format!("failed to resolve app data dir: {e}"))?;
-            std::fs::create_dir_all(&app_data_dir)?;
+            std::fs::create_dir_all(&fallback_dir)?;
 
-            let db_path = app_data_dir.join("data.db");
+            // Decide whether the DB lives under the user's bookmarked folder
+            // or the sandbox container fallback. See cmd_migration::decide_boot.
+            let (db_dir, bookmark_access, needs_wizard) =
+                match cmd_migration::decide_boot(fallback_dir.clone()) {
+                    cmd_migration::BootDecision::Bookmarked { db_dir, access } => {
+                        (db_dir, Some(access), false)
+                    }
+                    cmd_migration::BootDecision::Fallback {
+                        db_dir,
+                        needs_wizard,
+                    } => (db_dir, None, needs_wizard),
+                };
+            std::fs::create_dir_all(&db_dir)?;
+
+            if let Some(access) = bookmark_access {
+                app.manage(access);
+            }
+
+            let db_path = db_dir.join("data.db");
             // If the DB file is corrupt (`database disk image is malformed`),
             // quarantine it and boot from an empty schema instead of
             // panicking. The user is notified via the `db:recovered` event so
@@ -75,6 +93,17 @@ pub fn run() {
                     // Small delay so listener is mounted.
                     tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
                     let _ = app_handle.emit("db:recovered", payload);
+                });
+            }
+
+            // First-launch with no bookmark and no "later" marker — let the
+            // frontend show the migration wizard after the webview mounts.
+            // PR-B2 wires the listener; PR-B1 just emits.
+            if needs_wizard {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                    let _ = app_handle.emit("migration:required", ());
                 });
             }
 
@@ -202,6 +231,7 @@ pub fn run() {
             cmd_migration::get_data_folder_status,
             cmd_migration::choose_data_folder,
             cmd_migration::dismiss_migration,
+            cmd_migration::restart_app,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
