@@ -13,6 +13,14 @@ vi.mock("../../api", () => ({
   rebindQuickCaptureShortcut: vi
     .fn()
     .mockResolvedValue("CommandOrControl+Shift+H"),
+  getDataFolderStatus: vi.fn().mockResolvedValue({
+    hasBookmark: false,
+    resolvedPath: null,
+    stale: false,
+    dismissed: false,
+  }),
+  chooseDataFolder: vi.fn().mockResolvedValue({ resolvedPath: "/tmp/x" }),
+  restartApp: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({

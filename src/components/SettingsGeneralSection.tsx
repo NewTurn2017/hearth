@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../ui/Button";
 import * as api from "../api";
-import type { NotificationPermission } from "../api";
+import type { DataFolderStatus, NotificationPermission } from "../api";
 import { useQuickCaptureShortcut } from "../hooks/useQuickCaptureShortcut";
 import { ShortcutRecorder } from "./settings/ShortcutRecorder";
 
@@ -12,6 +12,12 @@ export function SettingsGeneralSection({
 }) {
   const [perm, setPerm] = useState<NotificationPermission>("unknown");
   const [busy, setBusy] = useState(false);
+  const [folderStatus, setFolderStatus] = useState<DataFolderStatus | null>(
+    null,
+  );
+  const [folderBusy, setFolderBusy] = useState(false);
+  const [folderError, setFolderError] = useState<string | null>(null);
+  const [folderJustChanged, setFolderJustChanged] = useState(false);
   const {
     combo,
     display,
@@ -23,8 +29,12 @@ export function SettingsGeneralSection({
 
   async function refresh() {
     try {
-      const p = await api.notificationsPermission();
+      const [p, fs] = await Promise.all([
+        api.notificationsPermission(),
+        api.getDataFolderStatus().catch(() => null),
+      ]);
       setPerm(p);
+      setFolderStatus(fs);
     } catch (e) {
       console.error("general settings load failed:", e);
     }
@@ -33,6 +43,33 @@ export function SettingsGeneralSection({
   useEffect(() => {
     if (active) refresh();
   }, [active]);
+
+  async function onPickFolder() {
+    setFolderBusy(true);
+    setFolderError(null);
+    try {
+      await api.chooseDataFolder();
+      setFolderJustChanged(true);
+      const fs = await api.getDataFolderStatus().catch(() => null);
+      setFolderStatus(fs);
+    } catch (e) {
+      const msg = String(e);
+      // user_cancelled is the NSOpenPanel cancel path — not an error.
+      if (!msg.includes("user_cancelled")) {
+        setFolderError(msg);
+      }
+    } finally {
+      setFolderBusy(false);
+    }
+  }
+
+  async function onRestart() {
+    try {
+      await api.restartApp();
+    } catch (e) {
+      setFolderError(String(e));
+    }
+  }
 
   async function requestPerm() {
     setBusy(true);
@@ -64,6 +101,54 @@ export function SettingsGeneralSection({
           그동안은 macOS 시스템 설정 → 일반 → 로그인 항목에 Hearth를 추가해
           주세요.
         </div>
+      </section>
+
+      <section>
+        <h3 className="text-[13px] text-[var(--color-text-hi)] mb-2">
+          데이터 폴더
+        </h3>
+        <div className="rounded-md border border-[var(--color-border)] p-3 text-[12px] text-[var(--color-text-muted)] leading-relaxed">
+          {folderStatus?.hasBookmark && folderStatus.resolvedPath ? (
+            <>
+              <span className="text-[var(--color-text)]">현재 위치:</span>{" "}
+              <code className="font-mono break-all">
+                {folderStatus.resolvedPath}
+              </code>
+              {folderStatus.stale && (
+                <p className="mt-1 text-[11px]">
+                  폴더가 이동된 것을 감지했어요. 자동으로 재연결되었습니다.
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              현재 기본 위치(샌드박스 컨테이너)에서 동작 중입니다. CLI · AI
+              agent와 데이터를 공유하려면 폴더를 연결해 주세요.
+            </>
+          )}
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <Button size="sm" onClick={onPickFolder} disabled={folderBusy}>
+            {folderStatus?.hasBookmark
+              ? "다른 폴더 연결"
+              : "데이터 폴더 연결"}
+          </Button>
+          {folderJustChanged && (
+            <Button size="sm" variant="secondary" onClick={onRestart}>
+              지금 재시작
+            </Button>
+          )}
+        </div>
+        {folderJustChanged && (
+          <p className="mt-2 text-[11px] text-[var(--color-text-muted)]">
+            새 위치를 적용하려면 Hearth를 재시작해 주세요.
+          </p>
+        )}
+        {folderError && (
+          <p className="mt-2 text-[11px] text-red-400 break-all">
+            {folderError}
+          </p>
+        )}
       </section>
 
       <section>
