@@ -1,7 +1,6 @@
 use crate::excel_import;
 use crate::AppState;
 use std::path::Path;
-use std::process::Command;
 use tauri::State;
 
 #[tauri::command]
@@ -10,14 +9,7 @@ pub fn open_in_terminal(path: String) -> Result<(), String> {
     if !p.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
-    // macOS 기본 터미널 앱(Terminal.app)에서 해당 경로를 연다.
-    // 사용자가 기본 터미널을 다른 앱(iTerm 등)으로 바꿨더라도 `open -a Terminal`은
-    // 시스템 Terminal.app을 호출하므로, 추후 기본값 감지가 필요하면 여기서 분기한다.
-    Command::new("open")
-        .args(["-a", "Terminal", &path])
-        .spawn()
-        .map_err(|e| format!("Failed to open Terminal: {}", e))?;
-    Ok(())
+    open_in_terminal_impl(&path)
 }
 
 #[tauri::command]
@@ -26,11 +18,68 @@ pub fn open_in_finder(path: String) -> Result<(), String> {
     if !p.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
-    Command::new("open")
-        .arg(&path)
-        .spawn()
-        .map_err(|e| format!("Failed to open Finder: {}", e))?;
+    open_in_finder_impl(&path)
+}
+
+#[cfg(target_os = "macos")]
+fn open_in_finder_impl(path: &str) -> Result<(), String> {
+    use objc2_app_kit::NSWorkspace;
+    use objc2_foundation::{NSString, NSURL};
+    {
+        let workspace = NSWorkspace::sharedWorkspace();
+        let path_ns = NSString::from_str(path);
+        let url = NSURL::fileURLWithPath(&path_ns);
+        if !workspace.openURL(&url) {
+            return Err(format!("NSWorkspace.openURL failed for: {}", path));
+        }
+    }
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn open_in_terminal_impl(path: &str) -> Result<(), String> {
+    // Pin to the system Terminal.app (com.apple.Terminal). Even when the
+    // user's default terminal handler is iTerm/Ghostty/etc., this command
+    // intentionally surfaces Apple's stock Terminal — matches the prior
+    // `open -a Terminal` behavior.
+    use objc2_app_kit::{NSWorkspace, NSWorkspaceOpenConfiguration};
+    use objc2_foundation::{NSArray, NSString, NSURL};
+    {
+        let workspace = NSWorkspace::sharedWorkspace();
+        let bundle_id = NSString::from_str("com.apple.Terminal");
+        let Some(terminal_url) = workspace.URLForApplicationWithBundleIdentifier(&bundle_id)
+        else {
+            return Err("Terminal.app (com.apple.Terminal) not found".to_string());
+        };
+
+        let path_ns = NSString::from_str(path);
+        let dir_url = NSURL::fileURLWithPath(&path_ns);
+        let urls = NSArray::from_retained_slice(&[dir_url]);
+        let config = NSWorkspaceOpenConfiguration::configuration();
+
+        workspace.openURLs_withApplicationAtURL_configuration_completionHandler(
+            &urls,
+            &terminal_url,
+            &config,
+            None,
+        );
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn open_in_finder_impl(path: &str) -> Result<(), String> {
+    use std::process::Command;
+    Command::new("xdg-open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("Failed to open file manager: {}", e))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn open_in_terminal_impl(_path: &str) -> Result<(), String> {
+    Err("open_in_terminal is only supported on macOS".to_string())
 }
 
 #[derive(serde::Serialize)]
