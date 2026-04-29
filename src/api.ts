@@ -204,6 +204,24 @@ export const hideQuickCaptureWindow = () =>
 export const resizeQuickCaptureWindow = (height: number) =>
   invoke<void>("resize_quick_capture_window", { height });
 
+// Data folder bookmark (MAS sandbox migration wizard)
+export type DataFolderStatus = {
+  hasBookmark: boolean;
+  resolvedPath: string | null;
+  stale: boolean;
+  dismissed: boolean;
+};
+
+export const getDataFolderStatus = () =>
+  invoke<DataFolderStatus>("get_data_folder_status");
+
+export const chooseDataFolder = () =>
+  invoke<{ resolvedPath: string }>("choose_data_folder");
+
+export const dismissMigration = () => invoke<void>("dismiss_migration");
+
+export const restartApp = () => invoke<void>("restart_app");
+
 // Theme (persisted JSON blob — the frontend owns the schema; Rust just
 // round-trips the string).
 import type { ThemeSetting } from "./theme/types";

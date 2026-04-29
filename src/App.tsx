@@ -5,6 +5,7 @@ import { ProjectList } from "./components/ProjectList";
 import { ProjectDetailDialog } from "./components/ProjectDetailDialog";
 import { CalendarView } from "./components/CalendarView";
 import { MemoBoard } from "./components/MemoBoard";
+import { MigrationWizard } from "./components/MigrationWizard";
 import { ToastProvider } from "./ui/Toast";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { useProjects } from "./hooks/useProjects";
@@ -97,6 +98,7 @@ function App() {
             </>
           )}
         </Layout>
+        <MigrationWizard />
       </ToastProvider>
     </ThemeProvider>
   );
