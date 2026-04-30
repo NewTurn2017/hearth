@@ -21,11 +21,14 @@ PRIVATE_DIR="${HEARTH_PRIVATE_DIR:-$HOME/dev/private/apple_developer}"
 CERTS_DIR="${HEARTH_CERTS_DIR:-$(cd "$(dirname "$0")/.." && pwd)/certs}"
 PROFILE_NAME="${HEARTH_MAS_PROFILE:-Hearth_MAS.provisionprofile}"
 
-# Identities we expect in the login keychain. Match by substring against
-# `security find-identity -v -p codesigning`.
+# Identities we expect in the login keychain. Each entry is
+# "policy|substring" — codesigning identities (Apple Distribution) live
+# under `-p codesigning`, but installer-signing certs (3rd Party Mac
+# Developer Installer, used by productsign for the .pkg) do NOT appear
+# under the codesigning policy and must be queried with `-p basic`.
 WANT_IDENTITIES=(
-  "Apple Distribution"
-  "3rd Party Mac Developer Installer"
+  "codesigning|Apple Distribution"
+  "basic|3rd Party Mac Developer Installer"
 )
 
 fail_count=0
@@ -43,9 +46,17 @@ echo "Hearth MAS pre-flight"
 echo "---------------------"
 
 # 1. Keychain identities ----------------------------------------------------
-identities="$(security find-identity -v -p codesigning 2>/dev/null || true)"
-for want in "${WANT_IDENTITIES[@]}"; do
-  if printf '%s\n' "$identities" | grep -Fq "$want"; then
+identities_codesigning="$(security find-identity -v -p codesigning 2>/dev/null || true)"
+identities_basic="$(security find-identity -v -p basic 2>/dev/null || true)"
+for entry in "${WANT_IDENTITIES[@]}"; do
+  policy="${entry%%|*}"
+  want="${entry#*|}"
+  case "$policy" in
+    codesigning) pool="$identities_codesigning" ;;
+    basic)       pool="$identities_basic" ;;
+    *)           pool="" ;;
+  esac
+  if printf '%s\n' "$pool" | grep -Fq "$want"; then
     ok "keychain has identity matching: $want"
   else
     err "keychain MISSING identity: $want"
