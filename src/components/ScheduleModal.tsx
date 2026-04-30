@@ -28,15 +28,22 @@ function onEnterSubmit(e: React.KeyboardEvent<HTMLInputElement>) {
   }
 }
 
+function nowHHMM() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export function ScheduleModal({
   schedule,
   initialDate,
+  initialTime,
   onSave,
   onDelete,
   onClose,
 }: {
   schedule?: Schedule;
   initialDate?: string;
+  initialTime?: string;
   onSave: (data: SaveData) => void;
   onDelete?: () => void;
   onClose: () => void;
@@ -48,10 +55,11 @@ export function ScheduleModal({
       schedule.remind_at_start
     );
 
+  const defaultTime = initialTime ?? nowHHMM();
   const [date, setDate] = useState(schedule?.date ?? initialDate ?? "");
   const [notify, setNotify] = useState(initialNotify);
   const [time, setTime] = useState(
-    schedule?.time ?? (initialNotify ? "09:00" : "")
+    schedule?.time ?? (initialNotify ? defaultTime : "")
   );
   const [remindBefore5, setRemindBefore5] = useState(
     schedule?.remind_before_5min ?? true
@@ -69,7 +77,7 @@ export function ScheduleModal({
   function toggleNotify() {
     const next = !notify;
     setNotify(next);
-    if (next && !time) setTime("09:00");
+    if (next && !time) setTime(defaultTime);
     if (next && !remindBefore5 && !remindAtStart) setRemindBefore5(true);
   }
 

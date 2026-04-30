@@ -16,7 +16,24 @@ expected button labels are "폴더 선택" / "나중에" / "다른 폴더 연결
 - [ ] `bash scripts/build-mas.sh` succeeds → `dist-mas/Hearth-1.0.0.pkg`
 - [ ] `xcrun altool --validate-app -f dist-mas/Hearth-1.0.0.pkg ...` returns no errors
 - [ ] `spctl --assess --type install dist-mas/Hearth-1.0.0.pkg` accepts
-- [ ] `installer -pkg dist-mas/Hearth-1.0.0.pkg -target /` (or open the pkg) → `/Applications/Hearth.app`
+- [ ] Install the .app to `/Applications/Hearth.app`. **Note:** plain
+      `sudo installer -pkg ... -target /` does NOT work for the MAS-signed
+      pkg locally — the system writes a receipt but skips the .app payload
+      (Console: `MobileInstallation` + `Trust evaluate failure: [leaf
+      ExtendedKeyUsage]`). Apple Distribution + 3rd Party Installer cert
+      combo is only honored by App Store / TestFlight. Local workaround:
+      ```bash
+      WORK=$(mktemp -d)
+      pkgutil --expand-full dist-mas/Hearth-1.0.0-N.pkg "$WORK/expanded"
+      APP=$(find "$WORK/expanded" -name "Hearth.app" -maxdepth 5 -type d | head -1)
+      sudo rm -rf /Applications/Hearth.app
+      sudo ditto "$APP" /Applications/Hearth.app
+      ```
+      The inner pkg name (e.g. `com.codewithgenie.hearth.pkg`) varies, so
+      glob with `find` rather than hard-coding the path.
+      Sandbox / entitlements / signing all behave the same as the
+      installed pkg would. For the *real* end-to-end install path use
+      TestFlight after upload.
 - [ ] **Reset state before each test run that requires "first launch":**
   ```bash
   defaults delete com.codewithgenie.hearth hearth.dataDirBookmark 2>/dev/null
@@ -38,15 +55,16 @@ expected button labels are "폴더 선택" / "나중에" / "다른 폴더 연결
 - [ ] Settings → 일반 → "데이터 폴더" shows "현재 기본 위치(샌드박스 컨테이너)에서 동작 중입니다"
 
 ### T2 — First launch, 0.x data present
-- [ ] Reset state (see Setup), but leave `~/Library/Application Support/com.codewithgenie.hearth/data.db` from a 0.x install in place
-- [ ] Launch Hearth.app
-- [ ] Wizard appears
-- [ ] Click "폴더 선택"
-- [ ] **NSOpenPanel opens pre-pointed at `~/Library/Application Support/com.codewithgenie.hearth/`** (not the container)
-- [ ] **NSOpenPanel only allows folder selection** (canChooseFiles=false; if you can pick `data.db` directly, that's a bug)
-- [ ] Confirm folder; wizard transitions to "지금 재시작" prompt with the resolved path shown
-- [ ] Click "지금 재시작"
-- [ ] App restarts; on second boot **the wizard does NOT appear** and existing 0.x projects/memos/schedules are visible
+- [x] Reset state (see Setup), but leave `~/Library/Application Support/com.codewithgenie.hearth/data.db` from a 0.x install in place
+      (covered via working copy at `~/Desktop/hearth-m4-test/` to protect real data)
+- [x] Launch Hearth.app
+- [x] Wizard appears
+- [x] Click "폴더 선택"
+- [x] **NSOpenPanel opens pre-pointed at `~/Library/Application Support/com.codewithgenie.hearth/`** (not the container)
+- [x] **NSOpenPanel only allows folder selection** (canChooseFiles=false; if you can pick `data.db` directly, that's a bug)
+- [x] Confirm folder; wizard transitions to "지금 재시작" prompt with the resolved path shown
+- [x] Click "지금 재시작"
+- [x] App restarts; on second boot **the wizard does NOT appear** and existing 0.x projects/memos/schedules are visible
 
 ### T3 — Second launch
 - [ ] (Continuation of T1 or T2 path)
@@ -55,11 +73,11 @@ expected button labels are "폴더 선택" / "나중에" / "다른 폴더 연결
 - [ ] Console.app filter `process: Hearth` shows no `bookmark resolve failed` / `startAccessingSecurityScopedResource returned false` / `pre-1.0 snapshot` errors
 
 ### T4 — Quick Capture ⌃⇧H
-- [ ] Switch focus to a non-Hearth app (e.g. Safari)
-- [ ] Press ⌃⇧H
-- [ ] Quick Capture overlay appears on top
-- [ ] Type a memo, hit Enter
-- [ ] Memo saved; Hearth memo board shows it after switching back
+- [x] Switch focus to a non-Hearth app (e.g. Safari)
+- [x] Press ⌃⇧H
+- [x] Quick Capture overlay appears on top
+- [x] Type a memo, hit Enter
+- [x] Memo saved; Hearth memo board shows it after switching back
 
 ### T5 — Backup folder picker
 - [ ] Settings → 백업 → "백업 폴더 변경"
@@ -74,10 +92,10 @@ expected button labels are "폴더 선택" / "나중에" / "다른 폴더 연결
 - [ ] Returns a sensible tool-call response
 
 ### T7 — Schedule notification
-- [ ] Create a schedule for ~2 minutes in the future with "5분 전 알림" toggle ON
-- [ ] First run: macOS notification permission prompt appears → grant
-- [ ] Wait until the trigger time
-- [ ] System notification fires
+- [x] Create a schedule for ~2 minutes in the future with "5분 전 알림" toggle ON
+- [x] First run: macOS notification permission prompt appears → grant
+- [x] Wait until the trigger time
+- [x] System notification fires (with sound — `.sound("default")` added in this session)
 
 ### T8 — Finder reveal
 - [ ] In a project with a path set, right-click → "Finder에서 열기"
@@ -107,28 +125,30 @@ expected button labels are "폴더 선택" / "나중에" / "다른 폴더 연결
 - [ ] After restart, status panel shows the resolved path
 
 ### M2 — Stale bookmark (folder renamed)
-- [ ] Pick a folder via the wizard, complete restart
-- [ ] Quit Hearth
-- [ ] Rename the chosen folder in Finder
-- [ ] Launch Hearth
-- [ ] App boots without re-prompting (NSURL bookmark resolves the renamed folder by inode)
-- [ ] Settings → 일반 → 데이터 폴더 shows "폴더가 이동된 것을 감지했어요. 자동으로 재연결되었습니다."
-- [ ] Console.app: no `stale bookmark refresh failed` errors (refresh path was fixed in #31)
+- [x] Pick a folder via the wizard, complete restart
+- [x] Quit Hearth
+- [x] Rename the chosen folder in Finder
+- [x] Launch Hearth
+- [x] App boots without re-prompting (NSURL bookmark resolves the renamed folder by inode)
+- [ ] ~~Settings → 일반 → 데이터 폴더 shows "폴더가 이동된 것을 감지했어요. 자동으로 재연결되었습니다."~~
+      (UX message never implemented — Settings just shows the new resolved path. Defer to 1.1; not a ship-blocker since the auto-reconnect itself works.)
+- [x] Console.app: no `stale bookmark refresh failed` errors (refresh path was fixed in #31)
 
 ### M3 — Bookmark folder deleted (resolution failure)
-- [ ] Pick a folder via the wizard, complete restart
-- [ ] Quit Hearth
-- [ ] Delete the chosen folder in Finder
-- [ ] Launch Hearth
-- [ ] Console.app shows `bookmark resolve failed: ...`
-- [ ] **Wizard reappears** (poison-pill blob was cleared per #31 fix)
-- [ ] Pick a new folder, restart, app works
+- [x] Pick a folder via the wizard, complete restart
+- [x] Quit Hearth
+- [x] Delete the chosen folder in Finder
+- [x] Launch Hearth
+- [x] Console.app shows `bookmark resolve failed: ...`
+- [x] **Wizard reappears** (poison-pill blob was cleared per #31 fix)
+- [x] Pick a new folder, restart, app works
 
 ### M4 — Pre-1.0 snapshot
-- [ ] Pick a folder containing a real 0.9.x `data.db` (e.g. your existing OSS install)
-- [ ] After the post-pick restart and first 1.0 boot, that folder should now contain `data.db.pre-1.0.bak`
-- [ ] `sqlite3 data.db "PRAGMA user_version;"` returns `1`
-- [ ] `sqlite3 data.db.pre-1.0.bak "PRAGMA user_version;"` returns `0`
+- [x] Pick a folder containing a real 0.9.x `data.db` (e.g. your existing OSS install)
+      (used `~/Desktop/hearth-m4-test/` working copy of `com.newturn2017.hearth/data.db`, projects=36 memos=10 schedules=46)
+- [x] After the post-pick restart and first 1.0 boot, that folder should now contain `data.db.pre-1.0.bak`
+- [x] `sqlite3 data.db "PRAGMA user_version;"` returns `1`
+- [x] `sqlite3 data.db.pre-1.0.bak "PRAGMA user_version;"` returns `0`
 - [ ] Re-launch Hearth: `data.db.pre-1.0.bak` mtime does NOT change (no re-snapshot)
 
 ### M5 — Hot bookmark + CLI co-write
