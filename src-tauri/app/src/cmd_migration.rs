@@ -379,11 +379,13 @@ mod macos {
         unsafe {
             defaults().setObject_forKey(Some(any), &key);
         }
+        sync_defaults();
     }
 
     fn clear_bookmark_blob() {
         let key = NSString::from_str(BOOKMARK_KEY);
         defaults().removeObjectForKey(&key);
+        sync_defaults();
     }
 
     fn read_dismissed() -> bool {
@@ -394,5 +396,17 @@ mod macos {
     pub fn set_dismissed(value: bool) {
         let key = NSString::from_str(DISMISSED_KEY);
         defaults().setBool_forKey(value, &key);
+        sync_defaults();
+    }
+
+    // NSUserDefaults batches writes asynchronously. `app.restart()` from the
+    // wizard's "지금 재시작" path triggers process exit before the autosave
+    // timer fires, so without an explicit flush the bookmark blob and
+    // dismissed=false writes are lost — the next boot reads stale values
+    // and the wizard either re-appears unexpectedly or never re-prompts.
+    // `synchronize` is a documented no-op in some scenarios on modern macOS
+    // but remains the supported way to force a flush before a hard exit.
+    fn sync_defaults() {
+        let _ = defaults().synchronize();
     }
 }
