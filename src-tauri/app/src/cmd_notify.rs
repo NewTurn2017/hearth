@@ -151,6 +151,7 @@ fn spawn_fire(
             .builder()
             .title(title_for(kind))
             .body(body)
+            .sound("default")
             .show()
         {
             eprintln!("notification show failed for id {id}: {e}");

@@ -6,7 +6,7 @@ import { ScheduleModal } from "../ScheduleModal";
 describe("ScheduleModal notify toggle", () => {
   it("hides the time picker when notify is off", () => {
     render(
-      <ScheduleModal onSave={vi.fn()} onClose={vi.fn()} initialDate="2026-04-20" />
+      <ScheduleModal onSave={vi.fn()} onClose={vi.fn()} initialDate="2026-04-20" initialTime="09:00" />
     );
     expect(screen.queryByLabelText("시간")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("5분 전")).not.toBeInTheDocument();
@@ -14,7 +14,7 @@ describe("ScheduleModal notify toggle", () => {
 
   it("reveals time picker + checkboxes when notify is turned on", () => {
     render(
-      <ScheduleModal onSave={vi.fn()} onClose={vi.fn()} initialDate="2026-04-20" />
+      <ScheduleModal onSave={vi.fn()} onClose={vi.fn()} initialDate="2026-04-20" initialTime="09:00" />
     );
     fireEvent.click(screen.getByLabelText("알림 받기"));
     expect(screen.getByLabelText("시간")).toBeInTheDocument();
@@ -25,7 +25,7 @@ describe("ScheduleModal notify toggle", () => {
   it("emits notify fields on save when toggle is on", () => {
     const onSave = vi.fn();
     render(
-      <ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" />
+      <ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" initialTime="09:00" />
     );
     fireEvent.click(screen.getByLabelText("알림 받기"));
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
@@ -42,7 +42,7 @@ describe("ScheduleModal notify toggle", () => {
   it("omits time + flags when toggle stays off", () => {
     const onSave = vi.fn();
     render(
-      <ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" />
+      <ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" initialTime="09:00" />
     );
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
     expect(onSave).toHaveBeenCalledWith(
@@ -56,7 +56,7 @@ describe("ScheduleModal notify toggle", () => {
   });
 
   it("disables save and shows hint when notify is on but time is cleared", () => {
-    render(<ScheduleModal onSave={vi.fn()} onClose={vi.fn()} initialDate="2026-04-20" />);
+    render(<ScheduleModal onSave={vi.fn()} onClose={vi.fn()} initialDate="2026-04-20" initialTime="09:00" />);
     // Turn notify on — time auto-populates to 09:00 per Task 12 spec.
     fireEvent.click(screen.getByLabelText("알림 받기"));
     // Clear it.
@@ -95,7 +95,7 @@ describe("ScheduleModal notify toggle", () => {
 describe("ScheduleModal IME-safe Enter", () => {
   it("submits on Enter when composition is not active", () => {
     const onSave = vi.fn();
-    render(<ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" />);
+    render(<ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" initialTime="09:00" />);
     const location = screen.getByLabelText("장소");
     // fireEvent.keyDown exposes the synthetic KeyboardEvent; jsdom default
     // isComposing=false / keyCode=13 for Enter.
@@ -105,7 +105,7 @@ describe("ScheduleModal IME-safe Enter", () => {
 
   it("does NOT submit on Enter during IME composition", () => {
     const onSave = vi.fn();
-    render(<ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" />);
+    render(<ScheduleModal onSave={onSave} onClose={vi.fn()} initialDate="2026-04-20" initialTime="09:00" />);
     const location = screen.getByLabelText("장소");
     fireEvent.keyDown(location, {
       key: "Process", // Safari/WebKit emits "Process" while IME is mid-composition
