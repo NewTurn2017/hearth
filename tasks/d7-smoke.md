@@ -166,7 +166,7 @@ Things that can be verified by command, not by clicking:
 
 - [ ] `rg -i 'updater|autostart' src src-tauri` → only safe references (anti-string in #26's settings card copy, etc.)
 - [ ] `cargo build --release -p hearth-app` → 0 warnings
-- [ ] `/usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "/Applications/Hearth.app/Contents/Info.plist"` → `11.0`
+- [ ] `/usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "/Applications/Hearth.app/Contents/Info.plist"` → `12.0` (bumped from 11.0 — TestFlight requires 12.0+ for arm64-only bundles)
 - [ ] First-launch debug log shows DB path under `~/Library/Application Support/com.codewithgenie.hearth/`, NOT `~/Library/Containers/...` (after completing the wizard)
 - [ ] After macOS reboot: launch Hearth — no NSOpenPanel reprompt, bookmark resolves silently
 - [ ] Calendar reminder for 2027-04-XX (provisioning profile renewal)
