@@ -44,6 +44,9 @@ export function ProjectDetailDialog({
       category: project.category ?? "",
       path: project.path ?? "",
       evaluation: project.evaluation ?? "",
+      // null = backend keeps any existing bookmark untouched; the field is
+      // only filled in if the user (re-)picks via the folder button.
+      pathBookmark: null,
     });
     setNewMemoContent("");
   }, [project]);
@@ -61,6 +64,7 @@ export function ProjectDetailDialog({
         category: form.category === "" ? undefined : form.category,
         path: form.path.trim() || undefined,
         evaluation: form.evaluation.trim() || undefined,
+        pathBookmark: form.pathBookmark ?? undefined,
       });
       window.dispatchEvent(new CustomEvent("projects:changed"));
       onProjectUpdated();

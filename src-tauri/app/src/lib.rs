@@ -1,4 +1,5 @@
 pub mod ai_tools;
+mod bookmark;
 mod cmd_actions;
 mod cmd_ai;
 mod cmd_backup;
@@ -185,6 +186,7 @@ pub fn run() {
             cmd_projects::delete_project,
             cmd_projects::reorder_projects,
             cmd_projects::search_projects,
+            cmd_projects::pick_project_folder,
             cmd_schedules::get_schedules,
             cmd_schedules::create_schedule,
             cmd_schedules::update_schedule,

@@ -25,7 +25,6 @@ import { cn } from "../lib/cn";
 import { useCategories } from "../hooks/useCategories";
 import { useContextMenu } from "../hooks/useContextMenu";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
-import * as api from "../api";
 
 export function ProjectCard({
   project,
@@ -39,8 +38,8 @@ export function ProjectCard({
   project: Project;
   onUpdate: (id: number, fields: Record<string, string>) => void;
   onDelete: (id: number) => void;
-  onOpenTerminal: (path: string) => void;
-  onOpenFinder: (path: string) => void;
+  onOpenTerminal: (project: Project) => void;
+  onOpenFinder: (project: Project) => void;
   onOpenDetail: (project: Project) => void;
   highlighted?: boolean;
 }) {
@@ -81,13 +80,13 @@ export function ProjectCard({
             id: "terminal",
             label: "터미널에서 열기",
             icon: Play,
-            onSelect: () => api.openInTerminal(project.path!),
+            onSelect: () => onOpenTerminal(project),
           },
           {
             id: "finder",
             label: "Finder에서 열기",
             icon: FolderOpen,
-            onSelect: () => api.openInFinder(project.path!),
+            onSelect: () => onOpenFinder(project),
           },
         ] as ContextMenuItem[])
       : []),
@@ -156,7 +155,7 @@ export function ProjectCard({
           <>
             <Tooltip label="터미널에서 열기">
               <button
-                onClick={() => onOpenTerminal(project.path!)}
+                onClick={() => onOpenTerminal(project)}
                 className="w-7 h-7 inline-flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-brand-hi)] hover:bg-[var(--color-surface-1)]"
                 aria-label="터미널에서 열기"
               >
@@ -165,7 +164,7 @@ export function ProjectCard({
             </Tooltip>
             <Tooltip label="Finder에서 열기">
               <button
-                onClick={() => onOpenFinder(project.path!)}
+                onClick={() => onOpenFinder(project)}
                 className="w-7 h-7 inline-flex items-center justify-center rounded-[var(--radius-sm)] text-[var(--color-text-muted)] hover:text-[var(--color-brand-hi)] hover:bg-[var(--color-surface-1)]"
                 aria-label="Finder에서 열기"
               >
