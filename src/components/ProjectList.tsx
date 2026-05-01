@@ -96,6 +96,55 @@ export function ProjectList({
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [pendingFocusId, setPendingFocusId] = useState<number | null>(null);
 
+  /**
+   * Open a project's folder in Finder or Terminal, bridging the MAS sandbox
+   * via a per-project security-scoped bookmark (FB-001). Legacy projects
+   * (created before 1.0.0 build 8) have no bookmark on disk; on the first
+   * click the backend returns `needs_bookmark`, the picker surfaces, and the
+   * captured bookmark is persisted via `update_project` so subsequent clicks
+   * are silent.
+   */
+  const openWithBookmark = async (
+    project: Project,
+    kind: "finder" | "terminal"
+  ) => {
+    if (!project.path) return;
+    const open = kind === "finder" ? api.openInFinder : api.openInTerminal;
+    try {
+      await open(project.path, project.id);
+      return;
+    } catch (err) {
+      if (String(err) !== api.NEEDS_BOOKMARK_ERROR) {
+        toast.error(`열기 실패: ${err}`);
+        return;
+      }
+    }
+    // First click on a legacy / sandbox-blocked path: prompt for the
+    // bookmark, persist it, then retry the open.
+    let picked: { path: string; bookmark: number[] };
+    try {
+      picked = await api.pickProjectFolder(project.path);
+    } catch (err) {
+      if (String(err) !== "user_cancelled") toast.error(`폴더 선택 실패: ${err}`);
+      return;
+    }
+    try {
+      await api.updateProject(project.id, {
+        path: picked.path,
+        pathBookmark: picked.bookmark,
+      });
+      window.dispatchEvent(new CustomEvent("projects:changed"));
+    } catch (err) {
+      toast.error(`북마크 저장 실패: ${err}`);
+      return;
+    }
+    try {
+      await open(picked.path, project.id);
+    } catch (err) {
+      toast.error(`열기 실패: ${err}`);
+    }
+  };
+
   // FindPalette → project:focus. Stash the id; a second effect consumes it
   // once the target card is actually rendered (the project may be filtered
   // out of the current view, in which case the scroll silently no-ops).
@@ -284,8 +333,8 @@ export function ProjectList({
                             project={project}
                             onUpdate={onUpdate}
                             onDelete={onDelete}
-                            onOpenTerminal={(path) => api.openInTerminal(path)}
-                            onOpenFinder={(path) => api.openInFinder(path)}
+                            onOpenTerminal={(p) => openWithBookmark(p, "terminal")}
+                            onOpenFinder={(p) => openWithBookmark(p, "finder")}
                             onOpenDetail={onOpenDetail}
                             highlighted={project.id === highlightedId}
                           />

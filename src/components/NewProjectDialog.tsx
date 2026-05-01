@@ -31,7 +31,8 @@ export function NewProjectDialog({
         trimmed,
         form.priority,
         form.category || undefined,
-        form.path.trim() || undefined
+        form.path.trim() || undefined,
+        form.pathBookmark
       );
       window.dispatchEvent(new CustomEvent("projects:changed"));
       toast.success(`${created.name} 추가됨`, {

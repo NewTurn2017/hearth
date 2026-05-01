@@ -1,24 +1,63 @@
+use crate::bookmark;
 use crate::excel_import;
 use crate::AppState;
 use std::path::Path;
 use tauri::State;
 
+/// Sentinel error string the frontend matches on to trigger the
+/// just-in-time bookmark prompt for legacy projects (FB-001).
+pub const ERR_NEEDS_BOOKMARK: &str = "needs_bookmark";
+
 #[tauri::command]
-pub fn open_in_terminal(path: String) -> Result<(), String> {
-    let p = Path::new(&path);
-    if !p.exists() {
-        return Err(format!("Path does not exist: {}", path));
-    }
-    open_in_terminal_impl(&path)
+pub fn open_in_terminal(path: String, project_id: Option<i64>) -> Result<(), String> {
+    with_project_access(&path, project_id, |resolved| open_in_terminal_impl(resolved))
 }
 
 #[tauri::command]
-pub fn open_in_finder(path: String) -> Result<(), String> {
-    let p = Path::new(&path);
+pub fn open_in_finder(path: String, project_id: Option<i64>) -> Result<(), String> {
+    with_project_access(&path, project_id, |resolved| open_in_finder_impl(resolved))
+}
+
+/// If a project bookmark exists, resolve it and run `f` against the resolved
+/// path with security-scoped access started; otherwise call `f` against the
+/// raw path. Returns ERR_NEEDS_BOOKMARK if the path can't be reached and no
+/// bookmark is available to grant access.
+fn with_project_access<F>(path: &str, project_id: Option<i64>, f: F) -> Result<(), String>
+where
+    F: FnOnce(&str) -> Result<(), String>,
+{
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(id) = project_id {
+            if let Some(blob) = bookmark::read_project_bookmark(id) {
+                let access = bookmark::start_access(&blob)?;
+                let resolved_path = access
+                    .url()
+                    .path()
+                    .ok_or_else(|| "resolved NSURL has no path".to_string())?
+                    .to_string();
+                let result = f(&resolved_path);
+                drop(access);
+                return result;
+            }
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (project_id, &bookmark::read_project_bookmark);
+    }
+
+    // No bookmark available — try the raw path. Under sandbox this works
+    // only for paths inside the container; everything else surfaces
+    // ERR_NEEDS_BOOKMARK so the frontend can prompt for one.
+    let p = Path::new(path);
     if !p.exists() {
+        if cfg!(target_os = "macos") && project_id.is_some() {
+            return Err(ERR_NEEDS_BOOKMARK.to_string());
+        }
         return Err(format!("Path does not exist: {}", path));
     }
-    open_in_finder_impl(&path)
+    f(path)
 }
 
 #[cfg(target_os = "macos")]

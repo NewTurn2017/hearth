@@ -1,9 +1,10 @@
+use crate::bookmark::{self, PickFolderResponse};
 use crate::AppState;
 use hearth_core::audit::Source;
 use hearth_core::models::Project;
 use hearth_core::projects::{self, NewProject, UpdateProject};
 use serde::Deserialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[derive(Debug, Deserialize)]
 pub struct ProjectFilter {
@@ -50,6 +51,10 @@ pub struct UpdateProjectInput {
     pub category: Option<String>,
     pub path: Option<String>,
     pub evaluation: Option<String>,
+    /// Security-scoped bookmark for `path`. When present, replaces any
+    /// previously-stored bookmark for this project. macOS only; ignored
+    /// on other platforms. Sent as a JSON number array (Vec<u8>).
+    pub path_bookmark: Option<Vec<u8>>,
 }
 
 #[tauri::command]
@@ -59,7 +64,7 @@ pub fn update_project(
     fields: UpdateProjectInput,
 ) -> Result<Project, String> {
     let mut db = state.db.lock().map_err(|e| e.to_string())?;
-    projects::update(
+    let updated = projects::update(
         &mut db,
         Source::App,
         id,
@@ -71,7 +76,15 @@ pub fn update_project(
             evaluation: fields.evaluation.as_deref(),
         },
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    if let Some(blob) = fields.path_bookmark.as_ref() {
+        if blob.is_empty() {
+            bookmark::clear_project_bookmark(id);
+        } else {
+            bookmark::write_project_bookmark(id, blob);
+        }
+    }
+    Ok(updated)
 }
 
 #[tauri::command]
@@ -81,9 +94,10 @@ pub fn create_project(
     priority: String,
     category: Option<String>,
     path: Option<String>,
+    path_bookmark: Option<Vec<u8>>,
 ) -> Result<Project, String> {
     let mut db = state.db.lock().map_err(|e| e.to_string())?;
-    projects::create(
+    let created = projects::create(
         &mut db,
         Source::App,
         &NewProject {
@@ -94,13 +108,32 @@ pub fn create_project(
             evaluation: None,
         },
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    if let Some(blob) = path_bookmark.as_ref() {
+        if !blob.is_empty() {
+            bookmark::write_project_bookmark(created.id, blob);
+        }
+    }
+    Ok(created)
 }
 
 #[tauri::command]
 pub fn delete_project(state: State<'_, AppState>, id: i64) -> Result<(), String> {
     let mut db = state.db.lock().map_err(|e| e.to_string())?;
-    projects::delete(&mut db, Source::App, id).map_err(|e| e.to_string())
+    projects::delete(&mut db, Source::App, id).map_err(|e| e.to_string())?;
+    bookmark::clear_project_bookmark(id);
+    Ok(())
+}
+
+/// Open NSOpenPanel for a directory and return a freshly-created
+/// security-scoped bookmark. The frontend ships the bookmark back via
+/// create_project / update_project to persist it.
+#[tauri::command]
+pub async fn pick_project_folder(
+    app: AppHandle,
+    suggested: Option<String>,
+) -> Result<PickFolderResponse, String> {
+    bookmark::pick_directory(app, suggested).await
 }
 
 #[tauri::command]

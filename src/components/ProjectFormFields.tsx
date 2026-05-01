@@ -1,12 +1,12 @@
 import type { KeyboardEvent } from "react";
 import { FolderSearch } from "lucide-react";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Input } from "../ui/Input";
 import { Icon } from "../ui/Icon";
 import { Tooltip } from "../ui/Tooltip";
 import { PRIORITIES } from "../types";
 import type { Priority } from "../types";
 import { useCategories } from "../hooks/useCategories";
+import { pickProjectFolder } from "../api";
 
 export type ProjectFormState = {
   name: string;
@@ -14,6 +14,10 @@ export type ProjectFormState = {
   category: string; // free-form — empty = 없음
   path: string;
   evaluation: string;
+  /** Security-scoped bookmark captured by the folder picker for `path`.
+   *  `null` means "leave whatever bookmark the backend already has alone";
+   *  a non-null value (incl. `[]`) is sent on save. */
+  pathBookmark: number[] | null;
 };
 
 export const emptyProjectForm = (): ProjectFormState => ({
@@ -22,6 +26,7 @@ export const emptyProjectForm = (): ProjectFormState => ({
   category: "",
   path: "",
   evaluation: "",
+  pathBookmark: null,
 });
 
 const SELECT_CLASS =
@@ -93,7 +98,10 @@ export function ProjectFormFields({
         <Input
           placeholder="경로 (선택)"
           value={value.path}
-          onChange={(e) => onChange({ path: e.target.value })}
+          // Manually-typed path can't carry a security-scoped bookmark, so
+          // any captured bookmark for the previous picker selection has to
+          // be invalidated. `[]` tells the backend to clear on save.
+          onChange={(e) => onChange({ path: e.target.value, pathBookmark: [] })}
           onKeyDown={onKey}
           className="flex-1"
         />
@@ -101,13 +109,11 @@ export function ProjectFormFields({
           <button
             type="button"
             onClick={async () => {
-              const picked = await openDialog({
-                directory: true,
-                multiple: false,
-                defaultPath: value.path || undefined,
-              });
-              if (typeof picked === "string" && picked) {
-                onChange({ path: picked });
+              try {
+                const picked = await pickProjectFolder(value.path || undefined);
+                onChange({ path: picked.path, pathBookmark: picked.bookmark });
+              } catch (e) {
+                if (String(e) !== "user_cancelled") throw e;
               }
             }}
             className={

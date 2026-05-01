@@ -17,13 +17,15 @@ export const createProject = (
   name: string,
   priority: string,
   category?: string,
-  path?: string
+  path?: string,
+  pathBookmark?: number[] | null
 ) =>
   invoke<Project>("create_project", {
     name,
     priority,
     category: category ?? null,
     path: path ?? null,
+    pathBookmark: pathBookmark ?? null,
   });
 
 export const updateProject = (
@@ -34,8 +36,18 @@ export const updateProject = (
     category?: string;
     path?: string;
     evaluation?: string;
+    /** macOS-only security-scoped bookmark for `path`. Pass `[]` to clear. */
+    pathBookmark?: number[] | null;
   }
 ) => invoke<Project>("update_project", { id, fields });
+
+/** Opens NSOpenPanel for a project folder; returns path + freshly-minted
+ *  security-scoped bookmark. macOS only. Frontend ships the bookmark back via
+ *  create_project / update_project to persist it. */
+export const pickProjectFolder = (suggested?: string) =>
+  invoke<{ path: string; bookmark: number[] }>("pick_project_folder", {
+    suggested: suggested ?? null,
+  });
 
 export const deleteProject = (id: number) =>
   invoke<void>("delete_project", { id });
@@ -92,11 +104,22 @@ export const reorderMemos = (ids: number[]) =>
 export const getClients = () => invoke<Client[]>("get_clients");
 
 // 액션
-export const openInTerminal = (path: string) =>
-  invoke<void>("open_in_terminal", { path });
+export const openInTerminal = (path: string, projectId?: number | null) =>
+  invoke<void>("open_in_terminal", {
+    path,
+    projectId: projectId ?? null,
+  });
 
-export const openInFinder = (path: string) =>
-  invoke<void>("open_in_finder", { path });
+export const openInFinder = (path: string, projectId?: number | null) =>
+  invoke<void>("open_in_finder", {
+    path,
+    projectId: projectId ?? null,
+  });
+
+/** Sentinel error string the backend returns when a project folder is
+ *  outside the sandbox container and no security-scoped bookmark has been
+ *  captured yet. UI catches this and triggers the JIT picker (FB-001). */
+export const NEEDS_BOOKMARK_ERROR = "needs_bookmark";
 
 export const importExcel = (filePath: string, clearExisting: boolean) =>
   invoke<{ projects_imported: number }>("import_excel", {
