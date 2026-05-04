@@ -116,6 +116,35 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
     }
   };
 
+  // Restore from any .db file the user picks (e.g. a backup copied off-device,
+  // or a legacy backup outside the configured `backup.dir`). Tauri's openDialog
+  // returns a sandbox-granted path, and `restore_db` only checks existence
+  // before copying it over `data.db`, so no extra entitlement plumbing is
+  // needed for the duration of this command.
+  const handleRestoreFromFile = async () => {
+    const file = await openDialog({
+      filters: [{ name: "Hearth DB", extensions: ["db", "sqlite", "sqlite3"] }],
+      defaultPath: dir || undefined,
+    });
+    if (!file) return;
+    const filePath = Array.isArray(file) ? file[0] : file;
+    const ok = await ask(
+      `${filePath} 의 내용으로 현재 DB를 덮어쓰시겠습니까?`,
+      { title: "DB 파일에서 복원", kind: "warning" }
+    );
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await api.restoreDb(filePath);
+      window.dispatchEvent(new CustomEvent("backup:changed"));
+      toast.success("복원 완료 — 앱을 다시 시작하세요");
+    } catch (e) {
+      toast.error(`복원 실패: ${e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleBackupNow = async () => {
     setBusy(true);
     try {
@@ -220,15 +249,26 @@ export function SettingsBackupSection({ active }: { active: boolean }) {
           <label className="text-[12px] font-medium text-[var(--color-text)]">
             최근 백업
           </label>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={Save}
-            onClick={handleBackupNow}
-            disabled={busy}
-          >
-            지금 백업
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={RotateCcw}
+              onClick={handleRestoreFromFile}
+              disabled={busy}
+            >
+              파일에서 복원…
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              leftIcon={Save}
+              onClick={handleBackupNow}
+              disabled={busy}
+            >
+              지금 백업
+            </Button>
+          </div>
         </div>
         {backups.length === 0 ? (
           <p className="text-[12px] text-[var(--color-text-dim)]">
