@@ -179,7 +179,10 @@ export function Layout({
   }, []);
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--color-surface-0)]">
+    <div
+      className="flex flex-col bg-[var(--color-surface-0)]"
+      style={{ height: "calc(100vh / var(--ui-scale, 1))" }}
+    >
       <TopBar
         active={activeTab}
         onChange={setActiveTab}

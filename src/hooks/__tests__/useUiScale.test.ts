@@ -10,6 +10,7 @@ vi.mock("../../api", () => ({
 describe("useUiScale", () => {
   beforeEach(() => {
     document.documentElement.style.zoom = "";
+    document.documentElement.style.removeProperty("--ui-scale");
   });
 
   it("uses the DEFAULT step when none is persisted", async () => {
@@ -58,5 +59,25 @@ describe("useUiScale", () => {
       result.current.reset();
     });
     expect(result.current.scale).toBe(1.0);
+  });
+
+  it("syncs the --ui-scale CSS variable on every step so layout containers can compensate", async () => {
+    const { result } = renderHook(() => useUiScale());
+    await act(async () => {});
+    expect(
+      document.documentElement.style.getPropertyValue("--ui-scale"),
+    ).toBe("1");
+    act(() => {
+      result.current.bump(-1);
+    });
+    expect(
+      document.documentElement.style.getPropertyValue("--ui-scale"),
+    ).toBe(String(__STEPS_FOR_TEST[0]));
+    act(() => {
+      result.current.reset();
+    });
+    expect(
+      document.documentElement.style.getPropertyValue("--ui-scale"),
+    ).toBe("1");
   });
 });

@@ -11,6 +11,7 @@ export function useUiScale() {
 
   const apply = useCallback((next: number) => {
     document.documentElement.style.zoom = String(next);
+    document.documentElement.style.setProperty("--ui-scale", String(next));
     setScale(next);
     api.setUiScale(next).catch(() => {});
   }, []);
@@ -23,6 +24,7 @@ export function useUiScale() {
       const nextIdx = Math.max(0, Math.min(STEPS.length - 1, base + dir));
       const next = STEPS[nextIdx];
       document.documentElement.style.zoom = String(next);
+      document.documentElement.style.setProperty("--ui-scale", String(next));
       api.setUiScale(next).catch(() => {});
       return next;
     });
