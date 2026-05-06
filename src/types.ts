@@ -102,7 +102,13 @@ export type Priority = "P0" | "P1" | "P2" | "P3" | "P4";
 export type Category = "Active" | "Side" | "Lab" | "Tools" | "Lecture";
 
 export const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3", "P4"];
-export const CATEGORIES: Category[] = ["Active", "Side", "Lab", "Tools", "Lecture"];
+export const CATEGORIES: Category[] = [
+  "Active",
+  "Side",
+  "Lab",
+  "Tools",
+  "Lecture",
+];
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
   P0: "#ef4444",

@@ -20,7 +20,7 @@ export const createProject = (
   priority: string,
   category?: string,
   path?: string,
-  pathBookmark?: number[] | null
+  pathBookmark?: number[] | null,
 ) =>
   invoke<Project>("create_project", {
     name,
@@ -40,7 +40,7 @@ export const updateProject = (
     evaluation?: string;
     /** macOS-only security-scoped bookmark for `path`. Pass `[]` to clear. */
     pathBookmark?: number[] | null;
-  }
+  },
 ) => invoke<Project>("update_project", { id, fields });
 
 /** Opens NSOpenPanel for a project folder; returns path + freshly-minted
@@ -176,9 +176,8 @@ export const getAiSettings = () => invoke<AiSettings>("get_ai_settings");
  *   • `undefined`  : leave stored key untouched
  *   • `""`         : clear
  *   • `"sk-..."`   : overwrite */
-export const saveAiSettings = (input: {
-  openai_api_key?: string;
-}) => invoke<AiSettings>("save_ai_settings", { input });
+export const saveAiSettings = (input: { openai_api_key?: string }) =>
+  invoke<AiSettings>("save_ai_settings", { input });
 
 // UI scale (Cmd+=/-/0). Persisted in the settings KV table.
 export const getUiScale = () => invoke<number>("get_ui_scale");
@@ -188,8 +187,14 @@ export const setUiScale = (scale: number) =>
 // Memo operations keyed by the user-facing #N badge instead of a raw id.
 // The backend resolves N via sort_order OFFSET, so callers pass the number
 // the user sees on the card.
-export const updateMemoByNumber = (number: number, fields: MemoUpdateInput) =>
-  invoke<Memo>("update_memo_by_number", { number, fields });
+export type MemoByNumberUpdateInput = {
+  content?: string;
+};
+
+export const updateMemoByNumber = (
+  number: number,
+  fields: MemoByNumberUpdateInput,
+) => invoke<Memo>("update_memo_by_number", { number, fields });
 
 export const deleteMemoByNumber = (number: number) =>
   invoke<void>("delete_memo_by_number", { number });
@@ -202,7 +207,7 @@ export const createMemoTag = (input: { name: string; color?: string }) =>
 
 export const updateMemoTag = (
   id: number,
-  fields: { name?: string; color?: string; sort_order?: number }
+  fields: { name?: string; color?: string; sort_order?: number },
 ) => invoke<MemoTag>("update_memo_tag", { id, fields });
 
 export const deleteMemoTag = (id: number) =>
@@ -221,7 +226,7 @@ export const createCategory = (input: { name: string; color?: string }) =>
 
 export const updateCategory = (
   id: number,
-  fields: { name?: string; color?: string; sort_order?: number }
+  fields: { name?: string; color?: string; sort_order?: number },
 ) => invoke<CategoryRow>("update_category", { id, fields });
 
 export const deleteCategory = (id: number) =>
