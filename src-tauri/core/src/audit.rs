@@ -239,6 +239,7 @@ fn insert_from_json(
             "projects" => build_projects_insert(v, id),
             "memos" => build_memos_insert(v, id),
             "schedules" => build_schedules_insert(v, id),
+            "memo_tags" => build_memo_tags_insert(v, id),
             _ => return Err(rusqlite::Error::InvalidQuery),
         };
     let col_list = cols.join(", ");
@@ -261,7 +262,7 @@ fn update_from_json(
     id: i64,
 ) -> rusqlite::Result<()> {
     match table {
-        "projects" | "memos" | "schedules" => {}
+        "projects" | "memos" | "schedules" | "memo_tags" => {}
         _ => return Err(rusqlite::Error::InvalidQuery),
     }
     let mut sets: Vec<String> = Vec::new();
@@ -273,7 +274,7 @@ fn update_from_json(
         None
     };
     for (k, val) in obj.iter() {
-        if k == "id" {
+        if k == "id" || (table == "memo_tags" && k == "usage_count") {
             continue;
         }
         // Memo tags are represented through memo_tag_links, not a memos column.
@@ -510,6 +511,52 @@ fn build_schedules_insert(
                 .and_then(|x| x.as_bool())
                 .unwrap_or(false) as i64,
         ),
+        Box::new(
+            v.get("created_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("updated_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+    ];
+    (cols, placeholders, vals)
+}
+
+fn build_memo_tags_insert(
+    v: &serde_json::Value,
+    id: i64,
+) -> (
+    Vec<&'static str>,
+    Vec<String>,
+    Vec<Box<dyn rusqlite::types::ToSql>>,
+) {
+    let cols = vec![
+        "id",
+        "name",
+        "color",
+        "sort_order",
+        "created_at",
+        "updated_at",
+    ];
+    let placeholders: Vec<String> = (1..=cols.len()).map(|i| format!("?{i}")).collect();
+    let vals: Vec<Box<dyn rusqlite::types::ToSql>> = vec![
+        Box::new(id),
+        Box::new(
+            v.get("name")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
+        ),
+        Box::new(
+            v.get("color")
+                .and_then(|x| x.as_str())
+                .unwrap_or("#6b7280")
+                .to_string(),
+        ),
+        Box::new(v.get("sort_order").and_then(|x| x.as_i64()).unwrap_or(0)),
         Box::new(
             v.get("created_at")
                 .and_then(|x| x.as_str())
@@ -771,6 +818,72 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["회의"]
         );
+    }
+
+    #[test]
+    fn undo_redo_memo_tag_crud_rows() {
+        use crate::memos;
+        let mut c = fresh_conn();
+        let created = memos::create_memo_tag(&mut c, Source::Cli, "감사", Some("#111827")).unwrap();
+        assert!(memos::list_memo_tags(&c)
+            .unwrap()
+            .iter()
+            .any(|t| t.id == created.id));
+
+        undo(&mut c, 1).unwrap();
+        assert!(memos::list_memo_tags(&c)
+            .unwrap()
+            .iter()
+            .all(|t| t.id != created.id));
+
+        redo(&mut c, 1).unwrap();
+        let restored = memos::list_memo_tags(&c)
+            .unwrap()
+            .into_iter()
+            .find(|t| t.id == created.id)
+            .unwrap();
+        assert_eq!(restored.name, "감사");
+
+        let updated = memos::update_memo_tag(
+            &mut c,
+            Source::Cli,
+            created.id,
+            &memos::UpdateMemoTag {
+                name: Some("감사수정"),
+                color: Some("#222222"),
+                sort_order: Some(12),
+            },
+        )
+        .unwrap();
+        assert_eq!(updated.name, "감사수정");
+
+        undo(&mut c, 1).unwrap();
+        let restored = memos::list_memo_tags(&c)
+            .unwrap()
+            .into_iter()
+            .find(|t| t.id == created.id)
+            .unwrap();
+        assert_eq!(restored.name, "감사");
+
+        redo(&mut c, 1).unwrap();
+        let redone = memos::list_memo_tags(&c)
+            .unwrap()
+            .into_iter()
+            .find(|t| t.id == created.id)
+            .unwrap();
+        assert_eq!(redone.name, "감사수정");
+
+        memos::delete_memo_tag(&mut c, Source::Cli, created.id).unwrap();
+        assert!(memos::list_memo_tags(&c)
+            .unwrap()
+            .iter()
+            .all(|t| t.id != created.id));
+
+        undo(&mut c, 1).unwrap();
+        assert!(memos::list_memo_tags(&c)
+            .unwrap()
+            .iter()
+            .any(|t| t.id == created.id));
     }
 
     #[test]

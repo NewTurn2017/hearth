@@ -97,6 +97,144 @@ fn attach_tags(conn: &Connection, mut memo: Memo) -> rusqlite::Result<Memo> {
     Ok(memo)
 }
 
+fn get_memo_tag(conn: &Connection, id: i64) -> rusqlite::Result<Option<MemoTag>> {
+    let mut stmt = conn.prepare(
+        "SELECT mt.id, mt.name, mt.color, mt.sort_order,
+                (SELECT COUNT(*) FROM memo_tag_links all_links WHERE all_links.tag_id = mt.id) AS usage_count,
+                mt.created_at, mt.updated_at
+         FROM memo_tags mt
+         WHERE mt.id = ?1",
+    )?;
+    match stmt.query_row([id], row_to_tag) {
+        Ok(tag) => Ok(Some(tag)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
+pub struct UpdateMemoTag<'a> {
+    pub name: Option<&'a str>,
+    pub color: Option<&'a str>,
+    pub sort_order: Option<i64>,
+}
+
+pub fn list_memo_tags(conn: &Connection) -> rusqlite::Result<Vec<MemoTag>> {
+    let mut stmt = conn.prepare(
+        "SELECT mt.id, mt.name, mt.color, mt.sort_order,
+                (SELECT COUNT(*) FROM memo_tag_links all_links WHERE all_links.tag_id = mt.id) AS usage_count,
+                mt.created_at, mt.updated_at
+         FROM memo_tags mt
+         ORDER BY mt.sort_order ASC, mt.name ASC",
+    )?;
+    let rows = stmt.query_map([], row_to_tag)?;
+    rows.collect()
+}
+
+pub fn create_memo_tag(
+    conn: &mut Connection,
+    source: Source,
+    name: &str,
+    color: Option<&str>,
+) -> rusqlite::Result<MemoTag> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(rusqlite::Error::InvalidParameterName(
+            "memo tag name cannot be empty".to_string(),
+        ));
+    }
+    let tx = conn.transaction()?;
+    let next_order: i64 = tx
+        .query_row(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM memo_tags",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    tx.execute(
+        "INSERT INTO memo_tags (name, color, sort_order) VALUES (?1, ?2, ?3)",
+        params![trimmed, color.unwrap_or("#6b7280"), next_order],
+    )?;
+    let id = tx.last_insert_rowid();
+    let after = get_memo_tag(&tx, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+    let aj = serde_json::to_value(&after).unwrap();
+    write_audit(&tx, source, Op::Create, "memo_tags", id, None, Some(&aj))?;
+    tx.commit()?;
+    Ok(after)
+}
+
+pub fn update_memo_tag(
+    conn: &mut Connection,
+    source: Source,
+    id: i64,
+    patch: &UpdateMemoTag<'_>,
+) -> rusqlite::Result<MemoTag> {
+    let tx = conn.transaction()?;
+    let before = get_memo_tag(&tx, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+    let mut sets: Vec<&str> = Vec::new();
+    let mut vals: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+    if let Some(name) = patch.name {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            return Err(rusqlite::Error::InvalidParameterName(
+                "memo tag name cannot be empty".to_string(),
+            ));
+        }
+        sets.push("name = ?");
+        vals.push(Box::new(trimmed.to_string()));
+    }
+    if let Some(color) = patch.color {
+        sets.push("color = ?");
+        vals.push(Box::new(color.to_string()));
+    }
+    if let Some(sort_order) = patch.sort_order {
+        sets.push("sort_order = ?");
+        vals.push(Box::new(sort_order));
+    }
+    if sets.is_empty() {
+        return Err(rusqlite::Error::ToSqlConversionFailure("no fields".into()));
+    }
+    sets.push("updated_at = datetime('now')");
+    vals.push(Box::new(id));
+    let sql = format!("UPDATE memo_tags SET {} WHERE id = ?", sets.join(", "));
+    let refs: Vec<&dyn rusqlite::types::ToSql> = vals.iter().map(|p| p.as_ref()).collect();
+    tx.execute(&sql, refs.as_slice())?;
+    let after = get_memo_tag(&tx, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+    let bj = serde_json::to_value(&before).unwrap();
+    let aj = serde_json::to_value(&after).unwrap();
+    write_audit(
+        &tx,
+        source,
+        Op::Update,
+        "memo_tags",
+        id,
+        Some(&bj),
+        Some(&aj),
+    )?;
+    tx.commit()?;
+    Ok(after)
+}
+
+pub fn delete_memo_tag(conn: &mut Connection, source: Source, id: i64) -> rusqlite::Result<()> {
+    let tx = conn.transaction()?;
+    let before = get_memo_tag(&tx, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+    tx.execute("DELETE FROM memo_tags WHERE id = ?1", [id])?;
+    let bj = serde_json::to_value(&before).unwrap();
+    write_audit(&tx, source, Op::Delete, "memo_tags", id, Some(&bj), None)?;
+    tx.commit()?;
+    Ok(())
+}
+
+pub fn reorder_memo_tags(conn: &mut Connection, ids: &[i64]) -> rusqlite::Result<()> {
+    let tx = conn.transaction()?;
+    for (i, id) in ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE memo_tags SET sort_order = ?1, updated_at = datetime('now') WHERE id = ?2",
+            params![i as i64, id],
+        )?;
+    }
+    tx.commit()
+}
+
 pub fn list(conn: &Connection) -> rusqlite::Result<Vec<Memo>> {
     let mut stmt = conn.prepare(&format!(
         "SELECT {SELECT_COLS} FROM memos ORDER BY sort_order ASC"
@@ -376,6 +514,65 @@ mod tests {
         let path = dir.path().join("t.db");
         std::mem::forget(dir);
         init_db(&path).unwrap()
+    }
+
+    #[test]
+    fn memo_tag_crud_and_reorder() {
+        let mut c = fresh();
+        let created = create_memo_tag(&mut c, Source::Cli, "긴급", Some("#f97316")).unwrap();
+        assert_eq!(created.name, "긴급");
+        assert_eq!(created.color, "#f97316");
+
+        let renamed = update_memo_tag(
+            &mut c,
+            Source::Cli,
+            created.id,
+            &UpdateMemoTag {
+                name: Some("긴급검토"),
+                color: Some("#fb7185"),
+                sort_order: Some(9),
+            },
+        )
+        .unwrap();
+        assert_eq!(renamed.name, "긴급검토");
+        assert_eq!(renamed.sort_order, 9);
+
+        reorder_memo_tags(&mut c, &[renamed.id]).unwrap();
+        let listed = list_memo_tags(&c).unwrap();
+        assert_eq!(listed[0].id, renamed.id);
+
+        delete_memo_tag(&mut c, Source::Cli, renamed.id).unwrap();
+        assert!(list_memo_tags(&c)
+            .unwrap()
+            .iter()
+            .all(|t| t.id != renamed.id));
+    }
+
+    #[test]
+    fn delete_memo_tag_cascades_links_but_leaves_memo() {
+        let mut c = fresh();
+        let memo = create(
+            &mut c,
+            Source::Cli,
+            &NewMemo {
+                content: "keep memo",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec!["임시".to_string()],
+            },
+        )
+        .unwrap();
+        let tag_id = memo.tags[0].id;
+
+        delete_memo_tag(&mut c, Source::Cli, tag_id).unwrap();
+
+        let memo_after = get(&c, memo.id).unwrap().unwrap();
+        assert_eq!(memo_after.content, "keep memo");
+        assert!(memo_after.tags.is_empty());
     }
 
     #[test]
