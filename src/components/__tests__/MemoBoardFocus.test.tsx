@@ -196,4 +196,21 @@ describe("MemoBoard Focus view", () => {
       "text-[16px] leading-relaxed",
     );
   });
+
+  it("clamps stored full-edge Focus coordinates before rendering", () => {
+    mockMemos = [
+      memo({
+        id: 8,
+        content: "edge memo",
+        focus_x: 1,
+        focus_y: 1,
+      }),
+    ];
+    renderBoard();
+    fireEvent.click(screen.getByRole("tab", { name: /포커스/ }));
+
+    const note = screen.getByText("edge memo").closest("[data-memo-id]");
+    expect(note).toHaveStyle({ left: "78%", top: "73.21%" });
+    expect(note).not.toHaveStyle({ left: "100%", top: "100%" });
+  });
 });

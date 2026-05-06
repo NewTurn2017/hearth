@@ -10,7 +10,6 @@ import type { CategoryRow, Memo, MemoTag, Project } from "../types";
 import type { MemoUpdateInput } from "../api";
 import { cn } from "../lib/cn";
 import {
-  clampFocusCoordinate,
   clampFocusPositionForNote,
   defaultFocusPosition,
   filterFocusMemos,
@@ -25,6 +24,11 @@ const QUICK_FILTERS: { value: FocusQuickFilter; label: string }[] = [
   { value: "important", label: "중요" },
   { value: "unlinked", label: "미연결" },
 ];
+
+const FALLBACK_BOARD_WIDTH = 1000;
+const FALLBACK_BOARD_HEIGHT = 560;
+const FALLBACK_NOTE_WIDTH = 220;
+const FALLBACK_NOTE_HEIGHT = 150;
 
 export function FocusMemoBoard({
   memos,
@@ -71,15 +75,42 @@ export function FocusMemoBoard({
     [filters, memos, projects],
   );
 
+  const boardDimensions = () => {
+    const rect = boardRef.current?.getBoundingClientRect();
+    return {
+      width: rect && rect.width > 0 ? rect.width : FALLBACK_BOARD_WIDTH,
+      height: rect && rect.height > 0 ? rect.height : FALLBACK_BOARD_HEIGHT,
+    };
+  };
+
+  const noteDimensions = (memoId: number) => {
+    const noteEl = boardRef.current?.querySelector<HTMLElement>(
+      `[data-memo-id="${memoId}"]`,
+    );
+    const rect = noteEl?.getBoundingClientRect();
+    return {
+      width: rect && rect.width > 0 ? rect.width : FALLBACK_NOTE_WIDTH,
+      height: rect && rect.height > 0 ? rect.height : FALLBACK_NOTE_HEIGHT,
+    };
+  };
+
   const positionFor = (memo: Memo) => {
     const fallback = defaultFocusPosition(
       defaultIndexByMemoId.get(memo.id) ?? 0,
     );
+    const board = boardDimensions();
+    const note = noteDimensions(memo.id);
     return {
-      x:
-        memo.focus_x === null ? fallback.x : clampFocusCoordinate(memo.focus_x),
-      y:
-        memo.focus_y === null ? fallback.y : clampFocusCoordinate(memo.focus_y),
+      x: clampFocusPositionForNote({
+        value: memo.focus_x === null ? fallback.x : memo.focus_x,
+        boardSize: board.width,
+        noteSize: note.width,
+      }),
+      y: clampFocusPositionForNote({
+        value: memo.focus_y === null ? fallback.y : memo.focus_y,
+        boardSize: board.height,
+        noteSize: note.height,
+      }),
     };
   };
 
@@ -89,25 +120,20 @@ export function FocusMemoBoard({
         ? event.active.id
         : Number(event.active.id);
     const memo = memos.find((item) => item.id === id);
-    const rect = boardRef.current?.getBoundingClientRect();
-    if (!memo || !rect || rect.width === 0 || rect.height === 0) return;
+    if (!memo) return;
 
+    const board = boardDimensions();
+    const note = noteDimensions(memo.id);
     const current = positionFor(memo);
-    const noteEl = boardRef.current?.querySelector<HTMLElement>(
-      `[data-memo-id="${memo.id}"]`,
-    );
-    const noteRect = noteEl?.getBoundingClientRect();
-    const fallbackNoteWidth = 220;
-    const fallbackNoteHeight = 150;
     const focus_x = clampFocusPositionForNote({
-      value: current.x + event.delta.x / rect.width,
-      boardSize: rect.width,
-      noteSize: noteRect?.width ?? fallbackNoteWidth,
+      value: current.x + event.delta.x / board.width,
+      boardSize: board.width,
+      noteSize: note.width,
     });
     const focus_y = clampFocusPositionForNote({
-      value: current.y + event.delta.y / rect.height,
-      boardSize: rect.height,
-      noteSize: noteRect?.height ?? fallbackNoteHeight,
+      value: current.y + event.delta.y / board.height,
+      boardSize: board.height,
+      noteSize: note.height,
     });
 
     try {
