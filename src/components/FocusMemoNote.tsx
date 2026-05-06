@@ -131,9 +131,17 @@ export function FocusMemoNote({
         />
       ) : (
         <p
+          role="button"
+          tabIndex={0}
           onClick={() => setEditing(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setEditing(true);
+            }
+          }}
           className={cn(
-            "line-clamp-4 min-h-[72px] cursor-pointer whitespace-pre-wrap [overflow-wrap:anywhere]",
+            "line-clamp-4 min-h-[72px] cursor-pointer whitespace-pre-wrap [overflow-wrap:anywhere] focus:outline-none focus-visible:ring-2 focus-visible:ring-black/30",
             memoFontSizeClass(memo.font_size),
             memo.is_bold && "font-semibold",
           )}
@@ -178,7 +186,9 @@ export function FocusMemoNote({
         tags={tags}
         onClose={() => setTagPickerOpen(false)}
         onCreateTag={onCreateTag}
-        onApply={(tagNames) => void onUpdate(memo.id, { tag_names: tagNames })}
+        onApply={async (tagNames) => {
+          await onUpdate(memo.id, { tag_names: tagNames });
+        }}
       />
     </article>
   );

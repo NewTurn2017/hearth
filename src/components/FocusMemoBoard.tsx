@@ -11,6 +11,7 @@ import type { MemoUpdateInput } from "../api";
 import { cn } from "../lib/cn";
 import {
   clampFocusCoordinate,
+  clampFocusPositionForNote,
   defaultFocusPosition,
   filterFocusMemos,
   type FocusFilters,
@@ -92,12 +93,22 @@ export function FocusMemoBoard({
     if (!memo || !rect || rect.width === 0 || rect.height === 0) return;
 
     const current = positionFor(memo);
-    const focus_x = clampFocusCoordinate(
-      current.x + event.delta.x / rect.width,
+    const noteEl = boardRef.current?.querySelector<HTMLElement>(
+      `[data-memo-id="${memo.id}"]`,
     );
-    const focus_y = clampFocusCoordinate(
-      current.y + event.delta.y / rect.height,
-    );
+    const noteRect = noteEl?.getBoundingClientRect();
+    const fallbackNoteWidth = 220;
+    const fallbackNoteHeight = 150;
+    const focus_x = clampFocusPositionForNote({
+      value: current.x + event.delta.x / rect.width,
+      boardSize: rect.width,
+      noteSize: noteRect?.width ?? fallbackNoteWidth,
+    });
+    const focus_y = clampFocusPositionForNote({
+      value: current.y + event.delta.y / rect.height,
+      boardSize: rect.height,
+      noteSize: noteRect?.height ?? fallbackNoteHeight,
+    });
 
     try {
       await onUpdate(memo.id, { focus_x, focus_y });
@@ -228,6 +239,7 @@ function RailButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         "h-7 rounded-md px-2 text-left text-[12px] transition-colors",
         active

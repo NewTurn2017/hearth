@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Memo, Project } from "../../types";
 import {
   clampFocusCoordinate,
+  clampFocusPositionForNote,
   defaultFocusPosition,
   filterFocusMemos,
   memoIsImportant,
@@ -53,6 +54,18 @@ describe("focus memo layout helpers", () => {
     expect(clampFocusCoordinate(-0.1)).toBe(0);
     expect(clampFocusCoordinate(1.4)).toBe(1);
     expect(clampFocusCoordinate(0.123456)).toBe(0.1235);
+  });
+
+  it("clamps note positions so the rendered note remains visible", () => {
+    expect(
+      clampFocusPositionForNote({ value: 1, boardSize: 1000, noteSize: 220 }),
+    ).toBe(0.78);
+    expect(
+      clampFocusPositionForNote({ value: 0.95, boardSize: 560, noteSize: 140 }),
+    ).toBe(0.75);
+    expect(
+      clampFocusPositionForNote({ value: 0.4, boardSize: 100, noteSize: 120 }),
+    ).toBe(0);
   });
 
   it("generates deterministic cascaded defaults inside the board", () => {

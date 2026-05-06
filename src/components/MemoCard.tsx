@@ -183,7 +183,9 @@ export function MemoCard({
         tags={tags}
         onClose={() => setTagPickerOpen(false)}
         onCreateTag={onCreateTag}
-        onApply={(tagNames) => onUpdate(memo.id, { tag_names: tagNames })}
+        onApply={async (tagNames) => {
+          await onUpdate(memo.id, { tag_names: tagNames });
+        }}
       />
     </div>
   );
