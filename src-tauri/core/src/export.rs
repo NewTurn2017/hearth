@@ -41,6 +41,106 @@ fn export_memo_tag_links(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
     rows.collect()
 }
 
+fn normalized_memo_tag_names(memo: &Memo) -> Vec<String> {
+    let mut out = Vec::new();
+    for raw in memo_tag_names(memo) {
+        let name = raw.trim();
+        if name.is_empty() || out.iter().any(|existing| existing == name) {
+            continue;
+        }
+        out.push(name.to_string());
+    }
+    out
+}
+
+fn next_memo_tag_sort_order(conn: &Connection) -> rusqlite::Result<i64> {
+    conn.query_row(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM memo_tags",
+        [],
+        |r| r.get(0),
+    )
+}
+
+fn resolve_memo_tag_for_import(
+    conn: &Connection,
+    name: &str,
+    color: Option<&str>,
+    sort_order: Option<i64>,
+    dry_run: bool,
+    report: &mut ImportReport,
+) -> rusqlite::Result<Option<i64>> {
+    match conn.query_row("SELECT id FROM memo_tags WHERE name = ?1", [name], |r| {
+        r.get::<_, i64>(0)
+    }) {
+        Ok(id) => Ok(Some(id)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            report.inserted_memo_tags += 1;
+            if dry_run {
+                Ok(None)
+            } else {
+                conn.execute(
+                    "INSERT INTO memo_tags (name, color, sort_order) VALUES (?1, ?2, ?3)",
+                    rusqlite::params![
+                        name,
+                        color.unwrap_or("#6b7280"),
+                        sort_order.unwrap_or(next_memo_tag_sort_order(conn)?)
+                    ],
+                )?;
+                Ok(Some(conn.last_insert_rowid()))
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
+fn insert_memo_tag_link_for_import(
+    conn: &Connection,
+    memo_id: i64,
+    tag_id: i64,
+    dry_run: bool,
+    report: &mut ImportReport,
+) -> rusqlite::Result<()> {
+    let exists: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM memo_tag_links WHERE memo_id = ?1 AND tag_id = ?2",
+        rusqlite::params![memo_id, tag_id],
+        |r| r.get(0),
+    )?;
+    if exists > 0 {
+        report.skipped_duplicates += 1;
+    } else {
+        if !dry_run {
+            conn.execute(
+                "INSERT INTO memo_tag_links (memo_id, tag_id) VALUES (?1, ?2)",
+                rusqlite::params![memo_id, tag_id],
+            )?;
+        }
+        report.inserted_memo_tag_links += 1;
+    }
+    Ok(())
+}
+
+fn import_nested_memo_tags(
+    conn: &Connection,
+    memo_id: Option<i64>,
+    memo: &Memo,
+    dry_run: bool,
+    report: &mut ImportReport,
+) -> rusqlite::Result<()> {
+    for name in normalized_memo_tag_names(memo) {
+        let tag_id = resolve_memo_tag_for_import(conn, &name, None, None, dry_run, report)?;
+        if let Some(memo_id) = memo_id {
+            if let Some(tag_id) = tag_id {
+                insert_memo_tag_link_for_import(conn, memo_id, tag_id, dry_run, report)?;
+            } else {
+                // Dry-run path for a would-be new tag: no stable local id exists yet, but
+                // importing this nested tag would create exactly one memo_tag_link.
+                report.inserted_memo_tag_links += 1;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Full workspace dump.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Dump {
@@ -181,35 +281,28 @@ pub fn import_json_merge(
             .and_then(|v| v.as_str())
             .unwrap_or("#6b7280");
         let sort_order = tag.get("sort_order").and_then(|v| v.as_i64()).unwrap_or(0);
-        let existing = tx.query_row("SELECT id FROM memo_tags WHERE name = ?1", [name], |r| {
-            r.get::<_, i64>(0)
-        });
-        match existing {
-            Ok(existing_id) => {
+        let tag_id = resolve_memo_tag_for_import(
+            &tx,
+            name,
+            Some(color),
+            Some(sort_order),
+            dry_run,
+            &mut report,
+        )?;
+        match (old_id, tag_id) {
+            (Some(old_id), Some(tag_id)) => {
+                memo_tag_id_map.insert(old_id, tag_id);
                 if !dry_run {
                     tx.execute(
                         "UPDATE memo_tags SET color = ?1, sort_order = ?2, updated_at = datetime('now') WHERE id = ?3",
-                        rusqlite::params![color, sort_order, existing_id],
+                        rusqlite::params![color, sort_order, tag_id],
                     )?;
                 }
-                if let Some(old_id) = old_id {
-                    memo_tag_id_map.insert(old_id, existing_id);
-                }
-                report.skipped_duplicates += 1;
             }
-            Err(rusqlite::Error::QueryReturnedNoRows) => {
-                if !dry_run {
-                    tx.execute(
-                        "INSERT INTO memo_tags (name, color, sort_order) VALUES (?1, ?2, ?3)",
-                        rusqlite::params![name, color, sort_order],
-                    )?;
-                    if let Some(old_id) = old_id {
-                        memo_tag_id_map.insert(old_id, tx.last_insert_rowid());
-                    }
-                }
-                report.inserted_memo_tags += 1;
+            (Some(old_id), None) if dry_run => {
+                memo_tag_id_map.insert(old_id, old_id);
             }
-            Err(e) => return Err(e),
+            _ => {}
         }
     }
 
@@ -275,7 +368,8 @@ pub fn import_json_merge(
                 )?;
                 let memo_id = tx.last_insert_rowid();
                 memo_id_map.insert(m.id, memo_id);
-                crate::memos::replace_tags(&tx, memo_id, &memo_tag_names(m))?;
+            } else {
+                memo_id_map.insert(m.id, m.id);
             }
             report.inserted_memos += 1;
         } else if let Err(e) = existing_id {
@@ -283,34 +377,32 @@ pub fn import_json_merge(
         }
     }
 
-    // --- memo tag links (raw portable links for dumps without nested memo tags) ---
-    for link in &dump.memo_tag_links {
-        let old_memo_id = link.get("memo_id").and_then(|v| v.as_i64());
-        let old_tag_id = link.get("tag_id").and_then(|v| v.as_i64());
-        let (Some(old_memo_id), Some(old_tag_id)) = (old_memo_id, old_tag_id) else {
-            continue;
-        };
-        let Some(&memo_id) = memo_id_map.get(&old_memo_id) else {
-            continue;
-        };
-        let Some(&tag_id) = memo_tag_id_map.get(&old_tag_id) else {
-            continue;
-        };
-        let exists: i64 = tx.query_row(
-            "SELECT COUNT(*) FROM memo_tag_links WHERE memo_id = ?1 AND tag_id = ?2",
-            rusqlite::params![memo_id, tag_id],
-            |r| r.get(0),
-        )?;
-        if exists > 0 {
-            report.skipped_duplicates += 1;
-        } else {
-            if !dry_run {
-                tx.execute(
-                    "INSERT INTO memo_tag_links (memo_id, tag_id) VALUES (?1, ?2)",
-                    rusqlite::params![memo_id, tag_id],
-                )?;
-            }
-            report.inserted_memo_tag_links += 1;
+    if dump.memo_tag_links.is_empty() {
+        // Legacy/nested-only dumps have tags on each memo but no raw link section.
+        for memo in &dump.memos {
+            import_nested_memo_tags(
+                &tx,
+                memo_id_map.get(&memo.id).copied(),
+                memo,
+                dry_run,
+                &mut report,
+            )?;
+        }
+    } else {
+        // Raw link sections are the authoritative link-import/counting path for new dumps.
+        for link in &dump.memo_tag_links {
+            let old_memo_id = link.get("memo_id").and_then(|v| v.as_i64());
+            let old_tag_id = link.get("tag_id").and_then(|v| v.as_i64());
+            let (Some(old_memo_id), Some(old_tag_id)) = (old_memo_id, old_tag_id) else {
+                continue;
+            };
+            let Some(&memo_id) = memo_id_map.get(&old_memo_id) else {
+                continue;
+            };
+            let Some(&tag_id) = memo_tag_id_map.get(&old_tag_id) else {
+                continue;
+            };
+            insert_memo_tag_link_for_import(&tx, memo_id, tag_id, dry_run, &mut report)?;
         }
     }
 
@@ -438,10 +530,18 @@ mod tests {
         assert!(dump.memo_tags.iter().any(|tag| tag["name"] == "휴대"));
         assert_eq!(dump.memo_tag_links.len(), 1);
 
+        let mut dry_run_target = fresh();
+        let dry_run = import_json_merge(&mut dry_run_target, &dump, true).unwrap();
+        assert_eq!(dry_run.inserted_memos, 1);
+        assert_eq!(dry_run.inserted_memo_tags, 1);
+        assert_eq!(dry_run.inserted_memo_tag_links, 1);
+        assert!(memos::list(&dry_run_target).unwrap().is_empty());
+
         let mut target = fresh();
         let report = import_json_merge(&mut target, &dump, false).unwrap();
         assert_eq!(report.inserted_memos, 1);
-        assert_eq!(report.inserted_memo_tag_links, 0);
+        assert_eq!(report.inserted_memo_tags, 1);
+        assert_eq!(report.inserted_memo_tag_links, 1);
         let imported = memos::list(&target).unwrap().remove(0);
         assert_eq!(imported.font_size, MemoFontSize::Small);
         assert!(imported.is_bold);
@@ -491,6 +591,56 @@ mod tests {
         let imported = memos::list(&c).unwrap().remove(0);
         assert_eq!(imported.tags[0].name, "원시");
         assert_eq!(imported.tags[0].color, "#654321");
+    }
+
+    #[test]
+    fn import_counts_nested_only_memo_tags_and_links() {
+        let nested = r##"{
+            "projects": [],
+            "memos": [{
+                "id": 21,
+                "content": "nested only memo",
+                "color": "pink",
+                "project_id": null,
+                "sort_order": 1,
+                "font_size": "normal",
+                "is_bold": false,
+                "focus_x": null,
+                "focus_y": null,
+                "tags": [{
+                    "id": 99,
+                    "name": "새태그",
+                    "color": "#999999",
+                    "sort_order": 0,
+                    "usage_count": 1,
+                    "created_at": "2026-05-06 00:00:00",
+                    "updated_at": "2026-05-06 00:00:00"
+                }],
+                "created_at": "2026-05-06 00:00:00",
+                "updated_at": "2026-05-06 00:00:00"
+            }],
+            "schedules": [],
+            "categories": [],
+            "clients": []
+        }"##;
+        let dump: Dump = serde_json::from_str(nested).unwrap();
+        assert!(dump.memo_tags.is_empty());
+        assert!(dump.memo_tag_links.is_empty());
+
+        let mut dry_run_target = fresh();
+        let dry_run = import_json_merge(&mut dry_run_target, &dump, true).unwrap();
+        assert_eq!(dry_run.inserted_memos, 1);
+        assert_eq!(dry_run.inserted_memo_tags, 1);
+        assert_eq!(dry_run.inserted_memo_tag_links, 1);
+        assert!(memos::list(&dry_run_target).unwrap().is_empty());
+
+        let mut c = fresh();
+        let report = import_json_merge(&mut c, &dump, false).unwrap();
+        assert_eq!(report.inserted_memos, 1);
+        assert_eq!(report.inserted_memo_tags, 1);
+        assert_eq!(report.inserted_memo_tag_links, 1);
+        let imported = memos::list(&c).unwrap().remove(0);
+        assert_eq!(imported.tags[0].name, "새태그");
     }
 
     #[test]
