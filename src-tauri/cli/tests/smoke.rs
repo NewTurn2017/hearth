@@ -683,6 +683,76 @@ fn export_import_roundtrips_styled_tagged_memo() {
     assert_eq!(imported.tags[0].color, "#0f766e");
 }
 
+#[test]
+fn import_replace_removes_target_only_memo_tags() {
+    let dir = TempDir::new().unwrap();
+    let source_path = dir.path().join("source.db");
+    let target_path = dir.path().join("target.db");
+    let export_path = dir.path().join("dump.json");
+    let target_str = target_path.to_str().unwrap();
+    let export_str = export_path.to_str().unwrap();
+
+    let mut source = init_db(&source_path).unwrap();
+    memos::create_memo_tag(&mut source, Source::Cli, "가져온태그", Some("#0f766e")).unwrap();
+    memos::create(
+        &mut source,
+        Source::Cli,
+        &memos::NewMemo {
+            content: "imported tagged memo",
+            color: "blue",
+            project_id: None,
+            font_size: Some("normal"),
+            is_bold: Some(false),
+            focus_x: Some(0.1),
+            focus_y: Some(0.2),
+            tag_names: vec!["가져온태그".to_string()],
+        },
+    )
+    .unwrap();
+    let dump = export::export_json(&source, false).unwrap();
+    std::fs::write(&export_path, serde_json::to_vec(&dump).unwrap()).unwrap();
+
+    let mut target = init_db(&target_path).unwrap();
+    memos::create_memo_tag(&mut target, Source::Cli, "대상전용태그", Some("#ef4444")).unwrap();
+    memos::create(
+        &mut target,
+        Source::Cli,
+        &memos::NewMemo {
+            content: "stale target memo",
+            color: "yellow",
+            project_id: None,
+            font_size: Some("large"),
+            is_bold: Some(true),
+            focus_x: Some(0.8),
+            focus_y: Some(0.9),
+            tag_names: vec!["대상전용태그".to_string()],
+        },
+    )
+    .unwrap();
+    drop(target);
+
+    let v = stdout_json(
+        hearth(target_str)
+            .args(["import", export_str, "--replace", "--yes"])
+            .assert(),
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["dry_run"], false);
+
+    let target = init_db(&target_path).unwrap();
+    let tags = memos::list_memo_tags(&target).unwrap();
+    assert!(tags.iter().any(|tag| tag.name == "가져온태그"));
+    assert!(!tags.iter().any(|tag| tag.name == "대상전용태그"));
+
+    let imported_memo = memos::list(&target)
+        .unwrap()
+        .into_iter()
+        .find(|memo| memo.content == "imported tagged memo")
+        .expect("imported memo should remain after replace");
+    assert_eq!(imported_memo.tags.len(), 1);
+    assert_eq!(imported_memo.tags[0].name, "가져온태그");
+}
+
 // ── Task 10.2 — import ───────────────────────────────────────────────────────
 
 #[test]

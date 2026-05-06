@@ -49,6 +49,8 @@ pub fn dispatch(db_flag: Option<&str>, args: ImportArgs) -> Result<()> {
         // Truncate tables in dependency order
         conn.execute_batch(
             "DELETE FROM audit_log;
+             DELETE FROM memo_tag_links;
+             DELETE FROM memo_tags;
              DELETE FROM memos;
              DELETE FROM schedules;
              DELETE FROM projects;
