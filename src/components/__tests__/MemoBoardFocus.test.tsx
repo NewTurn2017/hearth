@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { CategoryRow, Memo, MemoTag, Project } from "../../types";
 import { MemoBoard } from "../MemoBoard";
 import { ToastProvider } from "../../ui/Toast";
@@ -197,13 +197,16 @@ describe("MemoBoard Focus view", () => {
     );
   });
 
-  it("clamps stored full-edge Focus coordinates before rendering", () => {
+  it("keeps an edge-positioned large tagged Focus note within the fixed first-render footprint", () => {
     mockMemos = [
       memo({
         id: 8,
         content: "edge memo",
         focus_x: 1,
         focus_y: 1,
+        font_size: "large",
+        is_bold: true,
+        tags: [mockTags[0], mockTags[1], mockTags[2]],
       }),
     ];
     renderBoard();
@@ -211,10 +214,17 @@ describe("MemoBoard Focus view", () => {
 
     const note = screen.getByText("edge memo").closest("[data-memo-id]");
     const style = note?.getAttribute("style") ?? "";
+    expect(note).toHaveClass("h-[140px]", "w-[210px]", "overflow-hidden");
     expect(style).toContain("left: min(");
     expect(style).toContain("calc(100% - 210px)");
     expect(style).toContain("top: min(");
     expect(style).toContain("calc(100% - 140px)");
     expect(note).not.toHaveStyle({ left: "100%", top: "100%" });
+    expect(screen.getByText("edge memo")).toHaveClass("font-semibold");
+    expect(note).not.toBeNull();
+    const noteScope = within(note as HTMLElement);
+    expect(noteScope.getByText("#중요")).toBeInTheDocument();
+    expect(noteScope.getByText("#UI")).toBeInTheDocument();
+    expect(noteScope.getByText("#Ops")).toBeInTheDocument();
   });
 });

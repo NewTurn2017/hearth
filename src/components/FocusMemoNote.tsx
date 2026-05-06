@@ -77,7 +77,7 @@ export function FocusMemoNote({
       data-memo-id={memo.id}
       onContextMenu={openMenu}
       className={cn(
-        "absolute w-[210px] min-h-[140px] rounded-xl border border-black/10 p-3 shadow-[var(--shadow-e2)]",
+        "absolute h-[140px] w-[210px] overflow-hidden rounded-xl border border-black/10 p-3 shadow-[var(--shadow-e2)]",
         "focus:outline-none transition-shadow group",
         isDragging && "z-20 shadow-[var(--shadow-e3)]",
         highlighted && "find-highlight",
