@@ -130,15 +130,16 @@ pub fn run() {
                 }
             };
 
-            let shortcut_result = app
-                .global_shortcut()
-                .on_shortcut(combo.as_str(), |app_handle, _shortcut, event| {
+            let shortcut_result = app.global_shortcut().on_shortcut(
+                combo.as_str(),
+                |app_handle, _shortcut, event| {
                     if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                         let _ = crate::cmd_quick_capture::toggle_quick_capture_window(
                             app_handle.clone(),
                         );
                     }
-                });
+                },
+            );
 
             // Write success/failure to KV — non-fatal on error.
             let error_msg = match shortcut_result {
@@ -164,20 +165,18 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
-            match event {
-                tauri::WindowEvent::CloseRequested { api, .. } => {
-                    #[cfg(target_os = "macos")]
-                    {
-                        api.prevent_close();
-                        let _ = window.hide();
-                    }
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                #[cfg(target_os = "macos")]
+                {
+                    api.prevent_close();
+                    let _ = window.hide();
                 }
-                tauri::WindowEvent::Destroyed => {
-                    cmd_backup::auto_backup_on_close(window.app_handle());
-                }
-                _ => {}
             }
+            tauri::WindowEvent::Destroyed => {
+                cmd_backup::auto_backup_on_close(window.app_handle());
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             cmd_projects::get_projects,
@@ -198,6 +197,11 @@ pub fn run() {
             cmd_memos::reorder_memos,
             cmd_memos::update_memo_by_number,
             cmd_memos::delete_memo_by_number,
+            cmd_memos::get_memo_tags,
+            cmd_memos::create_memo_tag,
+            cmd_memos::update_memo_tag,
+            cmd_memos::delete_memo_tag,
+            cmd_memos::reorder_memo_tags,
             cmd_clients::get_clients,
             cmd_actions::open_in_terminal,
             cmd_actions::open_in_finder,
@@ -238,7 +242,11 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows,
+                ..
+            } = event
+            {
                 if !has_visible_windows {
                     if let Some(win) = app_handle.get_webview_window("main") {
                         let _ = win.show();

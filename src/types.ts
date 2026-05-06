@@ -24,12 +24,29 @@ export interface Schedule {
   updated_at: string;
 }
 
+export type MemoFontSize = "small" | "normal" | "large";
+
+export interface MemoTag {
+  id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Memo {
   id: number;
   content: string;
   color: string;
   project_id: number | null;
   sort_order: number;
+  font_size: MemoFontSize;
+  is_bold: boolean;
+  focus_x: number | null;
+  focus_y: number | null;
+  tags: MemoTag[];
   created_at: string;
   updated_at: string;
 }

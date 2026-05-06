@@ -12,6 +12,11 @@ const mkMemo = (
   project_id,
   content: `memo${id}`,
   color: "yellow",
+  font_size: "normal",
+  is_bold: false,
+  focus_x: null,
+  focus_y: null,
+  tags: [],
   created_at: "",
   updated_at: "",
 });

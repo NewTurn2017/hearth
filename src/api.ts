@@ -3,6 +3,8 @@ import type {
   Project,
   Schedule,
   Memo,
+  MemoFontSize,
+  MemoTag,
   Client,
   BackupInfo,
 } from "./types";
@@ -84,16 +86,33 @@ export const deleteSchedule = (id: number) =>
 // 메모
 export const getMemos = () => invoke<Memo[]>("get_memos");
 
-export const createMemo = (data: {
+export type MemoInput = {
   content: string;
   color?: string;
   project_id?: number;
-}) => invoke<Memo>("create_memo", { data });
+  font_size?: MemoFontSize;
+  is_bold?: boolean;
+  focus_x?: number | null;
+  focus_y?: number | null;
+  tag_names?: string[];
+};
 
-export const updateMemo = (
-  id: number,
-  fields: { content?: string; color?: string; project_id?: number | null }
-) => invoke<Memo>("update_memo", { id, fields });
+export type MemoUpdateInput = {
+  content?: string;
+  color?: string;
+  project_id?: number | null;
+  font_size?: MemoFontSize;
+  is_bold?: boolean;
+  focus_x?: number | null;
+  focus_y?: number | null;
+  tag_names?: string[];
+};
+
+export const createMemo = (data: MemoInput) =>
+  invoke<Memo>("create_memo", { data });
+
+export const updateMemo = (id: number, fields: MemoUpdateInput) =>
+  invoke<Memo>("update_memo", { id, fields });
 
 export const deleteMemo = (id: number) => invoke<void>("delete_memo", { id });
 
@@ -169,13 +188,28 @@ export const setUiScale = (scale: number) =>
 // Memo operations keyed by the user-facing #N badge instead of a raw id.
 // The backend resolves N via sort_order OFFSET, so callers pass the number
 // the user sees on the card.
-export const updateMemoByNumber = (
-  number: number,
-  fields: { content?: string; color?: string; project_id?: number | null }
-) => invoke<Memo>("update_memo_by_number", { number, fields });
+export const updateMemoByNumber = (number: number, fields: MemoUpdateInput) =>
+  invoke<Memo>("update_memo_by_number", { number, fields });
 
 export const deleteMemoByNumber = (number: number) =>
   invoke<void>("delete_memo_by_number", { number });
+
+// 메모 태그
+export const getMemoTags = () => invoke<MemoTag[]>("get_memo_tags");
+
+export const createMemoTag = (input: { name: string; color?: string }) =>
+  invoke<MemoTag>("create_memo_tag", { input });
+
+export const updateMemoTag = (
+  id: number,
+  fields: { name?: string; color?: string; sort_order?: number }
+) => invoke<MemoTag>("update_memo_tag", { id, fields });
+
+export const deleteMemoTag = (id: number) =>
+  invoke<void>("delete_memo_tag", { id });
+
+export const reorderMemoTags = (ids: number[]) =>
+  invoke<void>("reorder_memo_tags", { ids });
 
 // 카테고리 (user-editable project categories)
 import type { CategoryRow } from "./types";
