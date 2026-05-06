@@ -93,7 +93,9 @@ pub fn update_memo_by_number(
     if number < 1 {
         return Err(format!("#{} 메모를 찾을 수 없음", number));
     }
-    let new_content = fields.content.ok_or_else(|| "content is required for update_by_number".to_string())?;
+    let new_content = fields
+        .content
+        .ok_or_else(|| "content is required for update_by_number".to_string())?;
     let mut db = state.db.lock().map_err(|e| e.to_string())?;
     memos::update_by_number(&mut db, Source::App, number, &new_content)
         .map_err(|_| format!("#{} 메모를 찾을 수 없음", number))

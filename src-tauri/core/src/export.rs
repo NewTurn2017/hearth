@@ -6,6 +6,10 @@ use serde_json::Value;
 
 use crate::models::{Client, Memo, Project, Schedule};
 
+fn memo_tag_names(memo: &Memo) -> Vec<String> {
+    memo.tags.iter().map(|tag| tag.name.clone()).collect()
+}
+
 /// Full workspace dump.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Dump {
@@ -106,10 +110,7 @@ pub fn import_json_merge(
                     .get("color")
                     .and_then(|v| v.as_str())
                     .unwrap_or("#6b7280");
-                let sort_order = cat
-                    .get("sort_order")
-                    .and_then(|v| v.as_i64())
-                    .unwrap_or(0);
+                let sort_order = cat.get("sort_order").and_then(|v| v.as_i64()).unwrap_or(0);
                 tx.execute(
                     "INSERT INTO categories (name, color, sort_order) VALUES (?1, ?2, ?3)",
                     rusqlite::params![name, color, sort_order],
@@ -162,17 +163,23 @@ pub fn import_json_merge(
         } else {
             if !dry_run {
                 tx.execute(
-                    "INSERT INTO memos (content, color, project_id, sort_order, created_at, updated_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    "INSERT INTO memos (content, color, project_id, sort_order, font_size, is_bold, focus_x, focus_y, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                     rusqlite::params![
                         m.content,
                         m.color,
                         m.project_id,
                         m.sort_order,
+                        m.font_size.as_str(),
+                        m.is_bold as i64,
+                        m.focus_x,
+                        m.focus_y,
                         m.created_at,
                         m.updated_at,
                     ],
                 )?;
+                let memo_id = tx.last_insert_rowid();
+                crate::memos::replace_tags(&tx, memo_id, &memo_tag_names(m))?;
             }
             report.inserted_memos += 1;
         }
@@ -216,4 +223,91 @@ pub fn import_json_merge(
     }
 
     Ok(report)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::audit::Source;
+    use crate::db::init_db;
+    use crate::memos::{self, NewMemo};
+    use crate::models::MemoFontSize;
+    use rusqlite::Connection;
+    use tempfile::TempDir;
+
+    fn fresh() -> Connection {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("t.db");
+        std::mem::forget(dir);
+        init_db(&path).unwrap()
+    }
+
+    #[test]
+    fn import_accepts_legacy_memos_without_focus_fields() {
+        let legacy = r##"{
+            "projects": [],
+            "memos": [{
+                "id": 1,
+                "content": "legacy memo",
+                "color": "yellow",
+                "project_id": null,
+                "sort_order": 1,
+                "created_at": "2026-05-06 00:00:00",
+                "updated_at": "2026-05-06 00:00:00"
+            }],
+            "schedules": [],
+            "categories": [],
+            "clients": []
+        }"##;
+        let dump: Dump = serde_json::from_str(legacy).unwrap();
+        assert_eq!(dump.memos[0].font_size, MemoFontSize::Normal);
+        assert!(!dump.memos[0].is_bold);
+        assert!(dump.memos[0].tags.is_empty());
+
+        let mut c = fresh();
+        let report = import_json_merge(&mut c, &dump, false).unwrap();
+        assert_eq!(report.inserted_memos, 1);
+        let imported = memos::list(&c).unwrap().remove(0);
+        assert_eq!(imported.content, "legacy memo");
+        assert_eq!(imported.font_size, MemoFontSize::Normal);
+        assert!(imported.tags.is_empty());
+    }
+
+    #[test]
+    fn import_persists_memo_focus_fields_and_tags() {
+        let mut source = fresh();
+        memos::create(
+            &mut source,
+            Source::Cli,
+            &NewMemo {
+                content: "portable",
+                color: "blue",
+                project_id: None,
+                font_size: Some("large"),
+                is_bold: Some(true),
+                focus_x: Some(0.7),
+                focus_y: Some(0.2),
+                tag_names: vec!["중요".to_string(), "검토".to_string()],
+            },
+        )
+        .unwrap();
+        let dump = export_json(&source, false).unwrap();
+
+        let mut target = fresh();
+        let report = import_json_merge(&mut target, &dump, false).unwrap();
+        assert_eq!(report.inserted_memos, 1);
+        let imported = memos::list(&target).unwrap().remove(0);
+        assert_eq!(imported.font_size, MemoFontSize::Large);
+        assert!(imported.is_bold);
+        assert_eq!(imported.focus_x, Some(0.7));
+        assert_eq!(imported.focus_y, Some(0.2));
+        assert_eq!(
+            imported
+                .tags
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["중요", "검토"]
+        );
+    }
 }

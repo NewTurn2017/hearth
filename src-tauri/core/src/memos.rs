@@ -1,6 +1,7 @@
 use crate::audit::{write_audit, Op, Source};
 use crate::models::{Memo, MemoFontSize, MemoTag};
 use rusqlite::{params, Connection};
+use std::collections::HashMap;
 
 fn row_to_memo(row: &rusqlite::Row) -> rusqlite::Result<Memo> {
     Ok(Memo {
@@ -48,6 +49,48 @@ fn tags_for_memo(conn: &Connection, memo_id: i64) -> rusqlite::Result<Vec<MemoTa
     rows.collect()
 }
 
+fn tags_for_memos(
+    conn: &Connection,
+    memo_ids: &[i64],
+) -> rusqlite::Result<HashMap<i64, Vec<MemoTag>>> {
+    let mut tags_by_memo: HashMap<i64, Vec<MemoTag>> = HashMap::new();
+    if memo_ids.is_empty() {
+        return Ok(tags_by_memo);
+    }
+    let placeholders = std::iter::repeat_n("?", memo_ids.len())
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        "SELECT mtl.memo_id, mt.id, mt.name, mt.color, mt.sort_order,
+                (SELECT COUNT(*) FROM memo_tag_links all_links WHERE all_links.tag_id = mt.id) AS usage_count,
+                mt.created_at, mt.updated_at
+         FROM memo_tags mt
+         JOIN memo_tag_links mtl ON mtl.tag_id = mt.id
+         WHERE mtl.memo_id IN ({placeholders})
+         ORDER BY mtl.memo_id ASC, mt.sort_order ASC, mt.name ASC"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(memo_ids.iter()), |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            MemoTag {
+                id: row.get(1)?,
+                name: row.get(2)?,
+                color: row.get(3)?,
+                sort_order: row.get(4)?,
+                usage_count: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            },
+        ))
+    })?;
+    for row in rows {
+        let (memo_id, tag) = row?;
+        tags_by_memo.entry(memo_id).or_default().push(tag);
+    }
+    Ok(tags_by_memo)
+}
+
 fn attach_tags(conn: &Connection, mut memo: Memo) -> rusqlite::Result<Memo> {
     memo.tags = tags_for_memo(conn, memo.id)?;
     Ok(memo)
@@ -58,7 +101,13 @@ pub fn list(conn: &Connection) -> rusqlite::Result<Vec<Memo>> {
         "SELECT {SELECT_COLS} FROM memos ORDER BY sort_order ASC"
     ))?;
     let rows = stmt.query_map([], row_to_memo)?;
-    rows.map(|memo| attach_tags(conn, memo?)).collect()
+    let mut memos = rows.collect::<rusqlite::Result<Vec<_>>>()?;
+    let memo_ids = memos.iter().map(|m| m.id).collect::<Vec<_>>();
+    let mut tags_by_memo = tags_for_memos(conn, &memo_ids)?;
+    for memo in &mut memos {
+        memo.tags = tags_by_memo.remove(&memo.id).unwrap_or_default();
+    }
+    Ok(memos)
 }
 
 pub fn get(conn: &Connection, id: i64) -> rusqlite::Result<Option<Memo>> {
@@ -81,7 +130,11 @@ pub struct NewMemo<'a> {
     pub tag_names: Vec<String>,
 }
 
-pub fn create(conn: &mut Connection, source: Source, input: &NewMemo<'_>) -> rusqlite::Result<Memo> {
+pub fn create(
+    conn: &mut Connection,
+    source: Source,
+    input: &NewMemo<'_>,
+) -> rusqlite::Result<Memo> {
     let tx = conn.transaction()?;
     let font_size = match input.font_size {
         Some(v) => MemoFontSize::parse(v)?,
@@ -181,7 +234,10 @@ pub fn update(
     }
     if let Some(tag_names) = &patch.tag_names {
         replace_tags(&tx, id, tag_names)?;
-        tx.execute("UPDATE memos SET updated_at = datetime('now') WHERE id = ?1", [id])?;
+        tx.execute(
+            "UPDATE memos SET updated_at = datetime('now') WHERE id = ?1",
+            [id],
+        )?;
     }
     let after = get(&tx, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
     let bj = serde_json::to_value(&before).unwrap();
@@ -219,9 +275,8 @@ pub fn update_by_number(
     new_content: &str,
 ) -> rusqlite::Result<Memo> {
     let id: i64 = {
-        let mut stmt = conn.prepare(
-            "SELECT id FROM memos ORDER BY sort_order ASC LIMIT 1 OFFSET ?1",
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT id FROM memos ORDER BY sort_order ASC LIMIT 1 OFFSET ?1")?;
         stmt.query_row([(number - 1).max(0)], |r| r.get::<_, i64>(0))?
     };
     update(
@@ -257,12 +312,18 @@ fn normalized_tag_names(tag_names: &[String]) -> Vec<String> {
     out
 }
 
-fn tag_id_for_name(conn: &Connection, name: &str) -> rusqlite::Result<i64> {
-    match conn.query_row("SELECT id FROM memo_tags WHERE name = ?1", [name], |r| r.get(0)) {
+pub(crate) fn tag_id_for_name(conn: &Connection, name: &str) -> rusqlite::Result<i64> {
+    match conn.query_row("SELECT id FROM memo_tags WHERE name = ?1", [name], |r| {
+        r.get(0)
+    }) {
         Ok(id) => Ok(id),
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             let next_order: i64 = conn
-                .query_row("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM memo_tags", [], |r| r.get(0))
+                .query_row(
+                    "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM memo_tags",
+                    [],
+                    |r| r.get(0),
+                )
                 .unwrap_or(0);
             conn.execute(
                 "INSERT INTO memo_tags (name, sort_order) VALUES (?1, ?2)",
@@ -274,7 +335,11 @@ fn tag_id_for_name(conn: &Connection, name: &str) -> rusqlite::Result<i64> {
     }
 }
 
-fn replace_tags(conn: &Connection, memo_id: i64, tag_names: &[String]) -> rusqlite::Result<()> {
+pub(crate) fn replace_tags(
+    conn: &Connection,
+    memo_id: i64,
+    tag_names: &[String],
+) -> rusqlite::Result<()> {
     conn.execute("DELETE FROM memo_tag_links WHERE memo_id = ?1", [memo_id])?;
     for name in normalized_tag_names(tag_names) {
         let tag_id = tag_id_for_name(conn, &name)?;
@@ -286,11 +351,14 @@ fn replace_tags(conn: &Connection, memo_id: i64, tag_names: &[String]) -> rusqli
     Ok(())
 }
 
-pub fn delete_by_number(conn: &mut Connection, source: Source, number: i64) -> rusqlite::Result<()> {
+pub fn delete_by_number(
+    conn: &mut Connection,
+    source: Source,
+    number: i64,
+) -> rusqlite::Result<()> {
     let id: i64 = {
-        let mut stmt = conn.prepare(
-            "SELECT id FROM memos ORDER BY sort_order ASC LIMIT 1 OFFSET ?1",
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT id FROM memos ORDER BY sort_order ASC LIMIT 1 OFFSET ?1")?;
         stmt.query_row([(number - 1).max(0)], |r| r.get::<_, i64>(0))?
     };
     delete(conn, source, id)
@@ -308,7 +376,6 @@ mod tests {
         std::mem::forget(dir);
         init_db(&path).unwrap()
     }
-
 
     #[test]
     fn create_defaults_style_position_and_tags() {
@@ -398,7 +465,10 @@ mod tests {
         assert!(m.is_bold);
         assert_eq!(m.focus_x, Some(1.0));
         assert_eq!(m.focus_y, Some(0.0));
-        assert_eq!(m.tags.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(), vec!["중요", "검토"]);
+        assert_eq!(
+            m.tags.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(),
+            vec!["중요", "검토"]
+        );
 
         let updated = update(
             &mut c,
@@ -421,7 +491,14 @@ mod tests {
         assert!(!updated.is_bold);
         assert_eq!(updated.focus_x, Some(0.42));
         assert_eq!(updated.focus_y, Some(0.18));
-        assert_eq!(updated.tags.iter().map(|t| t.name.as_str()).collect::<Vec<_>>(), vec!["대기"]);
+        assert_eq!(
+            updated
+                .tags
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["대기"]
+        );
     }
 
     #[test]
@@ -492,8 +569,36 @@ mod tests {
     #[test]
     fn update_by_number_changes_content() {
         let mut c = fresh();
-        create(&mut c, Source::Cli, &NewMemo { content: "first", color: "yellow", project_id: None, font_size: None, is_bold: None, focus_x: None, focus_y: None, tag_names: vec![] }).unwrap();
-        create(&mut c, Source::Cli, &NewMemo { content: "second", color: "yellow", project_id: None, font_size: None, is_bold: None, focus_x: None, focus_y: None, tag_names: vec![] }).unwrap();
+        create(
+            &mut c,
+            Source::Cli,
+            &NewMemo {
+                content: "first",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
+            },
+        )
+        .unwrap();
+        create(
+            &mut c,
+            Source::Cli,
+            &NewMemo {
+                content: "second",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
+            },
+        )
+        .unwrap();
         let updated = update_by_number(&mut c, Source::Cli, 1, "updated first").unwrap();
         assert_eq!(updated.content, "updated first");
     }
@@ -501,8 +606,36 @@ mod tests {
     #[test]
     fn delete_by_number_removes_correct_memo() {
         let mut c = fresh();
-        create(&mut c, Source::Cli, &NewMemo { content: "a", color: "yellow", project_id: None, font_size: None, is_bold: None, focus_x: None, focus_y: None, tag_names: vec![] }).unwrap();
-        create(&mut c, Source::Cli, &NewMemo { content: "b", color: "yellow", project_id: None, font_size: None, is_bold: None, focus_x: None, focus_y: None, tag_names: vec![] }).unwrap();
+        create(
+            &mut c,
+            Source::Cli,
+            &NewMemo {
+                content: "a",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
+            },
+        )
+        .unwrap();
+        create(
+            &mut c,
+            Source::Cli,
+            &NewMemo {
+                content: "b",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
+            },
+        )
+        .unwrap();
         delete_by_number(&mut c, Source::Cli, 1).unwrap();
         let remaining = list(&c).unwrap();
         assert_eq!(remaining.len(), 1);

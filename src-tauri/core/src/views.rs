@@ -1,4 +1,4 @@
-use crate::models::{Memo, MemoFontSize, Project, Schedule};
+use crate::models::{Memo, Project, Schedule};
 use chrono::{Duration, Local};
 use rusqlite::Connection;
 use serde::Serialize;
@@ -63,29 +63,12 @@ pub fn today(conn: &Connection) -> rusqlite::Result<TodayView> {
     let cutoff = (Local::now() - Duration::hours(24))
         .format("%Y-%m-%d %H:%M:%S")
         .to_string();
-    let mut stmt = conn.prepare(
-        "SELECT id,content,color,project_id,sort_order,font_size,is_bold,focus_x,focus_y,created_at,updated_at
-         FROM memos WHERE updated_at >= ?1 ORDER BY updated_at DESC LIMIT 10",
-    )?;
-    let recent_memos: Vec<Memo> = stmt
-        .query_map([&cutoff], |r| {
-            Ok(Memo {
-                id: r.get(0)?,
-                content: r.get(1)?,
-                color: r.get(2)?,
-                project_id: r.get(3)?,
-                sort_order: r.get(4)?,
-                font_size: MemoFontSize::parse(r.get::<_, String>(5)?.as_str())?,
-                is_bold: r.get::<_, i64>(6)? != 0,
-                focus_x: r.get(7)?,
-                focus_y: r.get(8)?,
-                tags: Vec::new(),
-                created_at: r.get(9)?,
-                updated_at: r.get(10)?,
-            })
-        })?
-        .filter_map(|r| r.ok())
+    let mut recent_memos: Vec<Memo> = crate::memos::list(conn)?
+        .into_iter()
+        .filter(|memo| memo.updated_at.as_str() >= cutoff.as_str())
         .collect();
+    recent_memos.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    recent_memos.truncate(10);
 
     Ok(TodayView {
         date: today,
@@ -177,9 +160,8 @@ pub fn stats(conn: &Connection) -> rusqlite::Result<StatsView> {
         priorities.insert(p, n);
     }
     let mut categories = std::collections::BTreeMap::new();
-    let mut stmt = conn.prepare(
-        "SELECT COALESCE(category, '(none)'), COUNT(*) FROM projects GROUP BY category",
-    )?;
+    let mut stmt = conn
+        .prepare("SELECT COALESCE(category, '(none)'), COUNT(*) FROM projects GROUP BY category")?;
     for row in stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))? {
         let (c, n) = row?;
         categories.insert(c, n);
@@ -191,7 +173,8 @@ pub fn stats(conn: &Connection) -> rusqlite::Result<StatsView> {
         let (c, n) = row?;
         memos_by_color.insert(c, n);
     }
-    let total_schedules: i64 = conn.query_row("SELECT COUNT(*) FROM schedules", [], |r| r.get(0))?;
+    let total_schedules: i64 =
+        conn.query_row("SELECT COUNT(*) FROM schedules", [], |r| r.get(0))?;
     let today = Local::now().format("%Y-%m-%d").to_string();
     let plus_30 = (Local::now() + Duration::days(30))
         .format("%Y-%m-%d")
@@ -244,6 +227,39 @@ mod tests {
         .unwrap();
         let v = today(&c).unwrap();
         assert_eq!(v.p0_projects.len(), 1);
+    }
+
+    #[test]
+    fn today_recent_memos_include_tags() {
+        let mut c = fresh();
+        memos::create(
+            &mut c,
+            Source::Cli,
+            &memos::NewMemo {
+                content: "tagged today",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec!["중요".to_string()],
+            },
+        )
+        .unwrap();
+        let v = today(&c).unwrap();
+        let memo = v
+            .recent_memos
+            .iter()
+            .find(|m| m.content == "tagged today")
+            .unwrap();
+        assert_eq!(
+            memo.tags
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["중요"]
+        );
     }
 
     #[test]

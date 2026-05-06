@@ -76,10 +76,15 @@ pub struct Memo {
     pub color: String,
     pub project_id: Option<i64>,
     pub sort_order: i64,
+    #[serde(default)]
     pub font_size: MemoFontSize,
+    #[serde(default)]
     pub is_bold: bool,
+    #[serde(default)]
     pub focus_x: Option<f64>,
+    #[serde(default)]
     pub focus_y: Option<f64>,
+    #[serde(default)]
     pub tags: Vec<MemoTag>,
     pub created_at: String,
     pub updated_at: String,

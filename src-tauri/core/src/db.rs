@@ -94,8 +94,7 @@ fn is_corruption(err: &rusqlite::Error) -> bool {
         err,
         rusqlite::Error::SqliteFailure(
             rusqlite::ffi::Error {
-                code: rusqlite::ErrorCode::DatabaseCorrupt
-                    | rusqlite::ErrorCode::NotADatabase,
+                code: rusqlite::ErrorCode::DatabaseCorrupt | rusqlite::ErrorCode::NotADatabase,
                 ..
             },
             _,
@@ -119,8 +118,7 @@ pub fn init_db_with_recovery(db_path: &Path) -> Result<DbInitOutcome> {
                 .file_name()
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "data.db".to_string());
-            let quarantined_to =
-                db_path.with_file_name(format!("{file_name}.corrupt-{ts}"));
+            let quarantined_to = db_path.with_file_name(format!("{file_name}.corrupt-{ts}"));
             // Move the main file. If rename fails (e.g. the DB pre-open created
             // a 0-byte file that isn't the source of the corruption), try a
             // copy-then-delete as a fallback so we always clear the path.
@@ -137,8 +135,7 @@ pub fn init_db_with_recovery(db_path: &Path) -> Result<DbInitOutcome> {
             for suffix in ["-wal", "-shm"] {
                 let sidecar = db_path.with_file_name(format!("{file_name}{suffix}"));
                 if sidecar.exists() {
-                    let dst = db_path
-                        .with_file_name(format!("{file_name}{suffix}.corrupt-{ts}"));
+                    let dst = db_path.with_file_name(format!("{file_name}{suffix}.corrupt-{ts}"));
                     let _ = std::fs::rename(&sidecar, &dst);
                 }
             }
@@ -178,7 +175,9 @@ fn ensure_memo_focus_columns(conn: &Connection) -> Result<()> {
         .filter_map(|r| r.ok())
         .collect();
     if !cols.iter().any(|c| c == "font_size") {
-        conn.execute_batch("ALTER TABLE memos ADD COLUMN font_size TEXT NOT NULL DEFAULT 'normal';")?;
+        conn.execute_batch(
+            "ALTER TABLE memos ADD COLUMN font_size TEXT NOT NULL DEFAULT 'normal';",
+        )?;
     }
     if !cols.iter().any(|c| c == "is_bold") {
         conn.execute_batch("ALTER TABLE memos ADD COLUMN is_bold INTEGER NOT NULL DEFAULT 0;")?;
@@ -214,8 +213,7 @@ fn ensure_memo_tags(conn: &Connection) -> Result<()> {
 }
 
 fn seed_memo_tags_if_empty(conn: &Connection) -> Result<()> {
-    let count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM memo_tags", [], |r| r.get(0))?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM memo_tags", [], |r| r.get(0))?;
     if count > 0 {
         return Ok(());
     }
@@ -258,10 +256,8 @@ fn ensure_projects_fts(conn: &Connection) -> Result<()> {
             VALUES (new.id, new.name, COALESCE(new.category,''), COALESCE(new.evaluation,''));
         END;",
     )?;
-    let main_count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM projects", [], |r| r.get(0))?;
-    let fts_count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM projects_fts", [], |r| r.get(0))?;
+    let main_count: i64 = conn.query_row("SELECT COUNT(*) FROM projects", [], |r| r.get(0))?;
+    let fts_count: i64 = conn.query_row("SELECT COUNT(*) FROM projects_fts", [], |r| r.get(0))?;
     if main_count > 0 && fts_count == 0 {
         conn.execute_batch(
             "INSERT INTO projects_fts(rowid, name, category, evaluation)
@@ -290,14 +286,10 @@ fn ensure_memos_fts(conn: &Connection) -> Result<()> {
             INSERT INTO memos_fts(rowid, content) VALUES (new.id, new.content);
         END;",
     )?;
-    let main_count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM memos", [], |r| r.get(0))?;
-    let fts_count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM memos_fts", [], |r| r.get(0))?;
+    let main_count: i64 = conn.query_row("SELECT COUNT(*) FROM memos", [], |r| r.get(0))?;
+    let fts_count: i64 = conn.query_row("SELECT COUNT(*) FROM memos_fts", [], |r| r.get(0))?;
     if main_count > 0 && fts_count == 0 {
-        conn.execute_batch(
-            "INSERT INTO memos_fts(rowid, content) SELECT id, content FROM memos;",
-        )?;
+        conn.execute_batch("INSERT INTO memos_fts(rowid, content) SELECT id, content FROM memos;")?;
     }
     Ok(())
 }
@@ -323,10 +315,8 @@ fn ensure_schedules_fts(conn: &Connection) -> Result<()> {
             VALUES (new.id, COALESCE(new.description,''), COALESCE(new.location,''), COALESCE(new.notes,''));
         END;",
     )?;
-    let main_count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM schedules", [], |r| r.get(0))?;
-    let fts_count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM schedules_fts", [], |r| r.get(0))?;
+    let main_count: i64 = conn.query_row("SELECT COUNT(*) FROM schedules", [], |r| r.get(0))?;
+    let fts_count: i64 = conn.query_row("SELECT COUNT(*) FROM schedules_fts", [], |r| r.get(0))?;
     if main_count > 0 && fts_count == 0 {
         conn.execute_batch(
             "INSERT INTO schedules_fts(rowid, description, location, notes)
@@ -435,16 +425,15 @@ fn run_migrations(conn: &Connection) -> Result<()> {
 }
 
 fn seed_categories_if_empty(conn: &Connection) -> Result<()> {
-    let count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM categories", [], |r| r.get(0))?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM categories", [], |r| r.get(0))?;
     if count > 0 {
         return Ok(());
     }
     let seed: [(&str, &str, i64); 5] = [
-        ("Active",  "#22c55e", 0),
-        ("Side",    "#f97316", 1),
-        ("Lab",     "#a855f7", 2),
-        ("Tools",   "#6b7280", 3),
+        ("Active", "#22c55e", 0),
+        ("Side", "#f97316", 1),
+        ("Lab", "#a855f7", 2),
+        ("Tools", "#6b7280", 3),
         ("Lecture", "#3b82f6", 4),
     ];
     let tx = conn.unchecked_transaction()?;
@@ -551,7 +540,6 @@ mod tests {
             .unwrap();
     }
 
-
     #[test]
     fn migrates_memo_style_position_columns_idempotently() {
         let conn = Connection::open_in_memory().unwrap();
@@ -584,11 +572,9 @@ mod tests {
         assert_eq!(count, 5);
 
         let important: String = conn
-            .query_row(
-                "SELECT color FROM memo_tags WHERE name='중요'",
-                [],
-                |r| r.get(0),
-            )
+            .query_row("SELECT color FROM memo_tags WHERE name='중요'", [], |r| {
+                r.get(0)
+            })
             .unwrap();
         assert_eq!(important, "#ef4444");
     }
@@ -728,11 +714,8 @@ mod tests {
             let pre = Connection::open(&db_path).unwrap();
             run_migrations(&pre).unwrap();
             // Seed a row so we can prove the snapshot captured real data.
-            pre.execute(
-                "INSERT INTO memos (content) VALUES ('pre-1.0 memo')",
-                [],
-            )
-            .unwrap();
+            pre.execute("INSERT INTO memos (content) VALUES ('pre-1.0 memo')", [])
+                .unwrap();
             assert_eq!(user_version(&pre), 0);
         }
 

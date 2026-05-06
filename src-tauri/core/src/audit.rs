@@ -118,8 +118,10 @@ pub fn list(
     }
     sql.push_str(" ORDER BY id DESC LIMIT ?");
     let mut stmt = conn.prepare(&sql)?;
-    let mut p_refs: Vec<&dyn rusqlite::types::ToSql> =
-        params.iter().map(|s| s as &dyn rusqlite::types::ToSql).collect();
+    let mut p_refs: Vec<&dyn rusqlite::types::ToSql> = params
+        .iter()
+        .map(|s| s as &dyn rusqlite::types::ToSql)
+        .collect();
     p_refs.push(&limit);
     let rows = stmt.query_map(p_refs.as_slice(), row_to_entry)?;
     rows.collect()
@@ -169,9 +171,7 @@ pub fn redo(conn: &mut Connection, count: i64) -> rusqlite::Result<Vec<AuditEntr
 }
 
 fn apply_reverse(conn: &mut Connection, e: &AuditEntry) -> rusqlite::Result<()> {
-    let row_id = e
-        .row_id
-        .ok_or_else(|| rusqlite::Error::InvalidQuery)?;
+    let row_id = e.row_id.ok_or_else(|| rusqlite::Error::InvalidQuery)?;
     match e.op.as_str() {
         "create" => {
             conn.execute(
@@ -184,7 +184,8 @@ fn apply_reverse(conn: &mut Connection, e: &AuditEntry) -> rusqlite::Result<()> 
                 .before_json
                 .as_ref()
                 .ok_or(rusqlite::Error::InvalidQuery)?;
-            let v: serde_json::Value = serde_json::from_str(before).map_err(|_| rusqlite::Error::InvalidQuery)?;
+            let v: serde_json::Value =
+                serde_json::from_str(before).map_err(|_| rusqlite::Error::InvalidQuery)?;
             insert_from_json(conn, &e.table_name, &v, row_id)?;
         }
         "update" => {
@@ -192,7 +193,8 @@ fn apply_reverse(conn: &mut Connection, e: &AuditEntry) -> rusqlite::Result<()> 
                 .before_json
                 .as_ref()
                 .ok_or(rusqlite::Error::InvalidQuery)?;
-            let v: serde_json::Value = serde_json::from_str(before).map_err(|_| rusqlite::Error::InvalidQuery)?;
+            let v: serde_json::Value =
+                serde_json::from_str(before).map_err(|_| rusqlite::Error::InvalidQuery)?;
             update_from_json(conn, &e.table_name, &v, row_id)?;
         }
         _ => return Err(rusqlite::Error::InvalidQuery),
@@ -201,13 +203,12 @@ fn apply_reverse(conn: &mut Connection, e: &AuditEntry) -> rusqlite::Result<()> 
 }
 
 fn apply_forward(conn: &mut Connection, e: &AuditEntry) -> rusqlite::Result<()> {
-    let row_id = e
-        .row_id
-        .ok_or_else(|| rusqlite::Error::InvalidQuery)?;
+    let row_id = e.row_id.ok_or_else(|| rusqlite::Error::InvalidQuery)?;
     match e.op.as_str() {
         "create" => {
             let after = e.after_json.as_ref().ok_or(rusqlite::Error::InvalidQuery)?;
-            let v: serde_json::Value = serde_json::from_str(after).map_err(|_| rusqlite::Error::InvalidQuery)?;
+            let v: serde_json::Value =
+                serde_json::from_str(after).map_err(|_| rusqlite::Error::InvalidQuery)?;
             insert_from_json(conn, &e.table_name, &v, row_id)?;
         }
         "delete" => {
@@ -218,7 +219,8 @@ fn apply_forward(conn: &mut Connection, e: &AuditEntry) -> rusqlite::Result<()> 
         }
         "update" => {
             let after = e.after_json.as_ref().ok_or(rusqlite::Error::InvalidQuery)?;
-            let v: serde_json::Value = serde_json::from_str(after).map_err(|_| rusqlite::Error::InvalidQuery)?;
+            let v: serde_json::Value =
+                serde_json::from_str(after).map_err(|_| rusqlite::Error::InvalidQuery)?;
             update_from_json(conn, &e.table_name, &v, row_id)?;
         }
         _ => return Err(rusqlite::Error::InvalidQuery),
@@ -244,6 +246,11 @@ fn insert_from_json(
     let sql = format!("INSERT OR REPLACE INTO {table} ({col_list}) VALUES ({val_list})");
     let refs: Vec<&dyn rusqlite::types::ToSql> = vals.iter().map(|b| b.as_ref()).collect();
     conn.execute(&sql, refs.as_slice())?;
+    if table == "memos" {
+        if let Some(tag_names) = memo_tag_names_from_json(v) {
+            crate::memos::replace_tags(conn, id, &tag_names)?;
+        }
+    }
     Ok(())
 }
 
@@ -260,24 +267,42 @@ fn update_from_json(
     let mut sets: Vec<String> = Vec::new();
     let mut vals: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
     let obj = v.as_object().ok_or(rusqlite::Error::InvalidQuery)?;
+    let tag_names = if table == "memos" {
+        memo_tag_names_from_json(v)
+    } else {
+        None
+    };
     for (k, val) in obj.iter() {
-        if k == "id" { continue; }
+        if k == "id" {
+            continue;
+        }
         // Memo tags are represented through memo_tag_links, not a memos column.
-        // Phase 1 records them in audit JSON for later import/export/audit work
-        // without teaching the generic row updater to restore link tables yet.
-        if table == "memos" && k == "tags" { continue; }
+        if table == "memos" && k == "tags" {
+            continue;
+        }
         sets.push(format!("{k} = ?"));
         vals.push(json_to_sql(val));
     }
-    if sets.is_empty() { return Ok(()); }
-    vals.push(Box::new(id));
-    let sql = format!(
-        "UPDATE {table} SET {} WHERE id = ?",
-        sets.join(", ")
-    );
-    let refs: Vec<&dyn rusqlite::types::ToSql> = vals.iter().map(|b| b.as_ref()).collect();
-    conn.execute(&sql, refs.as_slice())?;
+    if !sets.is_empty() {
+        vals.push(Box::new(id));
+        let sql = format!("UPDATE {table} SET {} WHERE id = ?", sets.join(", "));
+        let refs: Vec<&dyn rusqlite::types::ToSql> = vals.iter().map(|b| b.as_ref()).collect();
+        conn.execute(&sql, refs.as_slice())?;
+    }
+    if let Some(tag_names) = tag_names {
+        crate::memos::replace_tags(conn, id, &tag_names)?;
+    }
     Ok(())
+}
+
+fn memo_tag_names_from_json(v: &serde_json::Value) -> Option<Vec<String>> {
+    let tags = v.get("tags")?.as_array()?;
+    Some(
+        tags.iter()
+            .filter_map(|tag| tag.get("name").and_then(|name| name.as_str()))
+            .map(str::to_string)
+            .collect(),
+    )
 }
 
 fn json_to_sql(v: &serde_json::Value) -> Box<dyn rusqlite::types::ToSql> {
@@ -285,9 +310,13 @@ fn json_to_sql(v: &serde_json::Value) -> Box<dyn rusqlite::types::ToSql> {
         serde_json::Value::Null => Box::new(Option::<String>::None),
         serde_json::Value::Bool(b) => Box::new(if *b { 1i64 } else { 0i64 }),
         serde_json::Value::Number(n) => {
-            if let Some(i) = n.as_i64() { Box::new(i) }
-            else if let Some(f) = n.as_f64() { Box::new(f) }
-            else { Box::new(n.to_string()) }
+            if let Some(i) = n.as_i64() {
+                Box::new(i)
+            } else if let Some(f) = n.as_f64() {
+                Box::new(f)
+            } else {
+                Box::new(n.to_string())
+            }
         }
         serde_json::Value::String(s) => Box::new(s.clone()),
         _ => Box::new(v.to_string()),
@@ -295,63 +324,202 @@ fn json_to_sql(v: &serde_json::Value) -> Box<dyn rusqlite::types::ToSql> {
 }
 
 // Per-table INSERT column builders. Full column list for INSERT OR REPLACE.
-fn build_projects_insert(v: &serde_json::Value, id: i64)
-    -> (Vec<&'static str>, Vec<String>, Vec<Box<dyn rusqlite::types::ToSql>>)
-{
-    let cols = vec!["id","priority","number","name","category","path","evaluation","sort_order","created_at","updated_at"];
+fn build_projects_insert(
+    v: &serde_json::Value,
+    id: i64,
+) -> (
+    Vec<&'static str>,
+    Vec<String>,
+    Vec<Box<dyn rusqlite::types::ToSql>>,
+) {
+    let cols = vec![
+        "id",
+        "priority",
+        "number",
+        "name",
+        "category",
+        "path",
+        "evaluation",
+        "sort_order",
+        "created_at",
+        "updated_at",
+    ];
     let placeholders: Vec<String> = (1..=cols.len()).map(|i| format!("?{i}")).collect();
     let vals: Vec<Box<dyn rusqlite::types::ToSql>> = vec![
         Box::new(id),
-        Box::new(v.get("priority").and_then(|x| x.as_str()).unwrap_or("P4").to_string()),
+        Box::new(
+            v.get("priority")
+                .and_then(|x| x.as_str())
+                .unwrap_or("P4")
+                .to_string(),
+        ),
         Box::new(v.get("number").and_then(|x| x.as_i64())),
-        Box::new(v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string()),
-        Box::new(v.get("category").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("path").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("evaluation").and_then(|x| x.as_str()).map(|s| s.to_string())),
+        Box::new(
+            v.get("name")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
+        ),
+        Box::new(
+            v.get("category")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("path")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("evaluation")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
         Box::new(v.get("sort_order").and_then(|x| x.as_i64()).unwrap_or(0)),
-        Box::new(v.get("created_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("updated_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
+        Box::new(
+            v.get("created_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("updated_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
     ];
     (cols, placeholders, vals)
 }
 
-fn build_memos_insert(v: &serde_json::Value, id: i64)
-    -> (Vec<&'static str>, Vec<String>, Vec<Box<dyn rusqlite::types::ToSql>>)
-{
-    let cols = vec!["id","content","color","project_id","sort_order","font_size","is_bold","focus_x","focus_y","created_at","updated_at"];
+fn build_memos_insert(
+    v: &serde_json::Value,
+    id: i64,
+) -> (
+    Vec<&'static str>,
+    Vec<String>,
+    Vec<Box<dyn rusqlite::types::ToSql>>,
+) {
+    let cols = vec![
+        "id",
+        "content",
+        "color",
+        "project_id",
+        "sort_order",
+        "font_size",
+        "is_bold",
+        "focus_x",
+        "focus_y",
+        "created_at",
+        "updated_at",
+    ];
     let placeholders: Vec<String> = (1..=cols.len()).map(|i| format!("?{i}")).collect();
     let vals: Vec<Box<dyn rusqlite::types::ToSql>> = vec![
         Box::new(id),
-        Box::new(v.get("content").and_then(|x| x.as_str()).unwrap_or("").to_string()),
-        Box::new(v.get("color").and_then(|x| x.as_str()).unwrap_or("yellow").to_string()),
+        Box::new(
+            v.get("content")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
+        ),
+        Box::new(
+            v.get("color")
+                .and_then(|x| x.as_str())
+                .unwrap_or("yellow")
+                .to_string(),
+        ),
         Box::new(v.get("project_id").and_then(|x| x.as_i64())),
         Box::new(v.get("sort_order").and_then(|x| x.as_i64()).unwrap_or(0)),
-        Box::new(v.get("font_size").and_then(|x| x.as_str()).unwrap_or("normal").to_string()),
+        Box::new(
+            v.get("font_size")
+                .and_then(|x| x.as_str())
+                .unwrap_or("normal")
+                .to_string(),
+        ),
         Box::new(v.get("is_bold").and_then(|x| x.as_bool()).unwrap_or(false) as i64),
         Box::new(v.get("focus_x").and_then(|x| x.as_f64())),
         Box::new(v.get("focus_y").and_then(|x| x.as_f64())),
-        Box::new(v.get("created_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("updated_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
+        Box::new(
+            v.get("created_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("updated_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
     ];
     (cols, placeholders, vals)
 }
 
-fn build_schedules_insert(v: &serde_json::Value, id: i64)
-    -> (Vec<&'static str>, Vec<String>, Vec<Box<dyn rusqlite::types::ToSql>>)
-{
-    let cols = vec!["id","date","time","location","description","notes","remind_before_5min","remind_at_start","created_at","updated_at"];
+fn build_schedules_insert(
+    v: &serde_json::Value,
+    id: i64,
+) -> (
+    Vec<&'static str>,
+    Vec<String>,
+    Vec<Box<dyn rusqlite::types::ToSql>>,
+) {
+    let cols = vec![
+        "id",
+        "date",
+        "time",
+        "location",
+        "description",
+        "notes",
+        "remind_before_5min",
+        "remind_at_start",
+        "created_at",
+        "updated_at",
+    ];
     let placeholders: Vec<String> = (1..=cols.len()).map(|i| format!("?{i}")).collect();
     let vals: Vec<Box<dyn rusqlite::types::ToSql>> = vec![
         Box::new(id),
-        Box::new(v.get("date").and_then(|x| x.as_str()).unwrap_or("").to_string()),
-        Box::new(v.get("time").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("location").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("description").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("notes").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("remind_before_5min").and_then(|x| x.as_bool()).unwrap_or(false) as i64),
-        Box::new(v.get("remind_at_start").and_then(|x| x.as_bool()).unwrap_or(false) as i64),
-        Box::new(v.get("created_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
-        Box::new(v.get("updated_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
+        Box::new(
+            v.get("date")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string(),
+        ),
+        Box::new(
+            v.get("time")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("location")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("description")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("notes")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("remind_before_5min")
+                .and_then(|x| x.as_bool())
+                .unwrap_or(false) as i64,
+        ),
+        Box::new(
+            v.get("remind_at_start")
+                .and_then(|x| x.as_bool())
+                .unwrap_or(false) as i64,
+        ),
+        Box::new(
+            v.get("created_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
+        Box::new(
+            v.get("updated_at")
+                .and_then(|x| x.as_str())
+                .map(|s| s.to_string()),
+        ),
     ];
     (cols, placeholders, vals)
 }
@@ -399,7 +567,17 @@ mod tests {
                 "SELECT source, op, table_name, row_id, before_json, after_json, undone
                  FROM audit_log WHERE id=?1",
                 [id],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                        r.get(6)?,
+                    ))
+                },
             )
             .unwrap();
         assert_eq!(src, "cli");
@@ -454,6 +632,86 @@ mod tests {
         assert!(memos::get(&c, m.id).unwrap().is_none());
         undo(&mut c, 1).unwrap();
         assert_eq!(memos::get(&c, m.id).unwrap().unwrap().content, "hi");
+    }
+
+    #[test]
+    fn undo_update_restores_memo_tags() {
+        use crate::memos;
+        let mut c = fresh_conn();
+        let m = memos::create(
+            &mut c,
+            Source::Cli,
+            &memos::NewMemo {
+                content: "tag flip",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec!["중요".to_string()],
+            },
+        )
+        .unwrap();
+        memos::update(
+            &mut c,
+            Source::Cli,
+            m.id,
+            &memos::UpdateMemo {
+                content: None,
+                color: None,
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: Some(vec!["검토".to_string()]),
+            },
+        )
+        .unwrap();
+        undo(&mut c, 1).unwrap();
+        let restored = memos::get(&c, m.id).unwrap().unwrap();
+        assert_eq!(
+            restored
+                .tags
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["중요"]
+        );
+    }
+
+    #[test]
+    fn undo_delete_restores_tagged_memo_tags() {
+        use crate::memos;
+        let mut c = fresh_conn();
+        let m = memos::create(
+            &mut c,
+            Source::Cli,
+            &memos::NewMemo {
+                content: "tagged delete",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec!["회의".to_string()],
+            },
+        )
+        .unwrap();
+        memos::delete(&mut c, Source::Cli, m.id).unwrap();
+        undo(&mut c, 1).unwrap();
+        let restored = memos::get(&c, m.id).unwrap().unwrap();
+        assert_eq!(restored.content, "tagged delete");
+        assert_eq!(
+            restored
+                .tags
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["회의"]
+        );
     }
 
     #[test]

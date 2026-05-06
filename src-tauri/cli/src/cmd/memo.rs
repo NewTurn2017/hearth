@@ -52,11 +52,18 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: MemoCmd, pretty: bool) -> Resul
         MemoCmd::Get { id } => match memos::get(&conn, id)? {
             Some(m) => crate::util::emit_ok(serde_json::to_value(&m).unwrap()),
             None => {
-                crate::util::emit_err(&format!("memo {id} not found"), Some("try 'hearth memo list'"));
+                crate::util::emit_err(
+                    &format!("memo {id} not found"),
+                    Some("try 'hearth memo list'"),
+                );
                 std::process::exit(1);
             }
         },
-        MemoCmd::Create { content, color, project } => {
+        MemoCmd::Create {
+            content,
+            color,
+            project,
+        } => {
             let m = memos::create(
                 &mut conn,
                 Source::Cli,
@@ -73,7 +80,13 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: MemoCmd, pretty: bool) -> Resul
             )?;
             crate::util::emit_ok(serde_json::to_value(&m).unwrap());
         }
-        MemoCmd::Update { id, content, color, project, detach } => {
+        MemoCmd::Update {
+            id,
+            content,
+            color,
+            project,
+            detach,
+        } => {
             // Tri-state: --project N => Some(Some(N)), --detach => Some(None), neither => None
             let project_id: Option<Option<i64>> = if detach {
                 Some(None)
