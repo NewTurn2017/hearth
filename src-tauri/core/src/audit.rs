@@ -682,6 +682,65 @@ mod tests {
     }
 
     #[test]
+    fn redo_update_restores_memo_tags() {
+        use crate::memos;
+        let mut c = fresh_conn();
+        let m = memos::create(
+            &mut c,
+            Source::Cli,
+            &memos::NewMemo {
+                content: "tag redo",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec!["중요".to_string()],
+            },
+        )
+        .unwrap();
+        memos::update(
+            &mut c,
+            Source::Cli,
+            m.id,
+            &memos::UpdateMemo {
+                content: None,
+                color: None,
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: Some(vec!["검토".to_string()]),
+            },
+        )
+        .unwrap();
+
+        undo(&mut c, 1).unwrap();
+        let undone = memos::get(&c, m.id).unwrap().unwrap();
+        assert_eq!(
+            undone
+                .tags
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["중요"]
+        );
+
+        redo(&mut c, 1).unwrap();
+        let redone = memos::get(&c, m.id).unwrap().unwrap();
+        assert_eq!(
+            redone
+                .tags
+                .iter()
+                .map(|t| t.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["검토"]
+        );
+    }
+
+    #[test]
     fn undo_delete_restores_tagged_memo_tags() {
         use crate::memos;
         let mut c = fresh_conn();

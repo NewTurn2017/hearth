@@ -57,7 +57,8 @@ fn tags_for_memos(
     if memo_ids.is_empty() {
         return Ok(tags_by_memo);
     }
-    let placeholders = std::iter::repeat_n("?", memo_ids.len())
+    let placeholders = std::iter::repeat("?")
+        .take(memo_ids.len())
         .collect::<Vec<_>>()
         .join(", ");
     let sql = format!(
