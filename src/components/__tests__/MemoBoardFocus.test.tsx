@@ -210,7 +210,11 @@ describe("MemoBoard Focus view", () => {
     fireEvent.click(screen.getByRole("tab", { name: /포커스/ }));
 
     const note = screen.getByText("edge memo").closest("[data-memo-id]");
-    expect(note).toHaveStyle({ left: "78%", top: "73.21%" });
+    const style = note?.getAttribute("style") ?? "";
+    expect(style).toContain("left: min(");
+    expect(style).toContain("calc(100% - 210px)");
+    expect(style).toContain("top: min(");
+    expect(style).toContain("calc(100% - 140px)");
     expect(note).not.toHaveStyle({ left: "100%", top: "100%" });
   });
 });

@@ -19,6 +19,8 @@ export function FocusMemoNote({
   tags,
   x,
   y,
+  boundWidth,
+  boundHeight,
   sequenceNumber,
   highlighted,
   onUpdate,
@@ -30,6 +32,8 @@ export function FocusMemoNote({
   tags: MemoTag[];
   x: number;
   y: number;
+  boundWidth: number;
+  boundHeight: number;
   sequenceNumber: number;
   highlighted?: boolean;
   onUpdate: (id: number, fields: MemoUpdateInput) => void | Promise<unknown>;
@@ -73,14 +77,14 @@ export function FocusMemoNote({
       data-memo-id={memo.id}
       onContextMenu={openMenu}
       className={cn(
-        "absolute w-[210px] min-h-[138px] rounded-xl border border-black/10 p-3 shadow-[var(--shadow-e2)]",
+        "absolute w-[210px] min-h-[140px] rounded-xl border border-black/10 p-3 shadow-[var(--shadow-e2)]",
         "focus:outline-none transition-shadow group",
         isDragging && "z-20 shadow-[var(--shadow-e3)]",
         highlighted && "find-highlight",
       )}
       style={{
-        left: `${x * 100}%`,
-        top: `${y * 100}%`,
+        left: `min(${x * 100}%, calc(100% - ${boundWidth}px))`,
+        top: `min(${y * 100}%, calc(100% - ${boundHeight}px))`,
         transform: CSS.Translate.toString(transform),
         backgroundColor: colorDef.bg,
         color: colorDef.text,

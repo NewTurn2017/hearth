@@ -10,6 +10,7 @@ import type { CategoryRow, Memo, MemoTag, Project } from "../types";
 import type { MemoUpdateInput } from "../api";
 import { cn } from "../lib/cn";
 import {
+  clampFocusCoordinate,
   clampFocusPositionForNote,
   defaultFocusPosition,
   filterFocusMemos,
@@ -27,8 +28,8 @@ const QUICK_FILTERS: { value: FocusQuickFilter; label: string }[] = [
 
 const FALLBACK_BOARD_WIDTH = 1000;
 const FALLBACK_BOARD_HEIGHT = 560;
-const FALLBACK_NOTE_WIDTH = 220;
-const FALLBACK_NOTE_HEIGHT = 150;
+const FOCUS_NOTE_WIDTH = 210;
+const FOCUS_NOTE_HEIGHT = 140;
 
 export function FocusMemoBoard({
   memos,
@@ -75,13 +76,17 @@ export function FocusMemoBoard({
     [filters, memos, projects],
   );
 
-  const boardDimensions = () => {
+  const measuredBoardDimensions = () => {
     const rect = boardRef.current?.getBoundingClientRect();
-    return {
-      width: rect && rect.width > 0 ? rect.width : FALLBACK_BOARD_WIDTH,
-      height: rect && rect.height > 0 ? rect.height : FALLBACK_BOARD_HEIGHT,
-    };
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+    return { width: rect.width, height: rect.height };
   };
+
+  const boardDimensions = () =>
+    measuredBoardDimensions() ?? {
+      width: FALLBACK_BOARD_WIDTH,
+      height: FALLBACK_BOARD_HEIGHT,
+    };
 
   const noteDimensions = (memoId: number) => {
     const noteEl = boardRef.current?.querySelector<HTMLElement>(
@@ -89,8 +94,8 @@ export function FocusMemoBoard({
     );
     const rect = noteEl?.getBoundingClientRect();
     return {
-      width: rect && rect.width > 0 ? rect.width : FALLBACK_NOTE_WIDTH,
-      height: rect && rect.height > 0 ? rect.height : FALLBACK_NOTE_HEIGHT,
+      width: rect && rect.width > 0 ? rect.width : FOCUS_NOTE_WIDTH,
+      height: rect && rect.height > 0 ? rect.height : FOCUS_NOTE_HEIGHT,
     };
   };
 
@@ -98,16 +103,27 @@ export function FocusMemoBoard({
     const fallback = defaultFocusPosition(
       defaultIndexByMemoId.get(memo.id) ?? 0,
     );
-    const board = boardDimensions();
+    const value = {
+      x: memo.focus_x === null ? fallback.x : memo.focus_x,
+      y: memo.focus_y === null ? fallback.y : memo.focus_y,
+    };
+    const board = measuredBoardDimensions();
+    if (!board) {
+      return {
+        x: clampFocusCoordinate(value.x),
+        y: clampFocusCoordinate(value.y),
+      };
+    }
+
     const note = noteDimensions(memo.id);
     return {
       x: clampFocusPositionForNote({
-        value: memo.focus_x === null ? fallback.x : memo.focus_x,
+        value: value.x,
         boardSize: board.width,
         noteSize: note.width,
       }),
       y: clampFocusPositionForNote({
-        value: memo.focus_y === null ? fallback.y : memo.focus_y,
+        value: value.y,
         boardSize: board.height,
         noteSize: note.height,
       }),
@@ -221,6 +237,8 @@ export function FocusMemoBoard({
                 tags={tags}
                 x={position.x}
                 y={position.y}
+                boundWidth={FOCUS_NOTE_WIDTH}
+                boundHeight={FOCUS_NOTE_HEIGHT}
                 sequenceNumber={sequence.get(memo.id) ?? 0}
                 highlighted={memo.id === highlightedId}
                 onUpdate={onUpdate}
