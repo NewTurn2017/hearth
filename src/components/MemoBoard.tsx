@@ -10,13 +10,22 @@ import {
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import type { LucideIcon } from "lucide-react";
-import { Plus, StickyNote, LayoutList, LayoutGrid } from "lucide-react";
+import {
+  Plus,
+  StickyNote,
+  LayoutList,
+  LayoutGrid,
+  Monitor,
+} from "lucide-react";
 import { Icon } from "../ui/Icon";
 import { cn } from "../lib/cn";
 import { MemoCard } from "./MemoCard";
 import { MemoMatrix } from "./MemoMatrix";
+import { FocusMemoBoard } from "./FocusMemoBoard";
 import { useMemos } from "../hooks/useMemos";
 import { useProjects } from "../hooks/useProjects";
+import { useCategories } from "../hooks/useCategories";
+import { useMemoTags } from "../hooks/useMemoTags";
 import { PRIORITIES } from "../types";
 import { Button } from "../ui/Button";
 import { EmptyState } from "../ui/EmptyState";
@@ -35,23 +44,25 @@ export function MemoBoard() {
   // MemoBoard wants every project for the grouping + picker; `null` means
   // "no category filter" (전체 보기) so NULL-category rows are also included.
   const { projects } = useProjects(ALL_PRIORITIES, null);
+  const { categories } = useCategories();
+  const memoTags = useMemoTags();
   const toast = useToast();
 
   const groups = useMemo(
     () => groupMemosByProject(memos, projects),
-    [memos, projects]
+    [memos, projects],
   );
   const seq = useMemo(() => globalSequence(memos), [memos]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
   const [activeId, setActiveId] = useState<number | null>(null);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
-  const [view, setView] = useState<"list" | "matrix">(() => {
+  const [view, setView] = useState<"list" | "matrix" | "focus">(() => {
     const v = localStorage.getItem("hearth.memoboard.view");
-    return v === "matrix" ? "matrix" : "list";
+    return v === "matrix" || v === "focus" ? v : "list";
   });
   useEffect(() => {
     localStorage.setItem("hearth.memoboard.view", view);
@@ -70,7 +81,7 @@ export function MemoBoard() {
       requestAnimationFrame(() => {
         setHighlightedId(id);
         const el = document.querySelector<HTMLElement>(
-          `[data-memo-id="${id}"]`
+          `[data-memo-id="${id}"]`,
         );
         el?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
@@ -105,7 +116,7 @@ export function MemoBoard() {
     // Speculative copy of the memo list with the source rebound to the
     // target group, so group rebuild below puts it in the right bucket.
     const nextMemos = memos.map((m) =>
-      m.id === sourceMemo.id ? { ...m, project_id: targetProjectId } : m
+      m.id === sourceMemo.id ? { ...m, project_id: targetProjectId } : m,
     );
 
     // Reorder within the target group: take the rebound group, move source
@@ -156,7 +167,7 @@ export function MemoBoard() {
   };
 
   const activeMemo =
-    activeId !== null ? memos.find((m) => m.id === activeId) ?? null : null;
+    activeId !== null ? (memos.find((m) => m.id === activeId) ?? null) : null;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -180,6 +191,12 @@ export function MemoBoard() {
               icon={LayoutGrid}
               label="매트릭스"
             />
+            <ViewTab
+              active={view === "focus"}
+              onClick={() => setView("focus")}
+              icon={Monitor}
+              label="포커스"
+            />
           </div>
           <Button
             variant="primary"
@@ -198,14 +215,29 @@ export function MemoBoard() {
           title="메모가 없습니다"
           description="⌘K 또는 메모 추가 버튼으로 시작하세요"
         />
+      ) : view === "focus" ? (
+        <FocusMemoBoard
+          memos={memos}
+          projects={projects}
+          categories={categories}
+          tags={memoTags.tags}
+          sequence={seq}
+          highlightedId={highlightedId}
+          onUpdate={update}
+          onDelete={remove}
+          onReload={reload}
+          onCreateTag={(name) => memoTags.create({ name })}
+        />
       ) : view === "matrix" ? (
         <MemoMatrix
           groups={groups}
           projects={projects}
           sequence={seq}
           highlightedId={highlightedId}
+          tags={memoTags.tags}
           onUpdate={update}
           onDelete={remove}
+          onCreateTag={(name) => memoTags.create({ name })}
         />
       ) : (
         <DndContext
@@ -241,8 +273,10 @@ export function MemoBoard() {
                           key={m.id}
                           memo={m}
                           projects={projects}
+                          tags={memoTags.tags}
                           onUpdate={update}
                           onDelete={remove}
+                          onCreateTag={(name) => memoTags.create({ name })}
                           sequenceNumber={seq.get(m.id) ?? 0}
                           highlighted={m.id === highlightedId}
                         />
@@ -288,7 +322,7 @@ function ViewTab({
         "inline-flex items-center gap-1.5 px-2 py-1 text-[12px] rounded",
         active
           ? "bg-[var(--color-surface-2)] text-[var(--color-text-hi)]"
-          : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+          : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]",
       )}
     >
       <Icon icon={icon} size={14} />

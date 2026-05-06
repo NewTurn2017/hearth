@@ -1,28 +1,35 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, X, Pencil, Palette, FolderInput, Trash2 } from "lucide-react";
-import type { Memo, Project } from "../types";
+import { GripVertical, X } from "lucide-react";
+import type { Memo, MemoTag, Project } from "../types";
+import type { MemoUpdateInput } from "../api";
 import { MEMO_COLORS } from "../types";
 import { Icon } from "../ui/Icon";
 import { Tooltip } from "../ui/Tooltip";
 import { cn } from "../lib/cn";
 import { useContextMenu } from "../hooks/useContextMenu";
-import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
+import { ContextMenu } from "../ui/ContextMenu";
 import { MemoProjectPickerDialog } from "./MemoProjectPickerDialog";
+import { MemoTagPickerDialog } from "./MemoTagPickerDialog";
+import { buildMemoActionItems, memoFontSizeClass } from "./memoActions";
 
 export function MemoCard({
   memo,
   projects,
+  tags,
   onUpdate,
   onDelete,
+  onCreateTag,
   sequenceNumber,
   highlighted,
 }: {
   memo: Memo;
   projects: Project[];
-  onUpdate: (id: number, fields: Record<string, unknown>) => void;
+  tags: MemoTag[];
+  onUpdate: (id: number, fields: MemoUpdateInput) => void | Promise<unknown>;
   onDelete: (id: number) => void;
+  onCreateTag: (name: string) => Promise<MemoTag>;
   sequenceNumber: number;
   highlighted?: boolean;
 }) {
@@ -30,8 +37,10 @@ export function MemoCard({
   const [content, setContent] = useState(memo.content);
   const { menu, open: openMenu, close: closeMenu } = useContextMenu();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
-  const colorDef = MEMO_COLORS.find((c) => c.name === memo.color) ?? MEMO_COLORS[0];
+  const colorDef =
+    MEMO_COLORS.find((c) => c.name === memo.color) ?? MEMO_COLORS[0];
 
   const {
     attributes,
@@ -57,56 +66,15 @@ export function MemoCard({
     setEditing(false);
   };
 
-  const menuItems: ContextMenuItem[] = [
-    {
-      id: "edit",
-      label: "편집",
-      icon: Pencil,
-      onSelect: () => setEditing(true),
-    },
-    {
-      id: "color",
-      label: "색상 변경",
-      icon: Palette,
-      onSelect: () => {},
-      inline: (
-        <div className="flex gap-1">
-          {MEMO_COLORS.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              aria-label={`색상: ${c.name}`}
-              onClick={() => {
-                onUpdate(memo.id, { color: c.name });
-                closeMenu();
-              }}
-              className={cn(
-                "w-6 h-6 rounded-full border",
-                c.name === memo.color
-                  ? "border-[var(--color-brand-hi)]"
-                  : "border-[var(--color-border)]"
-              )}
-              style={{ backgroundColor: c.bg }}
-            />
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: "move",
-      label: "프로젝트 이동",
-      icon: FolderInput,
-      onSelect: () => setPickerOpen(true),
-    },
-    { id: "sep", label: "", separator: true, onSelect: () => {} },
-    {
-      id: "delete",
-      label: "삭제",
-      icon: Trash2,
-      danger: true,
-      onSelect: () => onDelete(memo.id),
-    },
-  ];
+  const menuItems = buildMemoActionItems({
+    memo,
+    onEdit: () => setEditing(true),
+    onUpdate,
+    onDelete,
+    onOpenProjectPicker: () => setPickerOpen(true),
+    onOpenTagPicker: () => setTagPickerOpen(true),
+    onCloseMenu: closeMenu,
+  });
 
   return (
     <div
@@ -119,7 +87,7 @@ export function MemoCard({
       }}
       className={cn(
         "memo-card rounded-xl p-5 hover:shadow-xl transition-shadow relative group min-h-[160px] flex flex-col",
-        highlighted && "find-highlight"
+        highlighted && "find-highlight",
       )}
       onContextMenu={openMenu}
     >
@@ -147,15 +115,38 @@ export function MemoCard({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onBlur={commitEdit}
-            className="w-full h-full min-h-[80px] bg-transparent outline-none text-sm resize-none"
+            className={cn(
+              "w-full h-full min-h-[80px] bg-transparent outline-none resize-none",
+              memoFontSizeClass(memo.font_size),
+              memo.is_bold && "font-semibold",
+            )}
             style={{ color: colorDef.text }}
           />
         ) : (
-          <p className="text-sm whitespace-pre-wrap [overflow-wrap:anywhere] cursor-pointer">
+          <p
+            className={cn(
+              "whitespace-pre-wrap [overflow-wrap:anywhere] cursor-pointer",
+              memoFontSizeClass(memo.font_size),
+              memo.is_bold && "font-semibold",
+            )}
+          >
             {memo.content || "클릭하여 메모 작성..."}
           </p>
         )}
       </div>
+
+      {memo.tags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {memo.tags.map((tag) => (
+            <span
+              key={tag.id}
+              className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px] font-medium"
+            >
+              #{tag.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex justify-between items-center mt-2 text-xs opacity-60">
         <span>{linkedProject?.name ?? ""}</span>
@@ -182,12 +173,17 @@ export function MemoCard({
         currentProjectId={memo.project_id}
         onClose={() => setPickerOpen(false)}
         onPick={(projectId) => {
-          // null detaches — backend's Option<Option<i64>> shape serializes null
-          // explicitly as Some(None). Passing undefined would leave the field
-          // out of the payload entirely, so we always pass the key.
           onUpdate(memo.id, { project_id: projectId });
           setPickerOpen(false);
         }}
+      />
+      <MemoTagPickerDialog
+        open={tagPickerOpen}
+        memo={memo}
+        tags={tags}
+        onClose={() => setTagPickerOpen(false)}
+        onCreateTag={onCreateTag}
+        onApply={(tagNames) => onUpdate(memo.id, { tag_names: tagNames })}
       />
     </div>
   );

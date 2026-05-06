@@ -1,24 +1,30 @@
 import { useState } from "react";
-import { Pencil, Palette, FolderInput, Trash2 } from "lucide-react";
-import type { Memo, Project } from "../types";
+import type { Memo, MemoTag, Project } from "../types";
+import type { MemoUpdateInput } from "../api";
 import { MEMO_COLORS } from "../types";
 import { cn } from "../lib/cn";
 import { useContextMenu } from "../hooks/useContextMenu";
-import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
+import { ContextMenu } from "../ui/ContextMenu";
 import { MemoProjectPickerDialog } from "./MemoProjectPickerDialog";
+import { MemoTagPickerDialog } from "./MemoTagPickerDialog";
+import { buildMemoActionItems, memoFontSizeClass } from "./memoActions";
 
 export function MemoRow({
   memo,
   projects,
+  tags,
   onUpdate,
   onDelete,
+  onCreateTag,
   sequenceNumber,
   highlighted,
 }: {
   memo: Memo;
   projects: Project[];
-  onUpdate: (id: number, fields: Record<string, unknown>) => void;
+  tags: MemoTag[];
+  onUpdate: (id: number, fields: MemoUpdateInput) => void | Promise<unknown>;
   onDelete: (id: number) => void;
+  onCreateTag: (name: string) => Promise<MemoTag>;
   sequenceNumber: number;
   highlighted?: boolean;
 }) {
@@ -26,6 +32,7 @@ export function MemoRow({
   const [content, setContent] = useState(memo.content);
   const { menu, open: openMenu, close: closeMenu } = useContextMenu();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   const colorDef =
     MEMO_COLORS.find((c) => c.name === memo.color) ?? MEMO_COLORS[0];
@@ -37,56 +44,15 @@ export function MemoRow({
     setEditing(false);
   };
 
-  const menuItems: ContextMenuItem[] = [
-    {
-      id: "edit",
-      label: "편집",
-      icon: Pencil,
-      onSelect: () => setEditing(true),
-    },
-    {
-      id: "color",
-      label: "색상 변경",
-      icon: Palette,
-      onSelect: () => {},
-      inline: (
-        <div className="flex gap-1">
-          {MEMO_COLORS.map((c) => (
-            <button
-              key={c.name}
-              type="button"
-              aria-label={`색상: ${c.name}`}
-              onClick={() => {
-                onUpdate(memo.id, { color: c.name });
-                closeMenu();
-              }}
-              className={cn(
-                "w-5 h-5 rounded-full border",
-                c.name === memo.color
-                  ? "border-[var(--color-brand-hi)]"
-                  : "border-[var(--color-border)]",
-              )}
-              style={{ backgroundColor: c.bg }}
-            />
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: "move",
-      label: "프로젝트 이동",
-      icon: FolderInput,
-      onSelect: () => setPickerOpen(true),
-    },
-    { id: "sep", label: "", separator: true, onSelect: () => {} },
-    {
-      id: "delete",
-      label: "삭제",
-      icon: Trash2,
-      danger: true,
-      onSelect: () => onDelete(memo.id),
-    },
-  ];
+  const menuItems = buildMemoActionItems({
+    memo,
+    onEdit: () => setEditing(true),
+    onUpdate,
+    onDelete,
+    onOpenProjectPicker: () => setPickerOpen(true),
+    onOpenTagPicker: () => setTagPickerOpen(true),
+    onCloseMenu: closeMenu,
+  });
 
   const preview = memo.content || "(비어 있음)";
 
@@ -124,12 +90,36 @@ export function MemoRow({
                 commitEdit();
               }
             }}
-            className="w-full bg-[var(--color-surface-1)] border border-[var(--color-border)] rounded px-2 py-1 outline-none text-[12.5px] resize-y min-h-[60px] text-[var(--color-text-hi)]"
+            className={cn(
+              "w-full bg-[var(--color-surface-1)] border border-[var(--color-border)] rounded px-2 py-1 outline-none resize-y min-h-[60px] text-[var(--color-text-hi)]",
+              memoFontSizeClass(memo.font_size),
+              memo.is_bold && "font-semibold",
+            )}
           />
         ) : (
-          <p className="line-clamp-2 whitespace-pre-wrap [overflow-wrap:anywhere] leading-snug text-[var(--color-text)]">
-            {preview}
-          </p>
+          <div className="space-y-1">
+            <p
+              className={cn(
+                "line-clamp-2 whitespace-pre-wrap [overflow-wrap:anywhere] leading-snug text-[var(--color-text)]",
+                memoFontSizeClass(memo.font_size),
+                memo.is_bold && "font-semibold",
+              )}
+            >
+              {preview}
+            </p>
+            {memo.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {memo.tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="rounded-full bg-[var(--color-surface-2)] px-1.5 py-0.5 text-[10px] text-[var(--color-text-muted)]"
+                  >
+                    #{tag.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
       <ContextMenu
@@ -148,6 +138,14 @@ export function MemoRow({
           onUpdate(memo.id, { project_id: projectId });
           setPickerOpen(false);
         }}
+      />
+      <MemoTagPickerDialog
+        open={tagPickerOpen}
+        memo={memo}
+        tags={tags}
+        onClose={() => setTagPickerOpen(false)}
+        onCreateTag={onCreateTag}
+        onApply={(tagNames) => onUpdate(memo.id, { tag_names: tagNames })}
       />
     </div>
   );

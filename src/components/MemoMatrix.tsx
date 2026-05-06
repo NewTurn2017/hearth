@@ -1,4 +1,5 @@
-import type { Memo, Project } from "../types";
+import type { Memo, MemoTag, Project } from "../types";
+import type { MemoUpdateInput } from "../api";
 import type { MemoGroup } from "../lib/memoSequence";
 import { MemoRow } from "./MemoRow";
 
@@ -7,15 +8,19 @@ export function MemoMatrix({
   projects,
   sequence,
   highlightedId,
+  tags,
   onUpdate,
   onDelete,
+  onCreateTag,
 }: {
   groups: MemoGroup[];
   projects: Project[];
   sequence: Map<number, number>;
   highlightedId: number | null;
-  onUpdate: (id: number, fields: Record<string, unknown>) => void;
+  tags: MemoTag[];
+  onUpdate: (id: number, fields: MemoUpdateInput) => void | Promise<unknown>;
   onDelete: (id: number) => void;
+  onCreateTag: (name: string) => Promise<MemoTag>;
 }) {
   return (
     <div className="grid gap-4 grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 auto-rows-fr flex-1 min-h-0">
@@ -33,8 +38,10 @@ export function MemoMatrix({
             projects={projects}
             sequence={sequence}
             highlightedId={highlightedId}
+            tags={tags}
             onUpdate={onUpdate}
             onDelete={onDelete}
+            onCreateTag={onCreateTag}
           />
         );
       })}
@@ -49,8 +56,10 @@ function Tile({
   projects,
   sequence,
   highlightedId,
+  tags,
   onUpdate,
   onDelete,
+  onCreateTag,
 }: {
   title: string;
   priority: string | null;
@@ -58,8 +67,10 @@ function Tile({
   projects: Project[];
   sequence: Map<number, number>;
   highlightedId: number | null;
-  onUpdate: (id: number, fields: Record<string, unknown>) => void;
+  tags: MemoTag[];
+  onUpdate: (id: number, fields: MemoUpdateInput) => void | Promise<unknown>;
   onDelete: (id: number) => void;
+  onCreateTag: (name: string) => Promise<MemoTag>;
 }) {
   return (
     <section className="flex flex-col min-h-0 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-1)] overflow-hidden">
@@ -82,8 +93,10 @@ function Tile({
             key={m.id}
             memo={m}
             projects={projects}
+            tags={tags}
             onUpdate={onUpdate}
             onDelete={onDelete}
+            onCreateTag={onCreateTag}
             sequenceNumber={sequence.get(m.id) ?? 0}
             highlighted={m.id === highlightedId}
           />
