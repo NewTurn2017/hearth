@@ -28,6 +28,47 @@ pub struct Schedule {
     pub updated_at: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum MemoFontSize {
+    Small,
+    #[default]
+    Normal,
+    Large,
+}
+
+impl MemoFontSize {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MemoFontSize::Small => "small",
+            MemoFontSize::Normal => "normal",
+            MemoFontSize::Large => "large",
+        }
+    }
+
+    pub fn parse(input: &str) -> rusqlite::Result<Self> {
+        match input {
+            "small" => Ok(MemoFontSize::Small),
+            "normal" => Ok(MemoFontSize::Normal),
+            "large" => Ok(MemoFontSize::Large),
+            other => Err(rusqlite::Error::InvalidParameterName(format!(
+                "invalid font_size: {other}"
+            ))),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MemoTag {
+    pub id: i64,
+    pub name: String,
+    pub color: String,
+    pub sort_order: i64,
+    pub usage_count: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Memo {
     pub id: i64,
@@ -35,6 +76,11 @@ pub struct Memo {
     pub color: String,
     pub project_id: Option<i64>,
     pub sort_order: i64,
+    pub font_size: MemoFontSize,
+    pub is_bold: bool,
+    pub focus_x: Option<f64>,
+    pub focus_y: Option<f64>,
+    pub tags: Vec<MemoTag>,
     pub created_at: String,
     pub updated_at: String,
 }

@@ -29,6 +29,11 @@ pub fn create_memo(state: State<'_, AppState>, data: MemoInput) -> Result<Memo, 
             content: &data.content,
             color,
             project_id: data.project_id,
+            font_size: None,
+            is_bold: None,
+            focus_x: None,
+            focus_y: None,
+            tag_names: vec![],
         },
     )
     .map_err(|e| e.to_string())
@@ -57,6 +62,11 @@ pub fn update_memo(
             content: fields.content.as_deref(),
             color: fields.color.as_deref(),
             project_id: fields.project_id,
+            font_size: None,
+            is_bold: None,
+            focus_x: None,
+            focus_y: None,
+            tag_names: None,
         },
     )
     .map_err(|e| e.to_string())

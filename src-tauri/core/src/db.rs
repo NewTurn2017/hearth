@@ -171,6 +171,72 @@ fn ensure_schedule_reminder_columns(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+fn ensure_memo_focus_columns(conn: &Connection) -> Result<()> {
+    let mut stmt = conn.prepare("PRAGMA table_info('memos')")?;
+    let cols: Vec<String> = stmt
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(|r| r.ok())
+        .collect();
+    if !cols.iter().any(|c| c == "font_size") {
+        conn.execute_batch("ALTER TABLE memos ADD COLUMN font_size TEXT NOT NULL DEFAULT 'normal';")?;
+    }
+    if !cols.iter().any(|c| c == "is_bold") {
+        conn.execute_batch("ALTER TABLE memos ADD COLUMN is_bold INTEGER NOT NULL DEFAULT 0;")?;
+    }
+    if !cols.iter().any(|c| c == "focus_x") {
+        conn.execute_batch("ALTER TABLE memos ADD COLUMN focus_x REAL;")?;
+    }
+    if !cols.iter().any(|c| c == "focus_y") {
+        conn.execute_batch("ALTER TABLE memos ADD COLUMN focus_y REAL;")?;
+    }
+    Ok(())
+}
+
+fn ensure_memo_tags(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS memo_tags (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT    NOT NULL UNIQUE,
+            color      TEXT    NOT NULL DEFAULT '#64748b',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS memo_tag_links (
+            memo_id INTEGER NOT NULL REFERENCES memos(id) ON DELETE CASCADE,
+            tag_id  INTEGER NOT NULL REFERENCES memo_tags(id) ON DELETE CASCADE,
+            PRIMARY KEY (memo_id, tag_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_memo_tag_links_tag_id ON memo_tag_links(tag_id);",
+    )?;
+    seed_memo_tags_if_empty(conn)
+}
+
+fn seed_memo_tags_if_empty(conn: &Connection) -> Result<()> {
+    let count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM memo_tags", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+    let seed: [(&str, &str, i64); 5] = [
+        ("중요", "#ef4444", 0),
+        ("검토", "#f59e0b", 1),
+        ("아이디어", "#a855f7", 2),
+        ("대기", "#64748b", 3),
+        ("회의", "#0ea5e9", 4),
+    ];
+    let tx = conn.unchecked_transaction()?;
+    for (name, color, ord) in seed {
+        tx.execute(
+            "INSERT INTO memo_tags (name, color, sort_order) VALUES (?1, ?2, ?3)",
+            rusqlite::params![name, color, ord],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
 fn ensure_projects_fts(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "CREATE VIRTUAL TABLE IF NOT EXISTS projects_fts USING fts5(
@@ -303,6 +369,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             color TEXT NOT NULL DEFAULT 'yellow',
             project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
             sort_order INTEGER NOT NULL DEFAULT 0,
+            font_size TEXT NOT NULL DEFAULT 'normal',
+            is_bold INTEGER NOT NULL DEFAULT 0,
+            focus_x REAL,
+            focus_y REAL,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
@@ -355,6 +425,8 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     )?;
 
     ensure_schedule_reminder_columns(conn)?;
+    ensure_memo_focus_columns(conn)?;
+    ensure_memo_tags(conn)?;
     ensure_projects_fts(conn)?;
     ensure_memos_fts(conn)?;
     ensure_schedules_fts(conn)?;
@@ -477,6 +549,48 @@ mod tests {
         let conn = Connection::open(&db_path).unwrap();
         conn.query_row("SELECT COUNT(*) FROM projects", [], |r| r.get::<_, i64>(0))
             .unwrap();
+    }
+
+
+    #[test]
+    fn migrates_memo_style_position_columns_idempotently() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        run_migrations(&conn).unwrap();
+
+        let cols: Vec<String> = {
+            let mut stmt = conn.prepare("PRAGMA table_info('memos')").unwrap();
+            stmt.query_map([], |r| r.get::<_, String>(1))
+                .unwrap()
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap()
+        };
+
+        assert!(cols.iter().any(|c| c == "font_size"));
+        assert!(cols.iter().any(|c| c == "is_bold"));
+        assert!(cols.iter().any(|c| c == "focus_x"));
+        assert!(cols.iter().any(|c| c == "focus_y"));
+    }
+
+    #[test]
+    fn creates_and_seeds_memo_tags_once() {
+        let conn = Connection::open_in_memory().unwrap();
+        run_migrations(&conn).unwrap();
+        run_migrations(&conn).unwrap();
+
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM memo_tags", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 5);
+
+        let important: String = conn
+            .query_row(
+                "SELECT color FROM memo_tags WHERE name='중요'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(important, "#ef4444");
     }
 
     #[test]

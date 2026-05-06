@@ -262,6 +262,10 @@ fn update_from_json(
     let obj = v.as_object().ok_or(rusqlite::Error::InvalidQuery)?;
     for (k, val) in obj.iter() {
         if k == "id" { continue; }
+        // Memo tags are represented through memo_tag_links, not a memos column.
+        // Phase 1 records them in audit JSON for later import/export/audit work
+        // without teaching the generic row updater to restore link tables yet.
+        if table == "memos" && k == "tags" { continue; }
         sets.push(format!("{k} = ?"));
         vals.push(json_to_sql(val));
     }
@@ -314,7 +318,7 @@ fn build_projects_insert(v: &serde_json::Value, id: i64)
 fn build_memos_insert(v: &serde_json::Value, id: i64)
     -> (Vec<&'static str>, Vec<String>, Vec<Box<dyn rusqlite::types::ToSql>>)
 {
-    let cols = vec!["id","content","color","project_id","sort_order","created_at","updated_at"];
+    let cols = vec!["id","content","color","project_id","sort_order","font_size","is_bold","focus_x","focus_y","created_at","updated_at"];
     let placeholders: Vec<String> = (1..=cols.len()).map(|i| format!("?{i}")).collect();
     let vals: Vec<Box<dyn rusqlite::types::ToSql>> = vec![
         Box::new(id),
@@ -322,6 +326,10 @@ fn build_memos_insert(v: &serde_json::Value, id: i64)
         Box::new(v.get("color").and_then(|x| x.as_str()).unwrap_or("yellow").to_string()),
         Box::new(v.get("project_id").and_then(|x| x.as_i64())),
         Box::new(v.get("sort_order").and_then(|x| x.as_i64()).unwrap_or(0)),
+        Box::new(v.get("font_size").and_then(|x| x.as_str()).unwrap_or("normal").to_string()),
+        Box::new(v.get("is_bold").and_then(|x| x.as_bool()).unwrap_or(false) as i64),
+        Box::new(v.get("focus_x").and_then(|x| x.as_f64())),
+        Box::new(v.get("focus_y").and_then(|x| x.as_f64())),
         Box::new(v.get("created_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
         Box::new(v.get("updated_at").and_then(|x| x.as_str()).map(|s| s.to_string())),
     ];
@@ -434,6 +442,11 @@ mod tests {
                 content: "hi",
                 color: "yellow",
                 project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
             },
         )
         .unwrap();

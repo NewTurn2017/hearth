@@ -64,6 +64,11 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: MemoCmd, pretty: bool) -> Resul
                     content: &content,
                     color: &color,
                     project_id: project,
+                    font_size: None,
+                    is_bold: None,
+                    focus_x: None,
+                    focus_y: None,
+                    tag_names: vec![],
                 },
             )?;
             crate::util::emit_ok(serde_json::to_value(&m).unwrap());
@@ -85,6 +90,11 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: MemoCmd, pretty: bool) -> Resul
                     content: content.as_deref(),
                     color: color.as_deref(),
                     project_id,
+                    font_size: None,
+                    is_bold: None,
+                    focus_x: None,
+                    focus_y: None,
+                    tag_names: None,
                 },
             )?;
             crate::util::emit_ok(serde_json::to_value(&m).unwrap());

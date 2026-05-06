@@ -1,4 +1,4 @@
-use crate::models::{Memo, Project, Schedule};
+use crate::models::{Memo, MemoFontSize, Project, Schedule};
 use chrono::{Duration, Local};
 use rusqlite::Connection;
 use serde::Serialize;
@@ -64,7 +64,7 @@ pub fn today(conn: &Connection) -> rusqlite::Result<TodayView> {
         .format("%Y-%m-%d %H:%M:%S")
         .to_string();
     let mut stmt = conn.prepare(
-        "SELECT id,content,color,project_id,sort_order,created_at,updated_at
+        "SELECT id,content,color,project_id,sort_order,font_size,is_bold,focus_x,focus_y,created_at,updated_at
          FROM memos WHERE updated_at >= ?1 ORDER BY updated_at DESC LIMIT 10",
     )?;
     let recent_memos: Vec<Memo> = stmt
@@ -75,8 +75,13 @@ pub fn today(conn: &Connection) -> rusqlite::Result<TodayView> {
                 color: r.get(2)?,
                 project_id: r.get(3)?,
                 sort_order: r.get(4)?,
-                created_at: r.get(5)?,
-                updated_at: r.get(6)?,
+                font_size: MemoFontSize::parse(r.get::<_, String>(5)?.as_str())?,
+                is_bold: r.get::<_, i64>(6)? != 0,
+                focus_x: r.get(7)?,
+                focus_y: r.get(8)?,
+                tags: Vec::new(),
+                created_at: r.get(9)?,
+                updated_at: r.get(10)?,
             })
         })?
         .filter_map(|r| r.ok())
@@ -251,6 +256,11 @@ mod tests {
                 content: "a",
                 color: "yellow",
                 project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
             },
         )
         .unwrap();

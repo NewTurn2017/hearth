@@ -129,6 +129,11 @@ mod tests {
                 content: "note about agents",
                 color: "yellow",
                 project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
             },
         )
         .unwrap();
