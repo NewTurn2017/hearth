@@ -28,8 +28,8 @@ pub fn dispatch(db_flag: Option<&str>, args: ImportArgs) -> Result<()> {
     }
 
     // Read the dump file
-    let json_bytes = std::fs::read(&args.file)
-        .with_context(|| format!("reading import file: {}", args.file))?;
+    let json_bytes =
+        std::fs::read(&args.file).with_context(|| format!("reading import file: {}", args.file))?;
     let dump: hearth_core::export::Dump =
         serde_json::from_slice(&json_bytes).context("parsing import JSON")?;
 
@@ -56,15 +56,11 @@ pub fn dispatch(db_flag: Option<&str>, args: ImportArgs) -> Result<()> {
         )
         .context("truncating tables")?;
 
-        eprintln!(
-            "backup created: {}",
-            backup_path.display()
-        );
+        eprintln!("backup created: {}", backup_path.display());
     }
 
-    let report =
-        hearth_core::export::import_json_merge(&mut conn, &dump, args.dry_run)
-            .context("import_json_merge failed")?;
+    let report = hearth_core::export::import_json_merge(&mut conn, &dump, args.dry_run)
+        .context("import_json_merge failed")?;
 
     crate::util::emit_ok(serde_json::to_value(&report).unwrap());
     Ok(())

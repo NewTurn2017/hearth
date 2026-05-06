@@ -109,7 +109,8 @@ hearth export | jq .
 | `hearth db migrate`              | DB를 열고 마이그레이션을 적용합니다.                        |
 | `hearth db vacuum`               | `VACUUM`과 `PRAGMA integrity_check`를 실행합니다.           |
 | `hearth project ...`             | 프로젝트 목록, 생성, 조회, 수정, 삭제, 폴더 스캔, 경로 연결 |
-| `hearth memo ...`                | 메모 목록, 생성, 조회, 수정, 삭제                           |
+| `hearth memo ...`                | 메모 목록, 생성, 조회, 수정, 삭제, 스타일·태그·Focus 위치 관리 |
+| `hearth memo-tag ...`            | 메모 전용 태그 목록, 생성, 수정, 삭제                       |
 | `hearth schedule ...`            | 일정 목록, 생성, 조회, 수정, 삭제                           |
 | `hearth category ...`            | 카테고리 목록, 생성, 이름 변경, 수정, 삭제                  |
 | `hearth search <QUERY>`          | 프로젝트, 메모, 일정 전체 FTS5 검색                         |
@@ -169,21 +170,35 @@ hearth memo list
 hearth --pretty memo list
 ```
 
-메모를 생성합니다. 색상 기본값은 `yellow`입니다.
+메모를 생성합니다. 색상 기본값은 `yellow`입니다. Focus 보드용 글자 크기, 굵게 표시, 메모 전용 태그, 보드 위치도 CLI에서 함께 지정할 수 있습니다.
 
 ```bash
 hearth memo create "릴리즈 전에 CLI 문서 확인"
 hearth memo create "앱 화면에서 바로 반영되는지 확인" --color blue
 hearth memo create "이 메모는 프로젝트 3에 연결" --project 3
+hearth memo create "기술 검토" --size large --bold --tag 검토 --tag 중요
 ```
 
-메모를 수정하거나 프로젝트 연결을 바꿉니다.
+메모를 수정하거나 프로젝트 연결을 바꿉니다. `--tag`를 여러 번 주면 해당 태그 목록으로 교체되고, `--clear-tags`는 모든 메모 태그를 제거합니다.
 
 ```bash
 hearth memo update 5 --content "문서 예시까지 확인 완료"
 hearth memo update 5 --color green
 hearth memo update 5 --project 3
 hearth memo update 5 --detach
+hearth memo update 24 --size normal --bold false
+hearth memo update 24 --tag 검토 --tag 대기
+hearth memo update 24 --clear-tags
+hearth memo update 24 --focus-x 0.42 --focus-y 0.18
+```
+
+메모 전용 태그를 관리합니다. 프로젝트 카테고리와 별개로, Focus 보드에서 메모 강조·필터링에 쓰는 태그입니다.
+
+```bash
+hearth memo-tag list
+hearth memo-tag create 중요 --color "#ef4444"
+hearth memo-tag update 1 --name 긴급검토 --color "#f97316"
+hearth memo-tag delete 1
 ```
 
 메모를 조회하거나 삭제합니다.

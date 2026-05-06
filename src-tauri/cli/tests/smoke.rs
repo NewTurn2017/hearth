@@ -206,6 +206,152 @@ fn memo_create_list_delete_roundtrip() {
     assert_eq!(v["data"].as_array().unwrap().len(), 0);
 }
 
+#[test]
+fn memo_create_update_style_tags_and_focus() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo",
+                "create",
+                "Focus memo",
+                "--size",
+                "large",
+                "--bold",
+                "--tag",
+                "검토",
+                "--tag",
+                "중요",
+                "--focus-x",
+                "0.42",
+                "--focus-y",
+                "0.18",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["content"], "Focus memo");
+    assert_eq!(v["data"]["font_size"], "large");
+    assert_eq!(v["data"]["is_bold"], true);
+    assert_eq!(v["data"]["focus_x"], 0.42);
+    assert_eq!(v["data"]["focus_y"], 0.18);
+    let tags = v["data"]["tags"].as_array().unwrap();
+    assert_eq!(tags.len(), 2);
+    assert!(tags.iter().any(|tag| tag["name"] == "검토"));
+    assert!(tags.iter().any(|tag| tag["name"] == "중요"));
+    let id = v["data"]["id"].as_i64().unwrap();
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo",
+                "update",
+                &id.to_string(),
+                "--size",
+                "small",
+                "--bold",
+                "false",
+                "--tag",
+                "대기",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["font_size"], "small");
+    assert_eq!(v["data"]["is_bold"], false);
+    let tags = v["data"]["tags"].as_array().unwrap();
+    assert_eq!(tags.len(), 1);
+    assert_eq!(tags[0]["name"], "대기");
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo",
+                "update",
+                &id.to_string(),
+                "--clear-tags",
+                "--focus-x",
+                "0.75",
+                "--focus-y",
+                "0.25",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["tags"].as_array().unwrap().len(), 0);
+    assert_eq!(v["data"]["focus_x"], 0.75);
+    assert_eq!(v["data"]["focus_y"], 0.25);
+
+    hearth(db_str)
+        .args([
+            "memo",
+            "update",
+            &id.to_string(),
+            "--tag",
+            "충돌",
+            "--clear-tags",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
+fn memo_tag_cli_crud() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["memo-tag", "create", "새태그", "--color", "#ef4444"])
+            .assert(),
+    );
+    assert_eq!(v["data"]["name"], "새태그");
+    assert_eq!(v["data"]["color"], "#ef4444");
+    let id = v["data"]["id"].as_i64().unwrap();
+
+    let v = stdout_json(hearth(db_str).args(["memo-tag", "list"]).assert());
+    assert!(v["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tag| tag["name"] == "새태그"));
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo-tag",
+                "update",
+                &id.to_string(),
+                "--name",
+                "긴급검토",
+                "--color",
+                "#f97316",
+                "--sort-order",
+                "7",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["name"], "긴급검토");
+    assert_eq!(v["data"]["color"], "#f97316");
+    assert_eq!(v["data"]["sort_order"], 7);
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["memo-tag", "delete", &id.to_string()])
+            .assert(),
+    );
+    assert_eq!(v["data"]["deleted"], id);
+
+    let v = stdout_json(hearth(db_str).args(["memo-tag", "list"]).assert());
+    assert!(!v["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tag| tag["name"] == "긴급검토"));
+}
+
 // ── Task 7.2 — schedule ──────────────────────────────────────────────────────
 
 #[test]

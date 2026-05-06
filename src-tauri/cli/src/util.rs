@@ -36,12 +36,10 @@ pub fn emit_ok_pretty(rows: &Value, headers: &[&str]) {
     for row in arr {
         let cells: Vec<String> = headers
             .iter()
-            .map(|h| {
-                match row.get(*h) {
-                    None | Some(Value::Null) => String::new(),
-                    Some(Value::String(s)) => s.clone(),
-                    Some(v) => v.to_string(),
-                }
+            .map(|h| match row.get(*h) {
+                None | Some(Value::Null) => String::new(),
+                Some(Value::String(s)) => s.clone(),
+                Some(v) => v.to_string(),
             })
             .collect();
         table.add_row(cells);

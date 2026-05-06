@@ -34,9 +34,8 @@ pub fn resolve_db_path(flag: Option<&str>) -> Result<PathBuf> {
     if let Ok(e) = std::env::var("HEARTH_DB") {
         return Ok(PathBuf::from(e));
     }
-    default_db_path().context(
-        "could not resolve default DB path. Pass --db <PATH> or set HEARTH_DB=<PATH>.",
-    )
+    default_db_path()
+        .context("could not resolve default DB path. Pass --db <PATH> or set HEARTH_DB=<PATH>.")
 }
 
 pub fn open(path: &std::path::Path) -> Result<Connection> {

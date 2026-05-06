@@ -73,7 +73,9 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: CategoryCmd) -> Result<()> {
                             sort_order: None,
                         },
                     ) {
-                        Ok(updated) => crate::util::emit_ok(serde_json::to_value(&updated).unwrap()),
+                        Ok(updated) => {
+                            crate::util::emit_ok(serde_json::to_value(&updated).unwrap())
+                        }
                         Err(e) => {
                             crate::util::emit_err(&e.to_string(), None);
                             std::process::exit(1);
@@ -82,7 +84,12 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: CategoryCmd) -> Result<()> {
                 }
             }
         }
-        CategoryCmd::Update { id, name, color, sort_order } => {
+        CategoryCmd::Update {
+            id,
+            name,
+            color,
+            sort_order,
+        } => {
             match categories::update(
                 &mut conn,
                 id,
@@ -99,22 +106,20 @@ pub fn dispatch(db_path_flag: Option<&str>, sub: CategoryCmd) -> Result<()> {
                 }
             }
         }
-        CategoryCmd::Delete { id } => {
-            match categories::delete(&conn, id) {
-                Ok(()) => crate::util::emit_ok(serde_json::json!({ "deleted": id })),
-                Err(CategoryError::InUse { name, count }) => {
-                    crate::util::emit_err(
-                        &format!("카테고리 사용 중 ({count}개 프로젝트): {name}"),
-                        Some("먼저 프로젝트의 카테고리를 변경하세요"),
-                    );
-                    std::process::exit(1);
-                }
-                Err(e) => {
-                    crate::util::emit_err(&e.to_string(), None);
-                    std::process::exit(1);
-                }
+        CategoryCmd::Delete { id } => match categories::delete(&conn, id) {
+            Ok(()) => crate::util::emit_ok(serde_json::json!({ "deleted": id })),
+            Err(CategoryError::InUse { name, count }) => {
+                crate::util::emit_err(
+                    &format!("카테고리 사용 중 ({count}개 프로젝트): {name}"),
+                    Some("먼저 프로젝트의 카테고리를 변경하세요"),
+                );
+                std::process::exit(1);
             }
-        }
+            Err(e) => {
+                crate::util::emit_err(&e.to_string(), None);
+                std::process::exit(1);
+            }
+        },
     }
     Ok(())
 }

@@ -6,7 +6,11 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "hearth", version, about = "Hearth CLI — agent-friendly workspace control")]
+#[command(
+    name = "hearth",
+    version,
+    about = "Hearth CLI — agent-friendly workspace control"
+)]
 struct Cli {
     /// SQLite DB path override. Falls back to $HEARTH_DB then the default app data path.
     #[arg(long, global = true)]
@@ -40,6 +44,11 @@ enum Commands {
     Memo {
         #[command(subcommand)]
         sub: crate::cmd::memo::MemoCmd,
+    },
+    /// Memo tag management.
+    MemoTag {
+        #[command(subcommand)]
+        sub: crate::cmd::memo_tag::MemoTagCmd,
     },
     /// Schedule management.
     Schedule {
@@ -122,6 +131,7 @@ fn run() -> Result<()> {
             crate::cmd::project::dispatch(cli.db.as_deref(), sub, cli.pretty)
         }
         Commands::Memo { sub } => crate::cmd::memo::dispatch(cli.db.as_deref(), sub, cli.pretty),
+        Commands::MemoTag { sub } => crate::cmd::memo_tag::dispatch(cli.db.as_deref(), sub),
         Commands::Schedule { sub } => {
             crate::cmd::schedule::dispatch(cli.db.as_deref(), sub, cli.pretty)
         }
@@ -153,8 +163,7 @@ fn cmd_db(db_flag: Option<&str>, sub: DbCmd) -> Result<()> {
             let p = crate::db::resolve_db_path(db_flag)?;
             let conn = crate::db::open(&p)?;
             conn.execute("VACUUM", [])?;
-            let integrity: String =
-                conn.query_row("PRAGMA integrity_check", [], |r| r.get(0))?;
+            let integrity: String = conn.query_row("PRAGMA integrity_check", [], |r| r.get(0))?;
             crate::util::emit_ok(serde_json::json!({
                 "path": p.to_string_lossy(),
                 "integrity_check": integrity,
