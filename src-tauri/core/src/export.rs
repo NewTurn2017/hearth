@@ -3,7 +3,7 @@
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::models::{Client, Memo, Project, Schedule};
 
@@ -61,6 +61,20 @@ fn next_memo_tag_sort_order(conn: &Connection) -> rusqlite::Result<i64> {
     )
 }
 
+enum ResolvedMemoTag {
+    Existing(i64),
+    Inserted(Option<i64>),
+}
+
+impl ResolvedMemoTag {
+    fn id(&self) -> Option<i64> {
+        match self {
+            ResolvedMemoTag::Existing(id) => Some(*id),
+            ResolvedMemoTag::Inserted(id) => *id,
+        }
+    }
+}
+
 fn resolve_memo_tag_for_import(
     conn: &Connection,
     name: &str,
@@ -68,15 +82,18 @@ fn resolve_memo_tag_for_import(
     sort_order: Option<i64>,
     dry_run: bool,
     report: &mut ImportReport,
-) -> rusqlite::Result<Option<i64>> {
+) -> rusqlite::Result<ResolvedMemoTag> {
     match conn.query_row("SELECT id FROM memo_tags WHERE name = ?1", [name], |r| {
         r.get::<_, i64>(0)
     }) {
-        Ok(id) => Ok(Some(id)),
+        Ok(id) => {
+            report.skipped_duplicates += 1;
+            Ok(ResolvedMemoTag::Existing(id))
+        }
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             report.inserted_memo_tags += 1;
             if dry_run {
-                Ok(None)
+                Ok(ResolvedMemoTag::Inserted(None))
             } else {
                 conn.execute(
                     "INSERT INTO memo_tags (name, color, sort_order) VALUES (?1, ?2, ?3)",
@@ -86,7 +103,7 @@ fn resolve_memo_tag_for_import(
                         sort_order.unwrap_or(next_memo_tag_sort_order(conn)?)
                     ],
                 )?;
-                Ok(Some(conn.last_insert_rowid()))
+                Ok(ResolvedMemoTag::Inserted(Some(conn.last_insert_rowid())))
             }
         }
         Err(e) => Err(e),
@@ -127,9 +144,9 @@ fn import_nested_memo_tags(
     report: &mut ImportReport,
 ) -> rusqlite::Result<()> {
     for name in normalized_memo_tag_names(memo) {
-        let tag_id = resolve_memo_tag_for_import(conn, &name, None, None, dry_run, report)?;
+        let tag = resolve_memo_tag_for_import(conn, &name, None, None, dry_run, report)?;
         if let Some(memo_id) = memo_id {
-            if let Some(tag_id) = tag_id {
+            if let Some(tag_id) = tag.id() {
                 insert_memo_tag_link_for_import(conn, memo_id, tag_id, dry_run, report)?;
             } else {
                 // Dry-run path for a would-be new tag: no stable local id exists yet, but
@@ -266,6 +283,7 @@ pub fn import_json_merge(
 
     // --- memo tags (match by semantic name, preserve metadata) ---
     let mut memo_tag_id_map: HashMap<i64, i64> = HashMap::new();
+    let mut inserted_memo_tag_source_ids: HashSet<i64> = HashSet::new();
     for tag in &dump.memo_tags {
         let old_id = tag.get("id").and_then(|v| v.as_i64());
         let name = tag
@@ -281,7 +299,7 @@ pub fn import_json_merge(
             .and_then(|v| v.as_str())
             .unwrap_or("#6b7280");
         let sort_order = tag.get("sort_order").and_then(|v| v.as_i64()).unwrap_or(0);
-        let tag_id = resolve_memo_tag_for_import(
+        let tag = resolve_memo_tag_for_import(
             &tx,
             name,
             Some(color),
@@ -289,18 +307,17 @@ pub fn import_json_merge(
             dry_run,
             &mut report,
         )?;
-        match (old_id, tag_id) {
-            (Some(old_id), Some(tag_id)) => {
+        match (old_id, tag) {
+            (Some(old_id), ResolvedMemoTag::Existing(tag_id)) => {
                 memo_tag_id_map.insert(old_id, tag_id);
-                if !dry_run {
-                    tx.execute(
-                        "UPDATE memo_tags SET color = ?1, sort_order = ?2, updated_at = datetime('now') WHERE id = ?3",
-                        rusqlite::params![color, sort_order, tag_id],
-                    )?;
-                }
             }
-            (Some(old_id), None) if dry_run => {
+            (Some(old_id), ResolvedMemoTag::Inserted(Some(tag_id))) => {
+                memo_tag_id_map.insert(old_id, tag_id);
+                inserted_memo_tag_source_ids.insert(old_id);
+            }
+            (Some(old_id), ResolvedMemoTag::Inserted(None)) if dry_run => {
                 memo_tag_id_map.insert(old_id, old_id);
+                inserted_memo_tag_source_ids.insert(old_id);
             }
             _ => {}
         }
@@ -339,6 +356,7 @@ pub fn import_json_merge(
 
     // --- memos (match by content + color) ---
     let mut memo_id_map: HashMap<i64, i64> = HashMap::new();
+    let mut inserted_memo_source_ids: HashSet<i64> = HashSet::new();
     for m in &dump.memos {
         let existing_id = tx.query_row(
             "SELECT id FROM memos WHERE content = ?1 AND color = ?2",
@@ -371,6 +389,7 @@ pub fn import_json_merge(
             } else {
                 memo_id_map.insert(m.id, m.id);
             }
+            inserted_memo_source_ids.insert(m.id);
             report.inserted_memos += 1;
         } else if let Err(e) = existing_id {
             return Err(e);
@@ -390,6 +409,7 @@ pub fn import_json_merge(
         }
     } else {
         // Raw link sections are the authoritative link-import/counting path for new dumps.
+        let mut planned_links = HashSet::new();
         for link in &dump.memo_tag_links {
             let old_memo_id = link.get("memo_id").and_then(|v| v.as_i64());
             let old_tag_id = link.get("tag_id").and_then(|v| v.as_i64());
@@ -402,7 +422,18 @@ pub fn import_json_merge(
             let Some(&tag_id) = memo_tag_id_map.get(&old_tag_id) else {
                 continue;
             };
-            insert_memo_tag_link_for_import(&tx, memo_id, tag_id, dry_run, &mut report)?;
+            if dry_run
+                && (inserted_memo_source_ids.contains(&old_memo_id)
+                    || inserted_memo_tag_source_ids.contains(&old_tag_id))
+            {
+                if planned_links.insert((old_memo_id, old_tag_id)) {
+                    report.inserted_memo_tag_links += 1;
+                } else {
+                    report.skipped_duplicates += 1;
+                }
+            } else {
+                insert_memo_tag_link_for_import(&tx, memo_id, tag_id, dry_run, &mut report)?;
+            }
         }
     }
 
@@ -591,6 +622,75 @@ mod tests {
         let imported = memos::list(&c).unwrap().remove(0);
         assert_eq!(imported.tags[0].name, "원시");
         assert_eq!(imported.tags[0].color, "#654321");
+    }
+
+    #[test]
+    fn import_preserves_existing_same_name_memo_tag_metadata() {
+        let raw = r##"{
+            "projects": [],
+            "memos": [{
+                "id": 31,
+                "content": "existing tag memo",
+                "color": "yellow",
+                "project_id": null,
+                "sort_order": 1,
+                "font_size": "normal",
+                "is_bold": false,
+                "focus_x": null,
+                "focus_y": null,
+                "created_at": "2026-05-06 00:00:00",
+                "updated_at": "2026-05-06 00:00:00"
+            }],
+            "schedules": [],
+            "categories": [],
+            "memo_tags": [{
+                "id": 41,
+                "name": "로컬태그",
+                "color": "#imported",
+                "sort_order": 99,
+                "created_at": "2026-05-06 00:00:00",
+                "updated_at": "2026-05-06 00:00:00"
+            }],
+            "memo_tag_links": [{"memo_id": 31, "tag_id": 41}],
+            "clients": []
+        }"##;
+        let dump: Dump = serde_json::from_str(raw).unwrap();
+        let mut c = fresh();
+        memos::create_memo_tag(&mut c, Source::Cli, "로컬태그", Some("#local")).unwrap();
+        let local_id = memos::list_memo_tags(&c)
+            .unwrap()
+            .into_iter()
+            .find(|tag| tag.name == "로컬태그")
+            .unwrap()
+            .id;
+        let local = memos::update_memo_tag(
+            &mut c,
+            Source::Cli,
+            local_id,
+            &memos::UpdateMemoTag {
+                name: None,
+                color: None,
+                sort_order: Some(7),
+            },
+        )
+        .unwrap();
+
+        let report = import_json_merge(&mut c, &dump, false).unwrap();
+        assert_eq!(report.inserted_memos, 1);
+        assert_eq!(report.inserted_memo_tags, 0);
+        assert_eq!(report.inserted_memo_tag_links, 1);
+        assert!(report.skipped_duplicates >= 1);
+
+        let tag = memos::list_memo_tags(&c)
+            .unwrap()
+            .into_iter()
+            .find(|tag| tag.id == local.id)
+            .unwrap();
+        assert_eq!(tag.color, "#local");
+        assert_eq!(tag.sort_order, 7);
+        let imported = memos::list(&c).unwrap().remove(0);
+        assert_eq!(imported.tags[0].name, "로컬태그");
+        assert_eq!(imported.tags[0].color, "#local");
     }
 
     #[test]

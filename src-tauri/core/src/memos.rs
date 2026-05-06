@@ -217,8 +217,20 @@ pub fn update_memo_tag(
 pub fn delete_memo_tag(conn: &mut Connection, source: Source, id: i64) -> rusqlite::Result<()> {
     let tx = conn.transaction()?;
     let before = get_memo_tag(&tx, id)?.ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+    let linked_memo_ids = {
+        let mut stmt = tx
+            .prepare("SELECT memo_id FROM memo_tag_links WHERE tag_id = ?1 ORDER BY memo_id ASC")?;
+        let rows = stmt.query_map([id], |row| row.get::<_, i64>(0))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
     tx.execute("DELETE FROM memo_tags WHERE id = ?1", [id])?;
-    let bj = serde_json::to_value(&before).unwrap();
+    let mut bj = serde_json::to_value(&before).unwrap();
+    if let Some(obj) = bj.as_object_mut() {
+        obj.insert(
+            "linked_memo_ids".to_string(),
+            serde_json::json!(linked_memo_ids),
+        );
+    }
     write_audit(&tx, source, Op::Delete, "memo_tags", id, Some(&bj), None)?;
     tx.commit()?;
     Ok(())

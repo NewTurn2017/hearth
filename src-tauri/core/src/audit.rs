@@ -252,6 +252,9 @@ fn insert_from_json(
             crate::memos::replace_tags(conn, id, &tag_names)?;
         }
     }
+    if table == "memo_tags" {
+        restore_memo_tag_links_from_json(conn, v, id)?;
+    }
     Ok(())
 }
 
@@ -292,6 +295,23 @@ fn update_from_json(
     }
     if let Some(tag_names) = tag_names {
         crate::memos::replace_tags(conn, id, &tag_names)?;
+    }
+    Ok(())
+}
+
+fn restore_memo_tag_links_from_json(
+    conn: &mut Connection,
+    v: &serde_json::Value,
+    tag_id: i64,
+) -> rusqlite::Result<()> {
+    let Some(memo_ids) = v.get("linked_memo_ids").and_then(|links| links.as_array()) else {
+        return Ok(());
+    };
+    for memo_id in memo_ids.iter().filter_map(|memo_id| memo_id.as_i64()) {
+        conn.execute(
+            "INSERT OR IGNORE INTO memo_tag_links (memo_id, tag_id) VALUES (?1, ?2)",
+            rusqlite::params![memo_id, tag_id],
+        )?;
     }
     Ok(())
 }
@@ -884,6 +904,45 @@ mod tests {
             .unwrap()
             .iter()
             .any(|t| t.id == created.id));
+    }
+
+    #[test]
+    fn undo_delete_memo_tag_restores_cascaded_links_and_redo_removes_them() {
+        use crate::memos;
+        let mut c = fresh_conn();
+        let memo = memos::create(
+            &mut c,
+            Source::Cli,
+            &memos::NewMemo {
+                content: "linked tag undo",
+                color: "yellow",
+                project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec!["복원".to_string()],
+            },
+        )
+        .unwrap();
+        let tag_id = memo.tags[0].id;
+
+        memos::delete_memo_tag(&mut c, Source::Cli, tag_id).unwrap();
+        assert!(memos::get(&c, memo.id).unwrap().unwrap().tags.is_empty());
+
+        undo(&mut c, 1).unwrap();
+        let restored = memos::get(&c, memo.id).unwrap().unwrap();
+        assert_eq!(
+            restored
+                .tags
+                .iter()
+                .map(|tag| tag.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["복원"]
+        );
+
+        redo(&mut c, 1).unwrap();
+        assert!(memos::get(&c, memo.id).unwrap().unwrap().tags.is_empty());
     }
 
     #[test]
