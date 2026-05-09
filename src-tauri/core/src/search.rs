@@ -88,7 +88,11 @@ pub fn search_all(conn: &Connection, query: &str, limit: i64) -> rusqlite::Resul
             hits.push(h?);
         }
     }
-    hits.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
+    hits.sort_by(|a, b| {
+        a.score
+            .partial_cmp(&b.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     Ok(hits)
 }
 
@@ -129,6 +133,11 @@ mod tests {
                 content: "note about agents",
                 color: "yellow",
                 project_id: None,
+                font_size: None,
+                is_bold: None,
+                focus_x: None,
+                focus_y: None,
+                tag_names: vec![],
             },
         )
         .unwrap();

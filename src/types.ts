@@ -24,12 +24,29 @@ export interface Schedule {
   updated_at: string;
 }
 
+export type MemoFontSize = "small" | "normal" | "large";
+
+export interface MemoTag {
+  id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Memo {
   id: number;
   content: string;
   color: string;
   project_id: number | null;
   sort_order: number;
+  font_size: MemoFontSize;
+  is_bold: boolean;
+  focus_x: number | null;
+  focus_y: number | null;
+  tags: MemoTag[];
   created_at: string;
   updated_at: string;
 }
@@ -85,7 +102,13 @@ export type Priority = "P0" | "P1" | "P2" | "P3" | "P4";
 export type Category = "Active" | "Side" | "Lab" | "Tools" | "Lecture";
 
 export const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3", "P4"];
-export const CATEGORIES: Category[] = ["Active", "Side", "Lab", "Tools", "Lecture"];
+export const CATEGORIES: Category[] = [
+  "Active",
+  "Side",
+  "Lab",
+  "Tools",
+  "Lecture",
+];
 
 export const PRIORITY_COLORS: Record<Priority, string> = {
   P0: "#ef4444",

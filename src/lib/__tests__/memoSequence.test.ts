@@ -5,13 +5,18 @@ import type { Memo, Project } from "../../types";
 const mkMemo = (
   id: number,
   sort_order: number,
-  project_id: number | null = null
+  project_id: number | null = null,
 ): Memo => ({
   id,
   sort_order,
   project_id,
   content: `memo${id}`,
   color: "yellow",
+  font_size: "normal",
+  is_bold: false,
+  focus_x: null,
+  focus_y: null,
+  tags: [],
   created_at: "",
   updated_at: "",
 });
@@ -19,7 +24,7 @@ const mkMemo = (
 const mkProj = (
   id: number,
   priority: Project["priority"],
-  sort_order = 0
+  sort_order = 0,
 ): Project => ({
   id,
   priority,
@@ -68,7 +73,7 @@ describe("groupMemosByProject", () => {
     ];
     const groups = groupMemosByProject(memos, projects);
     expect(
-      groups.map((g) => (g.kind === "project" ? g.project.id : "etc"))
+      groups.map((g) => (g.kind === "project" ? g.project.id : "etc")),
     ).toEqual([2, 3, 1, "etc"]);
     expect(groups[0].memos.map((m) => m.id)).toEqual([11]);
     expect(groups[3].memos.map((m) => m.id)).toEqual([13]);

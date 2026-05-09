@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use hearth_core::{audit::Source, db::init_db, export, memos};
 use predicates::prelude::*;
 use serde_json::Value;
 use tempfile::TempDir;
@@ -139,10 +140,7 @@ fn project_scan_reports_subdirs() {
     let out = Command::cargo_bin("hearth")
         .unwrap()
         .env("HEARTH_DB", db_path.to_str().unwrap())
-        .args([
-            "project", "scan",
-            dir.path().to_str().unwrap(),
-        ])
+        .args(["project", "scan", dir.path().to_str().unwrap()])
         .assert()
         .success()
         .get_output()
@@ -176,13 +174,23 @@ fn memo_create_list_delete_roundtrip() {
     assert_eq!(v["data"].as_array().unwrap().len(), 1);
 
     // get
-    let v = stdout_json(hearth(db_str).args(["memo", "get", &id.to_string()]).assert());
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["memo", "get", &id.to_string()])
+            .assert(),
+    );
     assert_eq!(v["data"]["content"], "dentist on friday");
 
     // update content
     let v = stdout_json(
         hearth(db_str)
-            .args(["memo", "update", &id.to_string(), "--content", "dentist on saturday"])
+            .args([
+                "memo",
+                "update",
+                &id.to_string(),
+                "--content",
+                "dentist on saturday",
+            ])
             .assert(),
     );
     assert_eq!(v["data"]["content"], "dentist on saturday");
@@ -198,6 +206,152 @@ fn memo_create_list_delete_roundtrip() {
     assert_eq!(v["data"].as_array().unwrap().len(), 0);
 }
 
+#[test]
+fn memo_create_update_style_tags_and_focus() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo",
+                "create",
+                "Focus memo",
+                "--size",
+                "large",
+                "--bold",
+                "--tag",
+                "검토",
+                "--tag",
+                "중요",
+                "--focus-x",
+                "0.42",
+                "--focus-y",
+                "0.18",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["content"], "Focus memo");
+    assert_eq!(v["data"]["font_size"], "large");
+    assert_eq!(v["data"]["is_bold"], true);
+    assert_eq!(v["data"]["focus_x"], 0.42);
+    assert_eq!(v["data"]["focus_y"], 0.18);
+    let tags = v["data"]["tags"].as_array().unwrap();
+    assert_eq!(tags.len(), 2);
+    assert!(tags.iter().any(|tag| tag["name"] == "검토"));
+    assert!(tags.iter().any(|tag| tag["name"] == "중요"));
+    let id = v["data"]["id"].as_i64().unwrap();
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo",
+                "update",
+                &id.to_string(),
+                "--size",
+                "small",
+                "--bold",
+                "false",
+                "--tag",
+                "대기",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["font_size"], "small");
+    assert_eq!(v["data"]["is_bold"], false);
+    let tags = v["data"]["tags"].as_array().unwrap();
+    assert_eq!(tags.len(), 1);
+    assert_eq!(tags[0]["name"], "대기");
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo",
+                "update",
+                &id.to_string(),
+                "--clear-tags",
+                "--focus-x",
+                "0.75",
+                "--focus-y",
+                "0.25",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["tags"].as_array().unwrap().len(), 0);
+    assert_eq!(v["data"]["focus_x"], 0.75);
+    assert_eq!(v["data"]["focus_y"], 0.25);
+
+    hearth(db_str)
+        .args([
+            "memo",
+            "update",
+            &id.to_string(),
+            "--tag",
+            "충돌",
+            "--clear-tags",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
+fn memo_tag_cli_crud() {
+    let dir = TempDir::new().unwrap();
+    let db = dir.path().join("t.db");
+    let db_str = db.to_str().unwrap();
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["memo-tag", "create", "새태그", "--color", "#ef4444"])
+            .assert(),
+    );
+    assert_eq!(v["data"]["name"], "새태그");
+    assert_eq!(v["data"]["color"], "#ef4444");
+    let id = v["data"]["id"].as_i64().unwrap();
+
+    let v = stdout_json(hearth(db_str).args(["memo-tag", "list"]).assert());
+    assert!(v["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tag| tag["name"] == "새태그"));
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args([
+                "memo-tag",
+                "update",
+                &id.to_string(),
+                "--name",
+                "긴급검토",
+                "--color",
+                "#f97316",
+                "--sort-order",
+                "7",
+            ])
+            .assert(),
+    );
+    assert_eq!(v["data"]["name"], "긴급검토");
+    assert_eq!(v["data"]["color"], "#f97316");
+    assert_eq!(v["data"]["sort_order"], 7);
+
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["memo-tag", "delete", &id.to_string()])
+            .assert(),
+    );
+    assert_eq!(v["data"]["deleted"], id);
+
+    let v = stdout_json(hearth(db_str).args(["memo-tag", "list"]).assert());
+    assert!(!v["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tag| tag["name"] == "긴급검토"));
+}
+
 // ── Task 7.2 — schedule ──────────────────────────────────────────────────────
 
 #[test]
@@ -210,8 +364,11 @@ fn schedule_create_list_delete_roundtrip() {
     let v = stdout_json(
         hearth(db_str)
             .args([
-                "schedule", "create", "2026-05-10",
-                "--description", "dentist appointment",
+                "schedule",
+                "create",
+                "2026-05-10",
+                "--description",
+                "dentist appointment",
                 "--remind-5min",
             ])
             .assert(),
@@ -237,22 +394,35 @@ fn schedule_create_list_delete_roundtrip() {
     let v = stdout_json(
         hearth(db_str)
             .args([
-                "schedule", "list",
-                "--from", "2026-05-01",
-                "--to", "2026-05-31",
+                "schedule",
+                "list",
+                "--from",
+                "2026-05-01",
+                "--to",
+                "2026-05-31",
             ])
             .assert(),
     );
     assert_eq!(v["data"].as_array().unwrap().len(), 1);
 
     // get
-    let v = stdout_json(hearth(db_str).args(["schedule", "get", &id.to_string()]).assert());
+    let v = stdout_json(
+        hearth(db_str)
+            .args(["schedule", "get", &id.to_string()])
+            .assert(),
+    );
     assert_eq!(v["data"]["description"], "dentist appointment");
 
     // update
     let v = stdout_json(
         hearth(db_str)
-            .args(["schedule", "update", &id.to_string(), "--date", "2026-05-11"])
+            .args([
+                "schedule",
+                "update",
+                &id.to_string(),
+                "--date",
+                "2026-05-11",
+            ])
             .assert(),
     );
     assert_eq!(v["data"]["date"], "2026-05-11");
@@ -360,9 +530,18 @@ fn today_returns_structured_view() {
     assert_eq!(v["ok"], true);
     let data = &v["data"];
     assert!(data["date"].is_string(), "data.date should be a string");
-    assert!(data["schedules_today"].is_array(), "data.schedules_today should be an array");
-    assert!(data["p0_projects"].is_array(), "data.p0_projects should be an array");
-    assert!(data["recent_memos"].is_array(), "data.recent_memos should be an array");
+    assert!(
+        data["schedules_today"].is_array(),
+        "data.schedules_today should be an array"
+    );
+    assert!(
+        data["p0_projects"].is_array(),
+        "data.p0_projects should be an array"
+    );
+    assert!(
+        data["recent_memos"].is_array(),
+        "data.recent_memos should be an array"
+    );
 }
 
 #[test]
@@ -448,11 +627,7 @@ fn export_json_includes_projects() {
     let out_path = dir.path().join("export.json");
     let out_str = out_path.to_str().unwrap();
 
-    let v = stdout_json(
-        hearth(db_str)
-            .args(["export", "--out", out_str])
-            .assert(),
-    );
+    let v = stdout_json(hearth(db_str).args(["export", "--out", out_str]).assert());
     assert_eq!(v["ok"], true);
     assert_eq!(v["data"]["written"], out_str);
 
@@ -462,6 +637,120 @@ fn export_json_includes_projects() {
         contents.contains("ExportMe"),
         "export file should contain project name"
     );
+}
+
+#[test]
+fn export_import_roundtrips_styled_tagged_memo() {
+    let dir = TempDir::new().unwrap();
+    let source_path = dir.path().join("source.db");
+    let target_path = dir.path().join("target.db");
+    let mut source = init_db(&source_path).unwrap();
+    memos::create_memo_tag(&mut source, Source::Cli, "CLI태그", Some("#0f766e")).unwrap();
+    memos::create(
+        &mut source,
+        Source::Cli,
+        &memos::NewMemo {
+            content: "styled tagged smoke",
+            color: "purple",
+            project_id: None,
+            font_size: Some("large"),
+            is_bold: Some(true),
+            focus_x: Some(0.25),
+            focus_y: Some(0.75),
+            tag_names: vec!["CLI태그".to_string()],
+        },
+    )
+    .unwrap();
+
+    let dump = export::export_json(&source, false).unwrap();
+    let json = serde_json::to_value(&dump).unwrap();
+    assert!(json["memo_tags"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|tag| tag["name"] == "CLI태그"));
+    assert_eq!(json["memo_tag_links"].as_array().unwrap().len(), 1);
+
+    let mut target = init_db(&target_path).unwrap();
+    let report = export::import_json_merge(&mut target, &dump, false).unwrap();
+    assert_eq!(report.inserted_memos, 1);
+    let imported = memos::list(&target).unwrap().remove(0);
+    assert_eq!(imported.font_size.as_str(), "large");
+    assert!(imported.is_bold);
+    assert_eq!(imported.focus_x, Some(0.25));
+    assert_eq!(imported.focus_y, Some(0.75));
+    assert_eq!(imported.tags[0].name, "CLI태그");
+    assert_eq!(imported.tags[0].color, "#0f766e");
+}
+
+#[test]
+fn import_replace_removes_target_only_memo_tags() {
+    let dir = TempDir::new().unwrap();
+    let source_path = dir.path().join("source.db");
+    let target_path = dir.path().join("target.db");
+    let export_path = dir.path().join("dump.json");
+    let target_str = target_path.to_str().unwrap();
+    let export_str = export_path.to_str().unwrap();
+
+    let mut source = init_db(&source_path).unwrap();
+    memos::create_memo_tag(&mut source, Source::Cli, "가져온태그", Some("#0f766e")).unwrap();
+    memos::create(
+        &mut source,
+        Source::Cli,
+        &memos::NewMemo {
+            content: "imported tagged memo",
+            color: "blue",
+            project_id: None,
+            font_size: Some("normal"),
+            is_bold: Some(false),
+            focus_x: Some(0.1),
+            focus_y: Some(0.2),
+            tag_names: vec!["가져온태그".to_string()],
+        },
+    )
+    .unwrap();
+    let dump = export::export_json(&source, false).unwrap();
+    std::fs::write(&export_path, serde_json::to_vec(&dump).unwrap()).unwrap();
+
+    let mut target = init_db(&target_path).unwrap();
+    memos::create_memo_tag(&mut target, Source::Cli, "대상전용태그", Some("#ef4444")).unwrap();
+    memos::create(
+        &mut target,
+        Source::Cli,
+        &memos::NewMemo {
+            content: "stale target memo",
+            color: "yellow",
+            project_id: None,
+            font_size: Some("large"),
+            is_bold: Some(true),
+            focus_x: Some(0.8),
+            focus_y: Some(0.9),
+            tag_names: vec!["대상전용태그".to_string()],
+        },
+    )
+    .unwrap();
+    drop(target);
+
+    let v = stdout_json(
+        hearth(target_str)
+            .args(["import", export_str, "--replace", "--yes"])
+            .assert(),
+    );
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["dry_run"], false);
+
+    let target = init_db(&target_path).unwrap();
+    let tags = memos::list_memo_tags(&target).unwrap();
+    assert!(tags.iter().any(|tag| tag.name == "가져온태그"));
+    assert!(!tags.iter().any(|tag| tag.name == "대상전용태그"));
+
+    let imported_memo = memos::list(&target)
+        .unwrap()
+        .into_iter()
+        .find(|memo| memo.content == "imported tagged memo")
+        .expect("imported memo should remain after replace");
+    assert_eq!(imported_memo.tags.len(), 1);
+    assert_eq!(imported_memo.tags[0].name, "가져온태그");
 }
 
 // ── Task 10.2 — import ───────────────────────────────────────────────────────

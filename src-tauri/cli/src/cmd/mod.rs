@@ -3,6 +3,7 @@ pub mod export;
 pub mod import;
 pub mod log;
 pub mod memo;
+pub mod memo_tag;
 pub mod project;
 pub mod schedule;
 pub mod search;

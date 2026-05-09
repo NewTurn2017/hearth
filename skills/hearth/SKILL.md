@@ -36,11 +36,21 @@ description: |
   - Read phase: `"$HEARTH" schedule list --from <start> --to <end>` 또는 `"$HEARTH" search "<query>" --scope schedule --limit 10`; 선택한 대상은 `"$HEARTH" schedule get <id>`
   - Mutation recipe: `"$HEARTH" schedule update <id> [--date YYYY-MM-DD] [--time HH:MM] [--description "<title>"] [--location "<place>"] [--notes "<notes>"] [--remind-5min true|false] [--remind-start true|false]`
 - `memo.create`
-  - Read phase: 프로젝트 연결 가능성이 있으면 `"$HEARTH" project list`; 특정 프로젝트명이 있으면 `"$HEARTH" search "<project>" --scope project --limit 5`
-  - Mutation recipe: `"$HEARTH" memo create "<content>" [--color yellow|blue|green|pink|purple] [--project <project.id>]`
+  - Read phase: 프로젝트 연결 가능성이 있으면 `"$HEARTH" project list`; 특정 프로젝트명이 있으면 `"$HEARTH" search "<project>" --scope project --limit 5`; 태그를 붙일 수 있으면 `"$HEARTH" memo-tag list` 로 기존 태그를 확인
+  - Mutation recipe: `"$HEARTH" memo create "<content>" [--color yellow|blue|green|pink|purple] [--project <project.id>] [--size small|normal|large] [--bold] [--tag "<name>" ...] [--focus-x <0..1>] [--focus-y <0..1>]`
+  - Style/tag examples:
+    - `hearth memo create "<content>" --size large`
+    - `hearth memo create "<content>" --bold`
+    - `hearth memo create "<content>" --tag 중요`
 - `memo.update`
-  - Read phase: `"$HEARTH" memo list` 또는 `"$HEARTH" search "<query>" --scope memo --limit 10`; 선택한 대상은 `"$HEARTH" memo get <id>`
-  - Mutation recipe: `"$HEARTH" memo update <id> [--content "<content>"] [--color yellow|blue|green|pink|purple] [--project <project.id> | --detach]`
+  - Read phase: `"$HEARTH" memo list` 또는 `"$HEARTH" search "<query>" --scope memo --limit 10`; 선택한 대상은 `"$HEARTH" memo get <id>`; 태그 변경이면 `"$HEARTH" memo-tag list` 도 확인
+  - Mutation recipe: `"$HEARTH" memo update <id> [--content "<content>"] [--color yellow|blue|green|pink|purple] [--project <project.id> | --detach] [--size small|normal|large] [--bold true|false] [--tag "<name>" ... | --clear-tags] [--focus-x <0..1>] [--focus-y <0..1>]`
+  - Style/tag examples:
+    - `hearth memo update <id> --size <small|normal|large> --bold <true|false>`
+    - `hearth memo update <id> --tag 검토 --tag 중요`
+    - `hearth memo update <id> --clear-tags`
+    - `hearth memo list`
+    - `hearth memo-tag list`
 - `project.scan`
   - Read phase: `"$HEARTH" project scan "<dir>"` 후 `already_registered == false` 인 후보만 남기고 `"$HEARTH" project list` 로 중복 경로를 재확인
   - Mutation recipe: 승인된 후보마다 `"$HEARTH" project create "<name>" --priority <P0-P4> --path "<path>"`

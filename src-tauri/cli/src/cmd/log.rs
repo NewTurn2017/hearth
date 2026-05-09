@@ -36,7 +36,12 @@ pub fn dispatch(db_flag: Option<&str>, sub: LogCmd) -> Result<()> {
     let p = crate::db::resolve_db_path(db_flag)?;
     let mut conn = crate::db::open(&p)?;
     match sub {
-        LogCmd::Show { limit, source, table, include_undone } => {
+        LogCmd::Show {
+            limit,
+            source,
+            table,
+            include_undone,
+        } => {
             let entries = hearth_core::audit::list(
                 &conn,
                 limit,
