@@ -18,11 +18,48 @@ mod models;
 mod watcher;
 
 use std::sync::Mutex;
+use tauri::menu::{Menu, MenuItem, WINDOW_SUBMENU_ID};
 use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
+const SHOW_MAIN_WINDOW_MENU_ID: &str = "show-main-window";
+
 pub struct AppState {
     pub db: Mutex<rusqlite::Connection>,
+}
+
+fn show_main_window(app_handle: &tauri::AppHandle) {
+    if let Some(win) = app_handle.get_webview_window("main") {
+        let _ = win.unminimize();
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+}
+
+fn build_menu(app_handle: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
+    let menu = Menu::default(app_handle)?;
+    let show_main_window = MenuItem::with_id(
+        app_handle,
+        SHOW_MAIN_WINDOW_MENU_ID,
+        "Hearth",
+        true,
+        Some("CmdOrCtrl+1"),
+    )?;
+
+    if let Some(window_menu) = menu
+        .get(WINDOW_SUBMENU_ID)
+        .and_then(|item| item.as_submenu().cloned())
+    {
+        // App Review expects a menu path that can re-open the main window
+        // after a single-window macOS app hides it on close. Keep the default
+        // Window menu and add the main window title as an explicit target.
+        let insert_at = window_menu
+            .items()
+            .map(|items| items.len().saturating_sub(1))?;
+        window_menu.insert(&show_main_window, insert_at)?;
+    }
+
+    Ok(menu)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,6 +69,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .menu(build_menu)
+        .on_menu_event(|app_handle, event| {
+            if event.id().as_ref() == SHOW_MAIN_WINDOW_MENU_ID {
+                show_main_window(app_handle);
+            }
+        })
         .setup(|app| {
             let fallback_dir = app
                 .path()
@@ -78,10 +121,7 @@ pub fn run() {
 
             let launched_hidden = std::env::args().any(|a| a == "--hidden");
             if !launched_hidden {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
+                show_main_window(app.handle());
             }
 
             // If we recovered from corruption, tell the webview after it
@@ -248,10 +288,7 @@ pub fn run() {
             } = event
             {
                 if !has_visible_windows {
-                    if let Some(win) = app_handle.get_webview_window("main") {
-                        let _ = win.show();
-                        let _ = win.set_focus();
-                    }
+                    show_main_window(app_handle);
                 }
             }
         });

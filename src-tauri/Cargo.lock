@@ -1778,7 +1778,7 @@ dependencies = [
 
 [[package]]
 name = "hearth-app"
-version = "0.9.5"
+version = "1.0.0"
 dependencies = [
  "calamine",
  "chrono",
@@ -1821,7 +1821,7 @@ dependencies = [
 
 [[package]]
 name = "hearth-core"
-version = "0.9.5"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "rusqlite",
